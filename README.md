@@ -44,7 +44,7 @@ flowchart LR
     L[Command line] --> C
 ```
 
-**Why Rust.** Not for speed; these calculations are small. Rust was chosen because the compiler enforces the rules this project cares about. A value that may be missing must be handled where it appears. There is no garbage collector and no runtime to install, so the engine is one file that runs on Windows, Linux and a Mac, and the same code compiles to WebAssembly for a browser demo. The project forbids every way of crashing on bad input (the `unwrap`, `panic` and indexing patterns are denied by the linter in every crate), so a malformed CSV or a non-estimable half-life gives a readable error, not a crash. Lastly, the layer rules (the numerical crates may not depend on the interface, the interface holds no numerical code) are checked by a command in the continuous integration, so the engine stays usable from a test, a terminal, an agent or a window alike.
+**Why Rust.** Not for speed; these calculations are small. Rust was chosen because the compiler enforces the rules this project cares about. A value that may be missing must be handled where it appears. There is no garbage collector and no runtime to install, so the engine is one file that runs on Windows, Linux and a Mac, and the same code compiles to WebAssembly for a browser demo. The project forbids every way of crashing on bad input (`unwrap`, `expect` and `panic!` are denied by the linter in every crate; indexing on input-derived data is forbidden by the contract and checked in review, not by a lint), so a malformed CSV or a non-estimable half-life gives a readable error, not a crash. Lastly, the layer rules (the numerical crates may not depend on the interface, the interface holds no numerical code) are checked by a command in the continuous integration, so the engine stays usable from a test, a terminal, an agent or a window alike.
 
 **Why OptChat.** A conversation about a dataset can be long, and a 12 GB card cannot keep all of it in the model's context. OptChat is an idea by Victor Taelin: keep the whole chat on disk, and show the model a view where recent messages are verbatim and older ones are progressively merged into summary lines, arranged as a binary tree. Nothing is ever deleted, the view always covers the whole history, and the cost stays bounded. The prototype in `../optchat/` recalled 8 of 8 planted facts after 32 turns of filler on the local model, which is why Apothicaire imports it unchanged.
 
@@ -78,7 +78,7 @@ MIT OR Apache-2.0. Third-party data and assets are listed in `ATTRIBUTION.md`.
 
 ## Build
 
-Requires Rust stable 1.85 or newer, installed with rustup (`rust-toolchain.toml` selects the stable channel). The WebAssembly check also needs the `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`. Prebuilt binaries for Linux and Windows are attached to each release: <https://github.com/officina-dmpk/caladrius/releases>.
+Requires Rust stable 1.85 or newer, installed with rustup (`rust-toolchain.toml` selects the stable channel). The WebAssembly check also needs the `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`. Prebuilt binaries for Linux and Windows are attached to each release: <https://github.com/abdou-rgd/caladrius/releases>.
 
 ```sh
 cargo build --workspace
