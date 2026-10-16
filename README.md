@@ -44,7 +44,7 @@ flowchart LR
     L[Command line] --> C
 ```
 
-**Why Rust.** Not for speed; these calculations are small. Rust was chosen because the compiler enforces the rules this project cares about. A value that may be missing must be handled where it appears. There is no garbage collector and no runtime to install, so the engine is one file that runs on Windows, Linux and a Mac, and the same code compiles to WebAssembly for a browser demo. The project forbids every way of crashing on bad input (`unwrap`, `expect` and `panic!` are denied by the linter in every crate; indexing on input-derived data is forbidden by the contract and checked in review, not by a lint), so a malformed CSV or a non-estimable half-life gives a readable error, not a crash. Lastly, the layer rules (the numerical crates may not depend on the interface, the interface holds no numerical code) are checked by a command in the continuous integration, so the engine stays usable from a test, a terminal, an agent or a window alike.
+**Why Rust.** Not for speed; these calculations are small. Rust was chosen because the compiler enforces the rules this project cares about. A value that may be missing must be handled where it appears. There is no garbage collector and no runtime to install, so the engine is one file that runs on Windows, Linux and a Mac, and the same code compiles to WebAssembly for a browser demo. The project forbids every way of crashing on bad input (`unwrap`, `expect` and `panic!` are denied by the linter in every crate; indexing on slices and maps is denied by the linter in the four numerical crates (nca, models, fit, project) through `cargo xtask lint`, and checked in review elsewhere), so a malformed CSV or a non-estimable half-life gives a readable error, not a crash. Lastly, the layer rules (the numerical crates may not depend on the interface, the interface holds no numerical code) are checked by a command in the continuous integration, so the engine stays usable from a test, a terminal, an agent or a window alike.
 
 **Why OptChat.** A conversation about a dataset can be long, and a 12 GB card cannot keep all of it in the model's context. OptChat is an idea by Victor Taelin: keep the whole chat on disk, and show the model a view where recent messages are verbatim and older ones are progressively merged into summary lines, arranged as a binary tree. Nothing is ever deleted, the view always covers the whole history, and the cost stays bounded. The prototype in `../optchat/` recalled 8 of 8 planted facts after 32 turns of filler on the local model, which is why Apothicaire imports it unchanged.
 
@@ -85,7 +85,7 @@ cargo build --workspace
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask layers   # prints the layer table, fails if a crate depends on a higher layer
-cargo xtask lint     # contract checks: forbidden names, private/ leaks, deny-lints headers, tolerances once, board hygiene (exceptions in xtask/lint_allow.toml)
+cargo xtask lint     # contract checks: forbidden names, private/ leaks, deny-lints headers, tolerances once, board hygiene, clippy::indexing_slicing denied in the four numerical crates (exceptions in xtask/lint_allow.toml)
 cargo xtask review   # the figures this README and the specs state, confronted with the files that own them (read-only; --strict also fails on a note)
 cargo xtask wasm     # checks that layers L0 to L3 compile for wasm32-unknown-unknown
 ```

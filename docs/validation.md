@@ -122,7 +122,10 @@ margin of caution, not that the fit statistics were verified by hand (`specs/fit
 - **Deny lints.** Every crate root begins with
   `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unreachable)]`;
   `cargo xtask lint` fails a crate root that omits one of the five (`AGENTS.md`, golden rule 6;
-  `xtask/src/lint/header.rs`).
+  `xtask/src/lint/header.rs`). Indexing on slices and maps (`clippy::indexing_slicing`) is denied by
+  the linter in the four numerical crates (`caladrius-nca`, `-models`, `-fit`, `-project`, library
+  targets, test code excepted) by a clippy step of `cargo xtask lint` (`xtask/src/lint/indexing.rs`),
+  and checked in review in the other crates.
 - **Review.** Every change in `caladrius-nca`, `caladrius-models` or `caladrius-fit` goes through a
   reviewer that did not write it, and whoever writes an oracle test does not write the code under
   test (`AGENTS.md` section 8).
@@ -132,7 +135,7 @@ margin of caution, not that the fit statistics were verified by hand (`specs/fit
   `cargo xtask conformance` followed by `git diff --exit-code docs/conformance.md`, so a stale
   conformance table fails the build.
 - **`cargo xtask lint`** enforces the contract's mechanical rules: forbidden names, `private/`
-  leaks, deny-lint headers, tolerances defined once, board hygiene (`README.md`, "Build";
+  leaks, deny-lint headers, tolerances defined once, board hygiene, and the indexing step above (`README.md`, "Build";
   `xtask/src/lint/mod.rs`).
 - **`cargo xtask review`** (read-only) confronts the figures the README and the specs state with the
   files that own them: the conformance total and floors, the model ids, the coverage counts, the

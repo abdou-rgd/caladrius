@@ -63,3 +63,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-051 | Superposition cost: early exit for exhausted doses (O(doses x times) today) | engine | done | T-049 |
 | T-052 | Plain-words README introduction and self-contained explainer page (docs/explainer.html) | orchestrator | done | T-049 |
 | T-052b | Superposition follow-ups from the T-051 review (early refusal, count-based timing test, cheaper exhaustion check, spec lines) | engine, reader | done | T-051 |
+| T-053 | Indexing lint on the numerical crates: clippy::indexing_slicing denied in nca, models, fit, project through cargo xtask lint | interface | done | T-052b |

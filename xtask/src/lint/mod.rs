@@ -3,12 +3,14 @@
 //! Every rule works on a [`Tree`] (the versioned files read into memory), so each one is tested on
 //! small fixtures without touching the file system. A finding prints as `file:line rule-id message`.
 //! Accepted exceptions live in `xtask/lint_allow.toml`, each with a reason; an exception that no
-//! longer matches anything is itself a finding.
+//! longer matches anything is itself a finding. A last step runs clippy with `indexing_slicing` denied on
+//! the numerical crates ([`indexing`]).
 
 mod allow;
 mod board;
 mod forbidden;
 mod header;
+mod indexing;
 mod private;
 mod tolerance;
 
@@ -95,15 +97,20 @@ pub fn run() -> Result<()> {
     let findings = check(&tree, &allow_text)?;
     if findings.is_empty() {
         console::out(&format!("lint: ok ({} files checked)", tree.files.len()));
-        return Ok(());
+    } else {
+        for finding in &findings {
+            console::out(&finding.render());
+        }
     }
-    for finding in &findings {
-        console::out(&finding.render());
+    // The indexing step always runs, so one invocation reports every kind of finding.
+    let indexing = indexing::run();
+    if !findings.is_empty() {
+        return Err(XtaskError::new(format!(
+            "lint: {} finding(s)",
+            findings.len()
+        )));
     }
-    Err(XtaskError::new(format!(
-        "lint: {} finding(s)",
-        findings.len()
-    )))
+    indexing
 }
 
 /// Lists the files with git (tracked, plus untracked files that are not ignored) and reads the text ones.

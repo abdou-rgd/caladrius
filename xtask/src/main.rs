@@ -26,7 +26,8 @@ usage: cargo xtask <task>
 
 tasks:
   layers       print the layer table and check the dependency rules between crates
-  lint         check the mechanical rules of AGENTS.md (names, private/, deny lints, tolerances, board);
+  lint         check the mechanical rules of AGENTS.md (names, private/, deny lints, tolerances, board,
+               and clippy::indexing_slicing denied in the four numerical crates);
                one `file:line rule message` per finding, exit 1 on any (exceptions: xtask/lint_allow.toml)
   wasm         cargo check the L0 to L3 crates for wasm32-unknown-unknown
   conformance  run caladrius-nca on every oracle case and write docs/conformance.md
