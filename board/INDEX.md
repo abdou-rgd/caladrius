@@ -64,3 +64,43 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-052 | Plain-words README introduction and self-contained explainer page (docs/explainer.html) | orchestrator | done | T-049 |
 | T-052b | Superposition follow-ups from the T-051 review (early refusal, count-based timing test, cheaper exhaustion check, spec lines) | engine, reader | done | T-051 |
 | T-053 | Indexing lint on the numerical crates: clippy::indexing_slicing denied in nca, models, fit, project through cargo xtask lint | interface | done | T-052b |
+| T-054 | Gate v2: closed typed renderer that prints the parameter name with every value (RT-A1) | apothicaire | todo | |
+| T-055 | Gate v2: model-written text fields never render as a quantity (RT-A9) | apothicaire | todo | T-054 |
+| T-056 | Gate v2: no raw JSON path or unitless scalar in the number channel (RT-A6) | apothicaire | todo | T-054 |
+| T-057 | Gate v2: a contradictory unit anywhere in the sentence is a finding (RT-A2) | apothicaire | todo | |
+| T-058 | Gate v2: close the blind number channels (sign outside adjacency, numbers in words, Unicode digits) (RT-A10) | apothicaire | todo | |
+| T-059 | Apothicaire: send the units option to nca_run so CL and V come out in L/h and L (RT-E4) | apothicaire | todo | |
+| T-060 | Apothicaire: expose λz point selection (exclude, manual) to the model (RT-E6) | apothicaire | todo | |
+| T-061 | Apothicaire: run only the exposed tools and bound the data_import path (RT-E8) | apothicaire | todo | |
+| T-062 | Apothicaire: break tool-call loops and never show a raw tool call as the answer (RT-E1) | apothicaire | todo | |
+| T-063 | Gate v2: a threshold cannot be rendered where a result is expected (RT-A3) | apothicaire | todo | T-054 |
+| T-064 | Gate v2: user numbers keep their role, unit and sign (RT-A4) | apothicaire | todo | |
+| T-065 | Gate v2: drop the v1 exemptions outside a recognised PK label (RT-A5) | apothicaire | todo | |
+| T-066 | Benchmark scorer: score precision, sign, negation, contradiction and the acceptability verdict (RT-B3) | apothicaire | todo | |
+| T-067 | Apothicaire: flag or refuse a reference to a superseded analysis (RT-C3) | apothicaire | todo | |
+| T-068 | Apothicaire: invalidate stored references when the engine restarts (RT-C9) | apothicaire | todo | |
+| T-069 | Apothicaire: fixed seed and an exportable trace per answer (RT-E5) | apothicaire | todo | |
+| T-070 | Frozen set: write the aggregation, the success definition and the precision target; align 25 and 60 (RT-B5) | apothicaire | todo | |
+| T-071 | Benchmark: a turn that fails with an error counts as wrong (RT-B9) | apothicaire | todo | |
+| T-072 | Frozen set: choose the demo gate outside the frozen set (RT-B10) | apothicaire | todo | |
+| T-073 | Benchmark generator: include profiles where the half-life cannot be computed (RT-B7) | apothicaire | todo | |
+| T-074 | OptChat: a recall bench on long NCA results with confusable values (RT-C1) | optchat | todo | |
+| T-075 | OptChat: make long messages fully readable through the memory tools (RT-C2) | optchat | todo | |
+| T-076 | OptChat: the summary cleanup must not cut a leading number (RT-C10) | optchat | todo | |
+| T-077 | Engine: a full output schema for analysis.compare (RT-A8) | interface | todo | |
+| T-078 | Officina README: state the OptChat result as measured (8/8, 7/8, 8/8) (RT-C7) | orchestrator | todo | |
+| T-079 | NCA: show the area_past_tlast flag in answers and decide O-18 (RT-D7) | reader, apothicaire | todo | |
+| T-080 | CI: test on the demo platform, test before release, pin the Rust toolchain (RT-E9) | interface | todo | |
+| T-081 | docs/validation.md: write the real rule for interval bounds (RT-D6) | oracle | todo | |
+| T-082 | Freeze the scorer and labels by tag before the frozen run (RT-B1) | apothicaire | todo | T-066, T-070, T-071, T-072 |
+| T-083 | Benchmark statistics at the exercise level; retire the per-number 0.32 % bound (RT-B4) | apothicaire | todo | |
+| T-084 | Say 'never computes' in its narrow sense, and check tool-call arguments (RT-D1) | orchestrator, apothicaire | todo | |
+| T-085 | validation.md: say what is internal, tighten the independent cross-checks, require nls convergence (RT-D2) | oracle | todo | |
+| T-086 | Show the validated grid and its gaps under the conformance figure (RT-D3) | orchestrator | todo | |
+| T-087 | Retire 'clean room' as an argument; describe the process and the recorded exposure (RT-D4) | orchestrator | todo | |
+| T-088 | Show the fit tolerance in the output when the reference_conventions preset is active (RT-D5) | interface | todo | |
+| T-089 | Prepare the answer to 'does it reproduce our reference software?' (RT-E2) | orchestrator | todo | |
+| T-090 | Demo slide: the assistant's scope (RT-E3) | orchestrator | todo | |
+| T-091 | Trademark check for 'Caladrius'; label in-sample figures as such (RT-E7) | orchestrator | todo | |
+| T-092 | Gate v2: remove the false positives (unit after the reference, words, Markdown) (RT-A7) | apothicaire | todo | |
+| T-093 | Gate v1: membership is not provenance for summarised values (RT-C6) | apothicaire | todo | |
