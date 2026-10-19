@@ -1,6 +1,6 @@
 # Caladrius logo
 
-White phoenix-like bird inside a dotted circle. The artwork was drawn by hand (a friend of the project author) and commissioned by the repository owner; this directory holds the vectorised version (traced from the original PNG, cross removed, dotted circle completed behind the bird).
+White bird with spread wings inside a dotted circle. The artwork was drawn by hand (a friend of the project author) and commissioned by the repository owner; this directory holds the vectorised version (traced from the original PNG, cross removed, dotted circle completed behind the bird).
 
 Credit: original drawing by a friend of the project author (name to be added by the owner).
 
