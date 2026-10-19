@@ -1,8 +1,8 @@
 # Caladrius logo
 
-White bird with spread wings inside a dotted circle. The artwork was drawn by hand (a friend of the project author) and commissioned by the repository owner; this directory holds the vectorised version (traced from the original PNG, cross removed, dotted circle completed behind the bird).
+White bird with spread wings inside a dotted circle. The artwork was drawn by hand by Amina and commissioned by the repository owner; this directory holds the vectorised version (traced from the original PNG, cross removed, dotted circle completed behind the bird).
 
-Credit: original drawing by a friend of the project author (name to be added by the owner).
+Credit: original drawing by Amina.
 
 | file | use |
 |---|---|
@@ -14,4 +14,4 @@ Credit: original drawing by a friend of the project author (name to be added by 
 
 All files share the same square `viewBox` (`0.5 89.5 1040 1040`). Use the `small` set below roughly 64 px, the full set above.
 
-Licence: the logo files are not covered by the repository's `MIT OR Apache-2.0` licence; the owner holds the rights (see `ATTRIBUTION.md`).
+Licence: like the rest of the repository, `MIT OR Apache-2.0` (see `LICENSE-MIT` and `LICENSE-APACHE`).
