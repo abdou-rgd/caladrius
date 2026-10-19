@@ -64,11 +64,11 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-052 | Plain-words README introduction and self-contained explainer page (docs/explainer.html) | orchestrator | done | T-049 |
 | T-052b | Superposition follow-ups from the T-051 review (early refusal, count-based timing test, cheaper exhaustion check, spec lines) | engine, reader | done | T-051 |
 | T-053 | Indexing lint on the numerical crates: clippy::indexing_slicing denied in nca, models, fit, project through cargo xtask lint | interface | done | T-052b |
-| T-054 | Gate v2: closed typed renderer that prints the parameter name with every value (RT-A1) | apothicaire | todo | |
-| T-055 | Gate v2: model-written text fields never render as a quantity (RT-A9) | apothicaire | todo | T-054 |
-| T-056 | Gate v2: no raw JSON path or unitless scalar in the number channel (RT-A6) | apothicaire | todo | T-054 |
-| T-057 | Gate v2: a contradictory unit anywhere in the sentence is a finding (RT-A2) | apothicaire | todo | |
-| T-058 | Gate v2: close the blind number channels (sign outside adjacency, numbers in words, Unicode digits) (RT-A10) | apothicaire | todo | |
+| T-054 | Gate v2: closed typed renderer that prints the parameter name with every value (RT-A1) | apothicaire | to review | |
+| T-055 | Gate v2: model-written text fields never render as a quantity (RT-A9) | apothicaire | to review | T-054 |
+| T-056 | Gate v2: no raw JSON path or unitless scalar in the number channel (RT-A6) | apothicaire | to review | T-054 |
+| T-057 | Gate v2: a contradictory unit anywhere in the sentence is a finding (RT-A2) | apothicaire | to review | |
+| T-058 | Gate v2: close the blind number channels (sign outside adjacency, numbers in words, Unicode digits) (RT-A10) | apothicaire | to review | |
 | T-059 | Apothicaire: send the units option to nca_run so CL and V come out in L/h and L (RT-E4) | apothicaire | to review | |
 | T-060 | Apothicaire: expose λz point selection (exclude, manual) to the model (RT-E6) | apothicaire | to review | |
 | T-061 | Apothicaire: run only the exposed tools and bound the data_import path (RT-E8) | apothicaire | to review | |
