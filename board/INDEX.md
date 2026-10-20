@@ -104,3 +104,6 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-091 | Trademark check for 'Caladrius'; label in-sample figures as such (RT-E7) | orchestrator | todo | |
 | T-092 | Gate v2: remove the false positives (unit after the reference, words, Markdown) (RT-A7) | apothicaire | todo | |
 | T-093 | Gate v1: membership is not provenance for summarised values (RT-C6) | apothicaire | todo | |
+| T-094 | OptChat: byte guard on the digest and raw zone, forced level merges in the overflow recovery | optchat | in progress | |
+| T-095 | OptChat: model-free merge of two short lines, verbatim cap raised to the line cap | optchat | in progress | |
+| T-096 | OptChat: clean cut of summary lines, head and tail of long messages for the compactor | optchat | in progress | |
