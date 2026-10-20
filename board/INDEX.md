@@ -69,10 +69,10 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-056 | Gate v2: no raw JSON path or unitless scalar in the number channel (RT-A6) | apothicaire | to review | T-054 |
 | T-057 | Gate v2: a contradictory unit anywhere in the sentence is a finding (RT-A2) | apothicaire | to review | |
 | T-058 | Gate v2: close the blind number channels (sign outside adjacency, numbers in words, Unicode digits) (RT-A10) | apothicaire | to review | |
-| T-059 | Apothicaire: send the units option to nca_run so CL and V come out in L/h and L (RT-E4) | apothicaire | to review | |
-| T-060 | Apothicaire: expose λz point selection (exclude, manual) to the model (RT-E6) | apothicaire | to review | |
-| T-061 | Apothicaire: run only the exposed tools and bound the data_import path (RT-E8) | apothicaire | to review | |
-| T-062 | Apothicaire: break tool-call loops and never show a raw tool call as the answer (RT-E1) | apothicaire | to review | |
+| T-059 | Apothicaire: send the units option to nca_run so CL and V come out in L/h and L (RT-E4) | apothicaire | done | |
+| T-060 | Apothicaire: expose λz point selection (exclude, manual) to the model (RT-E6) | apothicaire | done | |
+| T-061 | Apothicaire: run only the exposed tools and bound the data_import path (RT-E8) | apothicaire | done | |
+| T-062 | Apothicaire: break tool-call loops and never show a raw tool call as the answer (RT-E1) | apothicaire | done | |
 | T-063 | Gate v2: a threshold cannot be rendered where a result is expected (RT-A3) | apothicaire | todo | T-054 |
 | T-064 | Gate v2: user numbers keep their role, unit and sign (RT-A4) | apothicaire | todo | |
 | T-065 | Gate v2: drop the v1 exemptions outside a recognised PK label (RT-A5) | apothicaire | todo | |
