@@ -80,9 +80,9 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-067 | Apothicaire: flag or refuse a reference to a superseded analysis (RT-C3) | apothicaire | todo | |
 | T-068 | Apothicaire: invalidate stored references when the engine restarts (RT-C9) | apothicaire | todo | |
 | T-069 | Apothicaire: fixed seed and an exportable trace per answer (RT-E5) | apothicaire | todo | |
-| T-070 | Frozen set: write the aggregation, the success definition and the precision target; align 25 and 60 (RT-B5) | apothicaire | to review | |
+| T-070 | Frozen set: write the aggregation, the success definition and the precision target; align 25 and 60 (RT-B5) | apothicaire | done | |
 | T-071 | Benchmark: a turn that fails with an error counts as wrong (RT-B9) | apothicaire | in progress | |
-| T-072 | Frozen set: choose the demo gate outside the frozen set (RT-B10) | apothicaire | to review | |
+| T-072 | Frozen set: choose the demo gate outside the frozen set (RT-B10) | apothicaire | done | |
 | T-073 | Benchmark generator: include profiles where the half-life cannot be computed (RT-B7) | apothicaire | todo | |
 | T-074 | OptChat: a recall bench on long NCA results with confusable values (RT-C1) | optchat | todo | |
 | T-075 | OptChat: make long messages fully readable through the memory tools (RT-C2) | optchat | todo | |
