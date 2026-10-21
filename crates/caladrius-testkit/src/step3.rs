@@ -120,10 +120,10 @@ pub(crate) fn load_model_case_in(dir: &Path, name: &str) -> Result<ModelCase, Or
     // Row keys: the group `t=<text>` whose number equals the time.
     let mut keys: BTreeMap<u64, String> = BTreeMap::new();
     for (group, _, _) in expected.iter() {
-        if let Some(text) = group.strip_prefix("t=") {
-            if let Ok(t) = text.parse::<f64>() {
-                keys.insert(t.to_bits(), group.to_string());
-            }
+        if let Some(text) = group.strip_prefix("t=")
+            && let Ok(t) = text.parse::<f64>()
+        {
+            keys.insert(t.to_bits(), group.to_string());
         }
     }
     let mut time_keys = Vec::new();

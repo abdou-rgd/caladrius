@@ -494,22 +494,21 @@ fn n_regular_doses_approach_the_steady_state_of_the_same_interval() {
     let frac = 1.0 - (-40.0 * k * tau).exp();
     for (key, &t) in n40.case.time_keys.iter().zip(&n40.case.times) {
         let s = t - 39.0 * tau;
-        if (0.0..=tau).contains(&s) {
-            if let Some(css) = ss
+        if (0.0..=tau).contains(&s)
+            && let Some(css) = ss
                 .case
                 .times
                 .iter()
                 .position(|&x| x == s)
                 .and_then(|i| at(&ss, &ss.case.time_keys[i], "conc"))
-            {
-                close(
-                    &format!("n = 40 at s = {s}"),
-                    at(&n40, key, "conc").unwrap(),
-                    css * frac,
-                    1e-12,
-                    0.0,
-                );
-            }
+        {
+            close(
+                &format!("n = 40 at s = {s}"),
+                at(&n40, key, "conc").unwrap(),
+                css * frac,
+                1e-12,
+                0.0,
+            );
         }
     }
 }
