@@ -497,6 +497,7 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
                         ("dose", nullable(number())),
                         ("n_observations", integer()),
                         ("n_missing", integer()),
+                        ("n_blq", integer()),
                         ("flag_messages", array_of(string())),
                         ("status_message", string()),
                         ("outcome", outcome(reference("FitResult"))),

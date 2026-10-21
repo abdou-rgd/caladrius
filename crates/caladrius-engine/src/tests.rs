@@ -1760,3 +1760,106 @@ fn simulation_takes_a_dosing_regimen_in_its_parameters() {
     );
     assert!(refused.message.contains("tau = 6"), "{}", refused.message);
 }
+
+// ---- NCA-DAT-05c: cells written below the limit of quantification (task T-097) --------------
+
+/// A synthetic infusion profile (made-up numbers) whose last value is `last`.
+fn infusion_csv(last: &str) -> String {
+    format!(
+        "Time (h),Conc (mg/L)\n0.5,40.2\n1,37.9\n2,33.1\n4,27.4\n8,18.3\n12,12.1\n24,{last}\n"
+    )
+}
+
+fn import(e: &mut Engine, name: &str, csv: &str) -> Value {
+    ok(e, "data.import", json!({ "name": name, "csv": csv }))
+}
+
+#[test]
+fn a_blq_cell_imports_as_a_flagged_zero_and_the_nca_reads_it_like_a_written_zero() {
+    let mut e = Engine::new();
+    let blq = import(&mut e, "blq", &infusion_csv("< LQ"));
+    let conc = &blq["worksheet"]["columns"][1];
+    assert_eq!(conc["role"], "concentration");
+    assert_eq!(conc["blq"], 1);
+    assert!(
+        blq["notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n.as_str().unwrap().contains("below the limit of quantification"))
+    );
+    import(&mut e, "zero", &infusion_csv("0"));
+    let route = json!({ "iv_infusion": { "duration": 0.5 } });
+    for policy in [
+        json!({}),
+        json!({ "blq": { "position": { "first": "keep", "middle": "drop", "last": "drop" } } }),
+    ] {
+        let run = |e: &mut Engine, ws: u64| {
+            let r = ok(
+                e,
+                "nca.run",
+                json!({ "worksheet": ws, "dose": 50, "route": route, "options": policy }),
+            );
+            r["result"]["subjects"][0]["outcome"].clone()
+        };
+        let (from_blq, from_zero) = (run(&mut e, 1), run(&mut e, 2));
+        assert!(from_blq.get("ok").is_some(), "{from_blq}");
+        assert_eq!(from_blq, from_zero, "policy {policy}");
+    }
+}
+
+#[test]
+fn an_exported_worksheet_writes_blq_back() {
+    let mut e = Engine::new();
+    import(&mut e, "blq", &infusion_csv("< LQ"));
+    let described = ok(&mut e, "data.describe", json!({ "worksheet": 1 }));
+    assert_eq!(described["worksheet"]["columns"][1]["blq_rows"], json!([6]));
+    let table = ok(
+        &mut e,
+        "export.table",
+        json!({ "table": "worksheet", "worksheet": 1 }),
+    );
+    let csv = table["csv"].as_str().unwrap();
+    assert!(csv.contains("BLQ"), "{csv}");
+    // The exported text imports to the same flagged worksheet.
+    let again = import(&mut e, "again", csv);
+    assert_eq!(again["worksheet"]["columns"][1]["blq"], 1);
+    assert_eq!(again["worksheet"]["columns"][1]["role"], "concentration");
+}
+
+#[test]
+fn a_fit_leaves_blq_rows_out_and_counts_them() {
+    let mut e = Engine::new();
+    import(&mut e, "blq", &infusion_csv("BLQ"));
+    import(&mut e, "zero", &infusion_csv("0"));
+    import(
+        &mut e,
+        "without",
+        "Time (h),Conc (mg/L)\n0.5,40.2\n1,37.9\n2,33.1\n4,27.4\n8,18.3\n12,12.1\n",
+    );
+    let fit = |ws: u64| {
+        json!({ "worksheet": ws, "model": "pk1.iv_infusion", "dose": 50, "weighting": "inv_y2",
+                "options": { "fixed": { "dur": 0.5 } } })
+    };
+    let with_blq = ok(&mut e, "fit.run", fit(1));
+    assert_eq!(with_blq["result"]["n_blq"], 1);
+    assert_eq!(with_blq["result"]["n_missing"], 0);
+    assert_eq!(with_blq["result"]["n_observations"], 6);
+    let without = ok(&mut e, "fit.run", fit(3));
+    assert_eq!(without["result"]["n_blq"], 0);
+    assert_eq!(
+        with_blq["result"]["outcome"]["ok"]["values"],
+        without["result"]["outcome"]["ok"]["values"]
+    );
+    // A written 0 is a measured value: it is not left out, and 1/y² cannot weight it.
+    let zero = err(&mut e, "fit.run", fit(2));
+    assert_eq!(zero.code, "fit_error");
+    // The initial estimates read the same observations as the fit.
+    let init = ok(
+        &mut e,
+        "fit.initial_estimates",
+        json!({ "worksheet": 1, "model": "pk1.iv_infusion", "dose": 50,
+                "fixed": { "dur": 0.5 } }),
+    );
+    assert_eq!(init["n_observations"], 6);
+}

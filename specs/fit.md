@@ -35,6 +35,11 @@ Minimise WRSS(θ) = Σ w_i·(y_i − f(t_i; θ))² over the free parameters, sub
 - Oracle: the minimiser of every one of the 90 reference fits (estimates 1e-4 relative, WRSS 1e-6 relative), E-10.
 - Sources: S-28 (weighted non-linear least squares, book level); S-23, S-24, S-25; D.
 
+### FIT-DAT-01 Observations a fit reads
+A fit reads the rows of one subject that have a time and a concentration. Rows with a missing concentration are left out and counted (`n_missing`). Rows whose concentration was written below the limit of quantification (`specs/nca.md` NCA-DAT-05c) are left out too and counted apart (`n_blq`): they hold 0 only as a BLQ marker, and fitting that 0 as a measured value would pull the curve down. A 0 written as a number is a measured value and stays in (with `inv_y` or `inv_y2` it then cannot be weighted, FIT-WGT-02). The initial estimates read the same rows.
+- Status: `assumed` (design choice of task T-097: BLQ observations are discarded, the simplest of the usual methods; censored likelihoods are out of scope for least squares)
+- Tested by: `crates/caladrius-engine/src/tests.rs` (`a_fit_leaves_blq_rows_out_and_counts_them`).
+
 ### FIT-WGT-01 Weighting schemes
 Five schemes, selectable by name:
 

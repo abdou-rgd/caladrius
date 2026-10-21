@@ -151,6 +151,10 @@ pub struct FitRun {
     pub n_observations: usize,
     /// Rows left out because of a missing concentration.
     pub n_missing: usize,
+    /// Rows left out because the concentration is below the limit of quantification
+    /// (NCA-DAT-05c, FIT-DAT-01). Absent from files written before it: 0.
+    #[serde(default)]
+    pub n_blq: usize,
     /// The result, or why there is none.
     pub outcome: Outcome<FitResult>,
 }

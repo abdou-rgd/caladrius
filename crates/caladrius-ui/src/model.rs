@@ -424,6 +424,7 @@ pub struct FitView {
     pub dose: Option<f64>,
     pub n_observations: usize,
     pub n_missing: usize,
+    pub n_blq: usize,
     pub outcome: FitOutcome,
     pub flag_messages: Vec<String>,
     pub status_message: String,
@@ -459,6 +460,7 @@ impl FitView {
                 .and_then(Value::as_u64)
                 .unwrap_or(0) as usize,
             n_missing: result.get("n_missing").and_then(Value::as_u64).unwrap_or(0) as usize,
+            n_blq: result.get("n_blq").and_then(Value::as_u64).unwrap_or(0) as usize,
             // No outcome: no result yet. An outcome that cannot be read is said so, not hidden.
             outcome: result.get("outcome").map_or(FitOutcome::Missing, |o| {
                 match serde_json::from_value::<FitOutcome>(o.clone()) {

@@ -109,6 +109,9 @@ pub(crate) fn worksheet_table(ws: &Worksheet) -> Table {
                 ws.columns()
                     .iter()
                     .map(|c| match &c.data {
+                        // A BLQ cell is written back as `BLQ`, so a re-import flags it again
+                        // (NCA-DAT-05c) instead of reading a measured 0.
+                        ColumnData::Number(_) if c.is_blq(row) => Cell::text("BLQ"),
                         ColumnData::Number(v) => Cell::number(v.get(row).copied().flatten()),
                         ColumnData::Text(v) => match v.get(row) {
                             Some(s) if !s.is_empty() => Cell::text(s),
