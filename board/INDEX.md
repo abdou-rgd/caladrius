@@ -76,12 +76,12 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-063 | Gate v2: a threshold cannot be rendered where a result is expected (RT-A3) | apothicaire | todo | T-054 |
 | T-064 | Gate v2: user numbers keep their role, unit and sign (RT-A4) | apothicaire | todo | |
 | T-065 | Gate v2: drop the v1 exemptions outside a recognised PK label (RT-A5) | apothicaire | todo | |
-| T-066 | Benchmark scorer: score precision, sign, negation, contradiction and the acceptability verdict (RT-B3) | apothicaire | in progress | |
+| T-066 | Benchmark scorer: score precision, sign, negation, contradiction and the acceptability verdict (RT-B3) | apothicaire | done | |
 | T-067 | Apothicaire: flag or refuse a reference to a superseded analysis (RT-C3) | apothicaire | todo | |
 | T-068 | Apothicaire: invalidate stored references when the engine restarts (RT-C9) | apothicaire | todo | |
 | T-069 | Apothicaire: fixed seed and an exportable trace per answer (RT-E5) | apothicaire | in progress | |
 | T-070 | Frozen set: write the aggregation, the success definition and the precision target; align 25 and 60 (RT-B5) | apothicaire | done | |
-| T-071 | Benchmark: a turn that fails with an error counts as wrong (RT-B9) | apothicaire | in progress | |
+| T-071 | Benchmark: a turn that fails with an error counts as wrong (RT-B9) | apothicaire | done | |
 | T-072 | Frozen set: choose the demo gate outside the frozen set (RT-B10) | apothicaire | done | |
 | T-073 | Benchmark generator: include profiles where the half-life cannot be computed (RT-B7) | apothicaire | todo | |
 | T-074 | OptChat: a recall bench on long NCA results with confusable values (RT-C1) | optchat | todo | |
@@ -93,7 +93,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-080 | CI: test on the demo platform, test before release, pin the Rust toolchain (RT-E9) | interface | todo | |
 | T-081 | docs/validation.md: write the real rule for interval bounds (RT-D6) | oracle | todo | |
 | T-082 | Freeze the scorer and labels by tag before the frozen run (RT-B1) | apothicaire | in progress | T-066, T-070, T-071, T-072 |
-| T-083 | Benchmark statistics at the exercise level; retire the per-number 0.32 % bound (RT-B4) | apothicaire | in progress | |
+| T-083 | Benchmark statistics at the exercise level; retire the per-number 0.32 % bound (RT-B4) | apothicaire | done | |
 | T-084 | Say 'never computes' in its narrow sense, and check tool-call arguments (RT-D1) | orchestrator, apothicaire | todo | |
 | T-085 | validation.md: say what is internal, tighten the independent cross-checks, require nls convergence (RT-D2) | oracle | todo | |
 | T-086 | Show the validated grid and its gaps under the conformance figure (RT-D3) | orchestrator | todo | |
@@ -109,7 +109,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-096 | OptChat: clean cut of summary lines, head and tail of long messages for the compactor | optchat | done | |
 | T-097 | Import: read below-the-limit text cells (`< LQ`, `BLQ`, `<LOQ`) as BLQ points | interface, reader | done | |
 | T-098 | Units: a dose per body weight (mg/kg) gives CL in L/time/kg and volumes in L/kg | engine, interface | done | |
-| T-099 | Frozen demo tier: generator, 40 exercises, multi-seed runner, stub dry run | apothicaire | in progress | T-066, T-071, T-083 |
-| T-100 | pass^k next to the per-turn rate; paired v1/v2 comparison on exercises | apothicaire | in progress | T-083, T-099 |
-| T-101 | PKNCA recomputes the frozen gold (independent truth, RT-B8) | apothicaire | in progress | T-099 |
+| T-099 | Frozen demo tier: generator, 40 exercises, multi-seed runner, stub dry run | apothicaire | done | T-066, T-071, T-083 |
+| T-100 | pass^k next to the per-turn rate; paired v1/v2 comparison on exercises | apothicaire | done | T-083, T-099 |
+| T-101 | PKNCA recomputes the frozen gold (independent truth, RT-B8) | apothicaire | done | T-099 |
 | T-102 | Apothicaire: accept a dose per kg (mg/kg) and carry it to the units of CL and V | apothicaire | to review | T-098 |
