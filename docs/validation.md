@@ -214,9 +214,9 @@ tolerance to widen (`AGENTS.md` section 5).
   Q-004 (licence of the public datasets and PKNCA output), Q-005 (terms of the reference
   documentation), Q-006 (vendor name in `specs/sources.md`), Q-007 (published reference numbers),
   Q-008 (NCA defaults read off the screen), Q-009 (fitting defaults), Q-010 (replaced values and
-  the extrapolation to infinity), Q-011 (how to drop the exports of the reference software, and a
-  second Q-011 asking for a sample import file) and Q-012 (a small private oracle for the open NCA
-  conventions). Each has a decision taken meanwhile, so work is not blocked on them.
+  the extrapolation to infinity), Q-011 (how to drop the exports of the reference software),
+  Q-011b (a sample import file) and Q-012 (a small private oracle for the open NCA conventions).
+  Each has a decision taken meanwhile, so work is not blocked on them.
 - **Q-014 is settled.** The human answered option 2 on 2026-10-09: the default fit uses closed-form
   derivatives and the tight stop, and the assumed reference defaults stay as the preset
   `reference_conventions` (`board/QUESTIONS.md`, Q-014; `specs/differences.md`, D-04).

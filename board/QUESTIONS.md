@@ -141,7 +141,7 @@ Decision taken meanwhile: `specs/nca.md` keeps the PKNCA profile as the applicat
 
 Answer: _pending_.
 
-## Q-011 (2026-10-08, reader): a sample file for the import heuristic
+## Q-011b (2026-10-08, reader): a sample file for the import heuristic
 
 For `specs/ux.md` UX-IMP-01 and UX-O-02: the human reported a CSV with decimal commas that was imported with the comma taken as the separator. To tune the plausibility checks the reader needs the first ten rows of such a file, with the actual separator and decimal marks, but with every number replaced by a harmless one (nothing from `private/` may enter a versioned file). Alternatively describe in words what the file looked like (separators, header, how many columns).
 

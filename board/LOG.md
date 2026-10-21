@@ -21,7 +21,7 @@
 - 2026-10-08 T-018 (oracle): arbitration: engine claims upheld; fit_indometh_inv_yhat/inv_yhat2 regenerated (true fixed points, 5245 values), F1 trace reference at 15 digits, D-02 closed; commit 282c6a2.
 - 2026-10-08 T-011a (engine): caladrius-fit core (WLS, 5 weightings, Gauss-Newton + step halving + Levenberg damping, statistics, trace); 114/114 oracle after T-018; commits 93ce952, 7cfad3a, b883ef8; review approved.
 - 2026-10-08 T-011b (engine): CI, matrices, condition numbers, partials, initial estimates (curve stripping), bounds, fit quality flags; 114/114 oracle, 26 unit tests; commits af4853f, b59e458; review approved. STEP 3 REACHED.
-- 2026-10-08 T-017 (reader): specs/models.md (25 rules, 19 confirmed), specs/fit.md (42 rules, 18 confirmed), specs/ux.md created (38 rules: workflow, frictions 1-10, proposals 11-14); Q-011 raised.
+- 2026-10-08 T-017 (reader): specs/models.md (25 rules, 19 confirmed), specs/fit.md (42 rules, 18 confirmed), specs/ux.md created (38 rules: workflow, frictions 1-10, proposals 11-14); Q-011b raised.
 - 2026-10-08 T-023 (reader): specs/nca.md observed rules (AUC-11, LZ-15..17, OPT-01), status `observed` defined; 76 rules; Q-012 raised.
 - 2026-10-08 T-019 (oracle): private oracle infrastructure (feature private-oracle, export loader for xls/rtf, displayed-precision comparison, private counts); exercise 1 compared with the reference software: full agreement on both AUC methods (41 + 41 + 76 + 76 values; counts only); commits b31831c, ec76feb.
 - 2026-10-08 T-020 (interface): caladrius-project (worksheets, analyses, stale marking, bytes import/save) and caladrius-engine (18 commands, schemas, history); commits bfda7d9, c9c9a81; review approved.
