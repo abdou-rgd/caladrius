@@ -125,6 +125,19 @@ pub struct Column {
     pub unit: Option<String>,
     /// The values.
     pub data: ColumnData,
+    /// Rows whose cell was written as a value below the limit of quantification (`< LQ`, `BLQ`,
+    /// `<LOQ`...; NCA-DAT-05c): the value is stored as 0, the BLQ convention of the NCA
+    /// (NCA-DAT-05), and the row is listed here so that a fit leaves it out instead of fitting a
+    /// 0. Sorted, without repeats, numbers columns only. Absent from files without such cells.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub blq: Vec<usize>,
+}
+
+impl Column {
+    /// True when the cell of `row` was read as below the limit of quantification.
+    pub fn is_blq(&self, row: usize) -> bool {
+        self.blq.binary_search(&row).is_ok()
+    }
 }
 
 /// The data of one subject, ready for an analysis. Missing concentrations are NaN, as the NCA
@@ -135,8 +148,11 @@ pub struct Profile {
     pub subject: String,
     /// Sampling times, in worksheet order.
     pub time: Vec<f64>,
-    /// Concentrations, one per time; NaN when missing.
+    /// Concentrations, one per time; NaN when missing, 0 when below the limit of quantification.
     pub conc: Vec<f64>,
+    /// One per time: true when the concentration was written below the limit of quantification
+    /// (NCA-DAT-05c); its value in `conc` is then 0.
+    pub blq: Vec<bool>,
     /// The dose of the subject, when the worksheet has a dose column with a value for it.
     pub dose: Option<f64>,
     /// The route text of the subject, when the worksheet has a route column.
@@ -211,6 +227,49 @@ impl Worksheet {
                         c.role.id()
                     ),
                 ));
+            }
+            if !c.blq.is_empty() {
+                let ColumnData::Number(values) = &c.data else {
+                    return Err(ProjectError::new(
+                        "blq_on_text",
+                        format!(
+                            "column `{}` holds text but lists cells below the limit of quantification; only a number column can",
+                            c.name
+                        ),
+                    ));
+                };
+                if c.blq.windows(2).any(|w| matches!(w, [a, b] if a >= b)) {
+                    return Err(ProjectError::new(
+                        "blq_rows_unsorted",
+                        format!(
+                            "the rows below the limit of quantification of column `{}` must be sorted and without repeats",
+                            c.name
+                        ),
+                    ));
+                }
+                if let Some(row) = c
+                    .blq
+                    .iter()
+                    .find(|r| values.get(**r).copied().flatten() != Some(0.0))
+                {
+                    return Err(ProjectError::new(
+                        "blq_row_not_zero",
+                        format!(
+                            "row {row} of column `{}` is marked below the limit of quantification but does not hold 0 (or does not exist)",
+                            c.name
+                        ),
+                    ));
+                }
+                if matches!(c.role, ColumnRole::Time | ColumnRole::Dose) {
+                    return Err(ProjectError::new(
+                        "blq_role",
+                        format!(
+                            "column `{}` has cells below the limit of quantification and cannot be the {} column",
+                            c.name,
+                            c.role.id()
+                        ),
+                    ));
+                }
             }
             if c.role == ColumnRole::Route && !matches!(c.data, ColumnData::Text(_)) {
                 return Err(ProjectError::new(
@@ -402,7 +461,15 @@ impl Worksheet {
                 ),
             ));
         };
-        if *cell != value {
+        // A value entered by hand replaces the below-the-limit reading of the cell, even a 0.
+        let was_blq = match c.blq.binary_search(&row) {
+            Ok(at) => {
+                c.blq.remove(at);
+                true
+            }
+            Err(_) => false,
+        };
+        if *cell != value || was_blq {
             *cell = value;
             self.revision = next;
         }
@@ -526,6 +593,7 @@ impl Worksheet {
             subject: label.clone(),
             time: Vec::new(),
             conc: Vec::new(),
+            blq: Vec::new(),
             dose: None,
             route: None,
         };
@@ -548,6 +616,7 @@ impl Worksheet {
             profile
                 .conc
                 .push(concs.get(row).copied().flatten().unwrap_or(f64::NAN));
+            profile.blq.push(conc_col.is_blq(row));
             if let Some(dc) = dose_col {
                 if let ColumnData::Number(d) = &dc.data {
                     if let Some(x) = d.get(row).copied().flatten() {

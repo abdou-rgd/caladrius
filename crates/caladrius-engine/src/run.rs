@@ -126,10 +126,12 @@ pub(crate) struct FitData {
     pub(crate) time: Vec<f64>,
     pub(crate) conc: Vec<f64>,
     pub(crate) n_missing: usize,
+    pub(crate) n_blq: usize,
 }
 
-/// Reads the observations of one subject for a fit. Rows without a concentration are left out
-/// (and counted); the dose comes from `dose` or from the worksheet.
+/// Reads the observations of one subject for a fit. Rows without a concentration, and rows below
+/// the limit of quantification (NCA-DAT-05c, FIT-DAT-01), are left out and counted; the dose
+/// comes from `dose` or from the worksheet.
 pub(crate) fn fit_data(
     ws: &Worksheet,
     subject: Option<&str>,
@@ -139,6 +141,7 @@ pub(crate) fn fit_data(
         subject,
         time,
         conc,
+        blq,
         dose: sheet_dose,
         ..
     } = ws.profile(subject)?;
@@ -151,19 +154,22 @@ pub(crate) fn fit_data(
             ),
         )
     })?;
-    let n_rows = time.len();
+    let n_blq = blq.iter().filter(|b| **b).count();
+    let n_missing = conc.iter().filter(|c| !c.is_finite()).count();
     let (time, conc): (Vec<f64>, Vec<f64>) = time
         .into_iter()
         .zip(conc)
-        .filter(|(_, c)| c.is_finite())
+        .zip(blq)
+        .filter(|((_, c), below)| c.is_finite() && !below)
+        .map(|(pair, _)| pair)
         .unzip();
-    let n_missing = n_rows.saturating_sub(time.len());
     Ok(FitData {
         subject,
         dose,
         time,
         conc,
         n_missing,
+        n_blq,
     })
 }
 
@@ -186,6 +192,7 @@ fn run_fit(project: &Project, spec: &FitSpec) -> Result<AnalysisResult, CommandE
         dose: Some(data.dose),
         n_observations: data.time.len(),
         n_missing: data.n_missing,
+        n_blq: data.n_blq,
         outcome: Outcome::Ok(result),
     }))
 }

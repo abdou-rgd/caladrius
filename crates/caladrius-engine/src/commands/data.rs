@@ -26,6 +26,8 @@ pub(crate) fn summary(ws: &Worksheet) -> Value {
                 "unit": c.unit,
                 "type": match c.data { ColumnData::Number(_) => "number", ColumnData::Text(_) => "text" },
                 "missing": c.data.n_missing(),
+                "blq": c.blq.len(),
+                "blq_rows": c.blq,
             });
             if let (ColumnData::Number(values), Some(map)) = (&c.data, v.as_object_mut()) {
                 let present: Vec<f64> = values.iter().flatten().copied().collect();
@@ -78,6 +80,8 @@ fn worksheet_schema() -> Value {
                         ("unit", nullable(string())),
                         ("type", crate::schema::one_of_strings(&["number", "text"])),
                         ("missing", integer()),
+                        ("blq", integer()),
+                        ("blq_rows", array_of(integer())),
                     ],
                     &["name", "role", "unit", "type", "missing"],
                 )),
@@ -695,6 +699,8 @@ fn reading_json(reading: &caladrius_project::Reading, rows: usize) -> Value {
                 "unit": c.unit,
                 "type": match c.data { ColumnData::Number(_) => "number", ColumnData::Text(_) => "text" },
                 "missing": c.data.n_missing(),
+                "blq": c.blq.len(),
+                "blq_rows": c.blq,
             })
         })
         .collect();
@@ -740,6 +746,8 @@ fn reading_schema() -> Value {
                         ("unit", nullable(string())),
                         ("type", crate::schema::one_of_strings(&["number", "text"])),
                         ("missing", integer()),
+                        ("blq", integer()),
+                        ("blq_rows", array_of(integer())),
                     ],
                     &["name", "role", "unit", "type", "missing"],
                 )),

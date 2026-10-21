@@ -115,9 +115,9 @@ cargo xtask wasm     # checks that layers L0 to L3 compile for wasm32-unknown-un
 
 | Specification | confirmed by oracle | documented, untested | assumed | observed |
 |---|---|---|---|---|
-| `specs/nca.md` | 44 | 15 | 12 | 5 |
+| `specs/nca.md` | 44 | 15 | 13 | 5 |
 | `specs/models.md` | 52 | 2 | 12 | 0 |
-| `specs/fit.md` | 18 | 3 | 21 | 0 |
+| `specs/fit.md` | 18 | 3 | 22 | 0 |
 | `specs/ux.md` | 0 | 12 | 26 | 0 |
 
 The `assumed` rules are the ones that a reference comparison or a human decision still has to settle (for example the fit defaults of `AGENTS.md` section 6); none is presented as settled.

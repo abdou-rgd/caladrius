@@ -143,6 +143,12 @@ An optional per-point flag also marks a point as BLQ when its stored value is no
 - Status: `assumed`
 - Sources: extension of NCA-DAT-05, needed because the CSV import may carry a BLQ column; S-09 (another tool reads a censoring flag).
 
+### NCA-DAT-05c BLQ written as text in an imported table
+Laboratory tables write a value below the limit of quantification as text. At import, a cell of an otherwise numeric column is read as BLQ when, compared without spaces and in upper case, it is one of `BLQ`, `BQL`, `BLOQ`, `<LOQ`, `<LLOQ`, `<QL` (English), `<LQ`, `<LIQ`, `NQ` (French), or `<` followed by a non-negative number (the limit itself, as in `< 0,45`; the number is read with the file's decimal mark and is not kept). Such a cell is stored as 0, so the NCA classifies it as BLQ (NCA-DAT-05) and applies the BLQ policy of NCA-DAT-06 to it, unchanged; the row is also listed as BLQ on its column, so that a fit leaves it out instead of fitting a 0 (`specs/fit.md` FIT-DAT-01). A 0 written as a number is a measured value and is not flagged. The column stays numeric only if it has at least one number and no other text; otherwise it is text, as before, and the import notes say which text stopped it. Only a column named like a concentration, or not named like any role, is read this way: in a column named like a time, a dose, a subject or a route, such a word stays text. A time or dose column cannot hold BLQ cells. `data.describe` lists the BLQ rows of each column (`blq_rows`), and an exported worksheet writes them back as `BLQ`, so a re-import flags them again. Entering a value in a flagged cell, even 0, clears its flag. The import notes give the number of cells read as BLQ and one example of the spelling.
+- Status: `assumed` (design choice of task T-097; the spellings are the ones seen in laboratory and coursework tables, not a standard)
+- Tested by: `crates/caladrius-project/src/tests.rs` (`csv_import_reads_every_blq_spelling_as_a_flagged_zero`, `csv_import_reads_blq_with_a_decimal_comma`, `csv_import_keeps_text_columns_and_negative_limits_as_text`, `a_time_dose_or_subject_column_does_not_read_blq_words`, `the_profile_carries_blq_rows_and_editing_a_cell_clears_its_flag`, `a_project_file_keeps_its_blq_rows_and_loads_without_them`, `blq_rows_must_be_sorted_zeros_of_a_number_column`), `crates/caladrius-engine/src/tests.rs` (`a_blq_cell_imports_as_a_flagged_zero_and_the_nca_reads_it_like_a_written_zero`, `a_fit_leaves_blq_rows_out_and_counts_them`, `an_exported_worksheet_writes_blq_back`).
+- Sources: NCA-DAT-05 and NCA-DAT-06 (what happens to a BLQ point); S-09 (another tool reads a censoring flag).
+
 ### NCA-DAT-06 BLQ policy
 BLQ points are classified, after missing values have been removed, either by position relative to the quantifiable points (C > 0) or by position relative to Tmax:
 - `first`: BLQ points before the first quantifiable point (all points if none is quantifiable);
@@ -633,8 +639,9 @@ With time unit [T], concentration unit [C] and dose unit [D]:
 | R², adjusted R², Corr_XY, span ratio, number of points, percent values | dimensionless |
 | dose-normalised value | parameter unit / [D] |
 
-The dose unit may be a plain amount or an amount per body weight; units propagate formally (for example (mg/kg)/(h·mg/L) reduces to L/h/kg).
+The dose unit may be a plain amount or an amount per body weight; units propagate formally (for example (mg/kg)/(h·mg/L) reduces to L/h/kg). Implemented for a mass per kilogram (`ng/kg`, `µg/kg` and its spellings, `mg/kg`, `g/kg`; task T-098): the numbers are those of the same mass given as an absolute dose, CL is labelled `L/<time>/kg`, Vz and Vss `L/kg`, and dose-normalised values `(<unit>)/(<mass>/kg)`. Other bases, such as a dose per body surface (`mg/m2`), are refused by the NCA and warned by the worksheet (`dose_per_body_size`).
 - Status: `documented, untested`
+- Tested by (engine tests, not an oracle): `crates/caladrius-nca/tests/units.rs` (`a_dose_per_kg_keeps_the_numbers_and_labels_cl_and_volumes_per_kg`, `a_dose_per_body_surface_or_per_volume_is_still_refused`), `crates/caladrius-project/src/tests.rs` (`a_dose_per_kg_gives_clearance_and_volume_per_kg`), `crates/caladrius-engine/src/tests.rs` (`a_dose_per_kg_labels_the_nca_and_the_worksheet_per_kg`).
 - Sources: S-02:v07 (derived unit strings in its examples); S-05 (Table 3 units).
 
 ### NCA-UNIT-02 Unit compatibility check

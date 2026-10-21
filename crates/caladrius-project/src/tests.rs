@@ -89,12 +89,14 @@ fn csv_import_handles_semicolons_decimal_commas_quotes_and_bom() {
 
 #[test]
 fn csv_import_keeps_missing_values_and_explains_text_in_numbers() {
-    let text = "time,conc\n0,0\n1,BLQ\n2,\n3,4\n";
+    // `BLQ` is read as below the limit of quantification (NCA-DAT-05c, see the tests below); any
+    // other text makes a mixed column.
+    let text = "time,conc\n0,0\n1,see lab\n2,\n3,4\n";
     let t = ImportedTable::from_csv(text.as_bytes(), &CsvOptions::default()).unwrap();
     // `conc` mixes numbers and text: kept as text, not given the concentration role, explained.
     assert!(matches!(t.columns[1].data, ColumnData::Text(_)));
     assert_eq!(t.columns[1].role, ColumnRole::Other);
-    assert!(t.notes.iter().any(|n| n.contains("BLQ")));
+    assert!(t.notes.iter().any(|n| n.contains("see lab")));
     assert!(
         t.notes
             .iter()
@@ -258,9 +260,21 @@ fn units_are_checked_together() {
         codes(Some("h"), Some("ng/mL"), Some("mg")),
         ["mass_mismatch"]
     );
+    // A dose per kg is checked by its mass (task T-098); a dose per body surface is still warned.
     assert_eq!(
         codes(Some("h"), Some("ng/mL"), Some("mg/kg")),
+        ["mass_mismatch"]
+    );
+    assert!(codes(Some("h"), Some("mg/L"), Some("mg/kg")).is_empty());
+    assert!(codes(Some("h"), Some("ng/mL"), Some("\u{b5}g / kg")).len() == 1);
+    assert_eq!(
+        codes(Some("h"), Some("mg/L"), Some("mg/m2")),
         ["dose_per_body_size"]
+    );
+    // A dose written as a concentration is not a body size: it is an unrecognised dose unit.
+    assert_eq!(
+        codes(Some("h"), Some("mg/L"), Some("mg/L")),
+        ["unrecognised_unit"]
     );
     assert_eq!(codes(None, Some("ng/mL"), Some("ng")), ["missing_unit"]);
     assert_eq!(
@@ -785,4 +799,203 @@ fn a_comma_that_may_be_a_thousands_separator_is_noted_under_a_decimal_comma() {
         "{:?}",
         t.notes
     );
+}
+
+// ---- NCA-DAT-05c: cells written below the limit of quantification (task T-097) --------------
+
+#[test]
+fn csv_import_reads_every_blq_spelling_as_a_flagged_zero() {
+    for word in [
+        "BLQ", "blq", "BQL", "BLOQ", "<LOQ", "< LOQ", "<LLOQ", "<QL", "< LQ", "<LQ", "< lq",
+        "<LIQ", "NQ", "< 0.45", "<0.45",
+    ] {
+        let text = format!("time,conc\n0.5,85.4\n12,8.1\n24,{word}\n");
+        let t = ImportedTable::from_csv(text.as_bytes(), &CsvOptions::default()).unwrap();
+        let conc = &t.columns[1];
+        assert_eq!(conc.role, ColumnRole::Concentration, "{word}");
+        assert_eq!(
+            conc.data,
+            ColumnData::Number(vec![Some(85.4), Some(8.1), Some(0.0)]),
+            "{word}"
+        );
+        assert_eq!(conc.blq, vec![2], "{word}");
+        assert!(conc.is_blq(2) && !conc.is_blq(1), "{word}");
+        assert!(
+            t.notes
+                .iter()
+                .any(|n| n.contains("below the limit of quantification") && n.contains("1 cell")),
+            "{word}: {:?}",
+            t.notes
+        );
+    }
+}
+
+#[test]
+fn csv_import_reads_blq_with_a_decimal_comma() {
+    let text = "Temps (h);Conc (mg/L)\n0,5;85,4\n24;< 0,45\n36;< LQ\n";
+    let t = ImportedTable::from_csv(text.as_bytes(), &CsvOptions::default()).unwrap();
+    let conc = &t.columns[1];
+    assert_eq!(conc.role, ColumnRole::Concentration);
+    assert_eq!(
+        conc.data,
+        ColumnData::Number(vec![Some(85.4), Some(0.0), Some(0.0)])
+    );
+    assert_eq!(conc.blq, vec![1, 2]);
+}
+
+#[test]
+fn csv_import_keeps_text_columns_and_negative_limits_as_text() {
+    // A negative limit is not a limit of quantification; a word that only contains BLQ is text.
+    for word in ["< -1", "BLQ?", "LQ", "<", "not BLQ"] {
+        let text = format!("time,conc\n0,1\n1,{word}\n");
+        let t = ImportedTable::from_csv(text.as_bytes(), &CsvOptions::default()).unwrap();
+        assert!(matches!(t.columns[1].data, ColumnData::Text(_)), "{word}");
+        assert!(t.columns[1].blq.is_empty(), "{word}");
+    }
+    // A column of BLQ cells only has no number: it stays text, as written.
+    let t = ImportedTable::from_csv(b"time,conc\n0,BLQ\n1,BLQ\n", &CsvOptions::default()).unwrap();
+    assert!(matches!(t.columns[1].data, ColumnData::Text(_)));
+    assert!(t.columns[1].blq.is_empty());
+}
+
+#[test]
+fn a_time_dose_or_subject_column_does_not_read_blq_words() {
+    // In a column named like time, dose or subject a BLQ word stays text, as before T-097.
+    let t = ImportedTable::from_csv(
+        b"id,time,conc,dose\nNQ,0,1,BLQ\n2,1,2,100\n",
+        &CsvOptions::default(),
+    )
+    .unwrap();
+    for i in [0, 3] {
+        assert!(matches!(t.columns[i].data, ColumnData::Text(_)), "{i}");
+        assert!(t.columns[i].blq.is_empty(), "{i}");
+    }
+    assert_eq!(t.columns[0].role, ColumnRole::Subject);
+    assert_eq!(t.columns[3].role, ColumnRole::Other);
+    // A column with BLQ cells cannot be given the time or dose role afterwards.
+    let t = ImportedTable::from_csv(b"time,conc,x\n0,1,BLQ\n1,2,100\n", &CsvOptions::default())
+        .unwrap();
+    assert_eq!(t.columns[2].blq, vec![0]);
+    let mut project = Project::new("p");
+    let id = project.add_worksheet("w", t.columns).unwrap();
+    let err = project
+        .edit_worksheet(id, |w| w.set_role("x", ColumnRole::Dose))
+        .unwrap_err();
+    assert_eq!(err.code, "blq_role");
+}
+
+#[test]
+fn the_profile_carries_blq_rows_and_editing_a_cell_clears_its_flag() {
+    let t = ImportedTable::from_csv(
+        b"subject,time,conc\nA,0,0\nA,1,4\nA,2,BLQ\nB,0,0\nB,1,BLQ\nB,2,3\n",
+        &CsvOptions::default(),
+    )
+    .unwrap();
+    let mut project = Project::new("p");
+    let id = project.add_worksheet("w", t.columns).unwrap();
+    let ws = project.worksheet(id).unwrap();
+    let a = ws.profile(Some("A")).unwrap();
+    assert_eq!(a.conc, vec![0.0, 4.0, 0.0]);
+    // The measured zero at time 0 is not BLQ; only the written one is.
+    assert_eq!(a.blq, vec![false, false, true]);
+    let b = ws.profile(Some("B")).unwrap();
+    assert_eq!(b.blq, vec![false, true, false]);
+    let revision = ws.revision();
+    // Writing 0 by hand still replaces the BLQ reading: the cell becomes a measured 0.
+    project
+        .edit_worksheet(id, |w| w.set_number("conc", 4, Some(0.0)))
+        .unwrap();
+    let ws = project.worksheet(id).unwrap();
+    assert!(ws.revision() > revision);
+    assert_eq!(ws.column("conc").unwrap().blq, vec![2]);
+    assert_eq!(
+        ws.profile(Some("B")).unwrap().blq,
+        vec![false, false, false]
+    );
+}
+
+#[test]
+fn a_project_file_keeps_its_blq_rows_and_loads_without_them() {
+    let t = ImportedTable::from_csv(b"time,conc\n0,1\n1,BLQ\n", &CsvOptions::default()).unwrap();
+    let mut project = Project::new("p");
+    project.add_worksheet("w", t.columns).unwrap();
+    let bytes = project.to_bytes().unwrap();
+    assert!(String::from_utf8_lossy(&bytes).contains("\"blq\""));
+    assert_eq!(Project::from_bytes(&bytes).unwrap(), project);
+    // Files written before NCA-DAT-05c have no `blq` field: they load, with no BLQ rows.
+    let t = ImportedTable::from_csv(b"time,conc\n0,1\n1,2\n", &CsvOptions::default()).unwrap();
+    let mut project = Project::new("p");
+    project.add_worksheet("w", t.columns).unwrap();
+    let bytes = project.to_bytes().unwrap();
+    assert!(!String::from_utf8_lossy(&bytes).contains("\"blq\""));
+    assert_eq!(Project::from_bytes(&bytes).unwrap(), project);
+}
+
+#[test]
+fn blq_rows_must_be_sorted_zeros_of_a_number_column() {
+    let column = |data: ColumnData, blq: Vec<usize>| Column {
+        name: "conc".to_owned(),
+        role: ColumnRole::Concentration,
+        unit: None,
+        data,
+        blq,
+    };
+    let time = Column {
+        name: "time".to_owned(),
+        role: ColumnRole::Time,
+        unit: None,
+        data: ColumnData::Number(vec![Some(0.0), Some(1.0)]),
+        blq: Vec::new(),
+    };
+    let cases = [
+        (
+            column(ColumnData::Number(vec![Some(1.0), Some(0.0)]), vec![0]),
+            "blq_row_not_zero",
+        ),
+        (
+            column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![2]),
+            "blq_row_not_zero",
+        ),
+        (
+            column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![1, 0]),
+            "blq_rows_unsorted",
+        ),
+        (
+            column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![1, 1]),
+            "blq_rows_unsorted",
+        ),
+        (
+            Column {
+                role: ColumnRole::Other,
+                ..column(
+                    ColumnData::Text(vec!["BLQ".to_owned(), "1".to_owned()]),
+                    vec![0],
+                )
+            },
+            "blq_on_text",
+        ),
+    ];
+    for (conc, code) in cases {
+        let mut project = Project::new("p");
+        let err = project
+            .add_worksheet("w", vec![time.clone(), conc])
+            .unwrap_err();
+        assert_eq!(err.code, code);
+    }
+}
+
+// ---- NCA-UNIT-01: derived units of a dose per kilogram of body weight (task T-098) -----------
+
+#[test]
+fn a_dose_per_kg_gives_clearance_and_volume_per_kg() {
+    let d = derived_units(Some("h"), Some("mg/L"), Some("mg/kg"));
+    assert_eq!(d.get("cl").map(String::as_str), Some("L/h/kg"));
+    assert_eq!(d.get("v").map(String::as_str), Some("L/kg"));
+    assert_eq!(d.get("auc").map(String::as_str), Some("h*mg/L"));
+    let d = derived_units(Some("min"), Some("ug/mL"), Some("\u{b5}g/kg"));
+    assert_eq!(d.get("cl").map(String::as_str), Some("mL/min/kg"));
+    assert_eq!(d.get("v").map(String::as_str), Some("mL/kg"));
+    // Different masses: the formal unit, as for an absolute dose.
+    let d = derived_units(Some("h"), Some("ng/mL"), Some("mg/kg"));
+    assert_eq!(d.get("cl").map(String::as_str), Some("mg/kg/(h*ng/mL)"));
 }

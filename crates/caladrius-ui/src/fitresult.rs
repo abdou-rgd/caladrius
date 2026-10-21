@@ -100,13 +100,13 @@ pub fn results(ui: &mut Ui, tokens: &Tokens, page: &FitPage, info: &WorksheetInf
                 "after {iterations} iteration{}, {} observations{}",
                 if iterations == 1 { "" } else { "s" },
                 view.n_observations,
-                if view.n_missing > 0 {
-                    format!(
-                        " ({} rows without a concentration left out)",
-                        view.n_missing
-                    )
-                } else {
-                    String::new()
+                match (view.n_missing, view.n_blq) {
+                    (0, 0) => String::new(),
+                    (m, 0) => format!(" ({m} rows without a concentration left out)"),
+                    (0, b) => format!(" ({b} rows below the limit of quantification left out)"),
+                    (m, b) => format!(
+                        " ({m} rows without a concentration and {b} below the limit of quantification left out)"
+                    ),
                 }
             ))
             .color(c.text_muted.color()),

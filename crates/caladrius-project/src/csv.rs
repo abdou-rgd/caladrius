@@ -82,12 +82,19 @@ impl ImportedTable {
                     "unit `{u}` read from the header of column `{name}`"
                 ));
             }
-            let data = type_column(&name, values, decimal_comma, &mut notes);
+            // Only a concentration or an unnamed column can hold BLQ cells: in a time, dose,
+            // subject or route column such a word stays text (NCA-DAT-05c).
+            let blq_allowed = matches!(
+                role_of(&name),
+                None | Some(ColumnRole::Concentration | ColumnRole::Other)
+            );
+            let (data, blq) = type_column(&name, values, decimal_comma, blq_allowed, &mut notes);
             columns.push(Column {
                 name,
                 role: ColumnRole::Other,
                 unit,
                 data,
+                blq,
             });
         }
         assign_roles(&mut columns, &mut notes);
@@ -220,7 +227,44 @@ fn split_header(head: &str, index: usize) -> (String, Option<String>) {
 enum Cell {
     Missing,
     Number(f64),
+    /// Below the limit of quantification (NCA-DAT-05c).
+    Blq,
     Text,
+}
+
+/// A finite number, with the comma as the decimal mark when `decimal_comma` (and no point).
+fn parse_number(t: &str, decimal_comma: bool) -> Option<f64> {
+    let normalised;
+    let candidate = if decimal_comma && t.contains(',') && !t.contains('.') {
+        normalised = t.replace(',', ".");
+        normalised.as_str()
+    } else {
+        t
+    };
+    candidate.parse::<f64>().ok().filter(|x| x.is_finite())
+}
+
+/// The words that say "below the limit of quantification", compared without spaces and in upper
+/// case (NCA-DAT-05c): English BLQ, BQL, BLOQ, <LOQ, <LLOQ, <QL; French <LQ, <LIQ, NQ.
+const BLQ_WORDS: [&str; 9] = [
+    "BLQ", "BQL", "BLOQ", "<LOQ", "<LLOQ", "<QL", "<LQ", "<LIQ", "NQ",
+];
+
+/// NCA-DAT-05c: a cell that says the value is below the limit of quantification, either by one
+/// of [`BLQ_WORDS`] or as `<` followed by a non-negative number (the limit, `< 0,45`).
+fn is_blq(t: &str, decimal_comma: bool) -> bool {
+    let compact: String = t
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        .to_uppercase();
+    if BLQ_WORDS.contains(&compact.as_str()) {
+        return true;
+    }
+    compact
+        .strip_prefix('<')
+        .and_then(|limit| parse_number(limit, decimal_comma))
+        .is_some_and(|x| x >= 0.0)
 }
 
 fn classify(raw: &str, decimal_comma: bool) -> Cell {
@@ -232,16 +276,10 @@ fn classify(raw: &str, decimal_comma: bool) -> Cell {
     if matches!(lower.as_str(), "na" | "n/a" | "nan" | "." | "-" | "null") {
         return Cell::Missing;
     }
-    let normalised;
-    let candidate = if decimal_comma && t.contains(',') && !t.contains('.') {
-        normalised = t.replace(',', ".");
-        normalised.as_str()
-    } else {
-        t
-    };
-    match candidate.parse::<f64>() {
-        Ok(x) if x.is_finite() => Cell::Number(x),
-        _ => Cell::Text,
+    match parse_number(t, decimal_comma) {
+        Some(x) => Cell::Number(x),
+        None if is_blq(t, decimal_comma) => Cell::Blq,
+        None => Cell::Text,
     }
 }
 
@@ -257,13 +295,23 @@ fn looks_like_thousands(text: &str) -> bool {
     })
 }
 
+/// The data of a column and its rows below the limit of quantification. A column is numbers
+/// when it has at least one number and no text other than missing and BLQ cells (NCA-DAT-05c);
+/// otherwise it is text, BLQ cells included, as written.
 fn type_column(
     name: &str,
     values: Vec<String>,
     decimal_comma: bool,
+    blq_allowed: bool,
     notes: &mut Vec<String>,
-) -> ColumnData {
-    let cells: Vec<Cell> = values.iter().map(|v| classify(v, decimal_comma)).collect();
+) -> (ColumnData, Vec<usize>) {
+    let cells: Vec<Cell> = values
+        .iter()
+        .map(|v| match classify(v, decimal_comma) {
+            Cell::Blq if !blq_allowed => Cell::Text,
+            other => other,
+        })
+        .collect();
     let n_numbers = cells
         .iter()
         .filter(|c| matches!(c, Cell::Number(_)))
@@ -277,15 +325,29 @@ fn type_column(
                 ));
             }
         }
-        return ColumnData::Number(
+        let blq: Vec<usize> = cells
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| matches!(c, Cell::Blq))
+            .map(|(row, _)| row)
+            .collect();
+        if let Some(example) = blq.first().and_then(|row| values.get(*row)) {
+            notes.push(format!(
+                "column `{name}`: {} cell(s) such as `{example}` read as below the limit of quantification; they are stored as 0 and marked BLQ: the NCA applies its BLQ rule to them (options.blq) and a fit leaves them out",
+                blq.len()
+            ));
+        }
+        let data = ColumnData::Number(
             cells
                 .iter()
                 .map(|c| match c {
                     Cell::Number(x) => Some(*x),
+                    Cell::Blq => Some(0.0),
                     _ => None,
                 })
                 .collect(),
         );
+        return (data, blq);
     }
     if n_numbers > 0 {
         let example = cells
@@ -298,7 +360,7 @@ fn type_column(
             "column `{name}` mixes numbers and text (`{example}`, {n_text} cell(s)); it is kept as text. Replace the text by numbers or leave the cells empty to use it as data"
         ));
     }
-    ColumnData::Text(values)
+    (ColumnData::Text(values), Vec::new())
 }
 
 fn key(name: &str) -> String {
