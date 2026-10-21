@@ -107,8 +107,8 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-094 | OptChat: byte guard on the digest and raw zone, forced level merges in the overflow recovery | optchat | done | |
 | T-095 | OptChat: model-free merge of two short lines, verbatim cap raised to the line cap | optchat | done | |
 | T-096 | OptChat: clean cut of summary lines, head and tail of long messages for the compactor | optchat | done | |
-| T-097 | Import: read below-the-limit text cells (`< LQ`, `BLQ`, `<LOQ`) as BLQ points | interface, reader | in progress | |
-| T-098 | Units: a dose per body weight (mg/kg) gives CL in L/time/kg and volumes in L/kg | engine, interface | in progress | |
+| T-097 | Import: read below-the-limit text cells (`< LQ`, `BLQ`, `<LOQ`) as BLQ points | interface, reader | to review | |
+| T-098 | Units: a dose per body weight (mg/kg) gives CL in L/time/kg and volumes in L/kg | engine, interface | to review | |
 | T-099 | Frozen demo tier: generator, 40 exercises, multi-seed runner, stub dry run | apothicaire | in progress | T-066, T-071, T-083 |
 | T-100 | pass^k next to the per-turn rate; paired v1/v2 comparison on exercises | apothicaire | in progress | T-083, T-099 |
 | T-101 | PKNCA recomputes the frozen gold (independent truth, RT-B8) | apothicaire | in progress | T-099 |
