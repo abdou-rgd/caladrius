@@ -65,7 +65,8 @@ fn time_in_seconds(unit: &str) -> Option<f64> {
 
 /// The mass of a dose per kilogram of body weight, such as `mg` for `mg/kg`.
 fn per_kg_mass(unit: &str) -> Option<&str> {
-    unit.strip_suffix("/kg").filter(|m| mass_in_grams(m).is_some())
+    unit.strip_suffix("/kg")
+        .filter(|m| mass_in_grams(m).is_some())
 }
 
 /// (mass unit, volume unit) of a concentration such as `ng/mL`.

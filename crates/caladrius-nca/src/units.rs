@@ -85,7 +85,8 @@ pub(crate) fn check(units: &Units) -> Result<Checked, NcaError> {
         _ => (dose, false),
     };
     let Some(dose_grams) = mass(dose_mass) else {
-        let reason = if volume(dose_mass).is_some() || dose_mass.contains('/') || dose.contains('/') {
+        let reason = if volume(dose_mass).is_some() || dose_mass.contains('/') || dose.contains('/')
+        {
             "the dose must be a mass (ng, µg, mg, g) or a mass per kg (mg/kg)"
         } else {
             "unknown unit; use ng, µg, mg or g, or a mass per kg such as mg/kg"

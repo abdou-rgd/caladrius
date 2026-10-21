@@ -1765,9 +1765,7 @@ fn simulation_takes_a_dosing_regimen_in_its_parameters() {
 
 /// A synthetic infusion profile (made-up numbers) whose last value is `last`.
 fn infusion_csv(last: &str) -> String {
-    format!(
-        "Time (h),Conc (mg/L)\n0.5,40.2\n1,37.9\n2,33.1\n4,27.4\n8,18.3\n12,12.1\n24,{last}\n"
-    )
+    format!("Time (h),Conc (mg/L)\n0.5,40.2\n1,37.9\n2,33.1\n4,27.4\n8,18.3\n12,12.1\n24,{last}\n")
 }
 
 fn import(e: &mut Engine, name: &str, csv: &str) -> Value {
@@ -1781,13 +1779,11 @@ fn a_blq_cell_imports_as_a_flagged_zero_and_the_nca_reads_it_like_a_written_zero
     let conc = &blq["worksheet"]["columns"][1];
     assert_eq!(conc["role"], "concentration");
     assert_eq!(conc["blq"], 1);
-    assert!(
-        blq["notes"]
-            .as_array()
+    assert!(blq["notes"].as_array().unwrap().iter().any(|n| {
+        n.as_str()
             .unwrap()
-            .iter()
-            .any(|n| n.as_str().unwrap().contains("below the limit of quantification"))
-    );
+            .contains("below the limit of quantification")
+    }));
     import(&mut e, "zero", &infusion_csv("0"));
     let route = json!({ "iv_infusion": { "duration": 0.5 } });
     for policy in [
@@ -1873,7 +1869,12 @@ fn a_dose_per_kg_labels_the_nca_and_the_worksheet_per_kg() {
     let ws = import(&mut e, "per kg", csv);
     assert_eq!(ws["worksheet"]["derived_units"]["cl"], "L/h/kg");
     assert_eq!(ws["worksheet"]["derived_units"]["v"], "L/kg");
-    assert!(ws["worksheet"]["unit_warnings"].as_array().unwrap().is_empty());
+    assert!(
+        ws["worksheet"]["unit_warnings"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
     let run = |e: &mut Engine, dose_unit: &str| {
         let r = ok(
             e,
@@ -1885,7 +1886,12 @@ fn a_dose_per_kg_labels_the_nca_and_the_worksheet_per_kg() {
             .as_array()
             .unwrap()
             .iter()
-            .map(|p| (p["name"].as_str().unwrap().to_owned(), (p["value"].clone(), p["unit"].clone())))
+            .map(|p| {
+                (
+                    p["name"].as_str().unwrap().to_owned(),
+                    (p["value"].clone(), p["unit"].clone()),
+                )
+            })
             .collect::<std::collections::BTreeMap<_, _>>()
     };
     let (per_kg, absolute) = (run(&mut e, "mg/kg"), run(&mut e, "mg"));

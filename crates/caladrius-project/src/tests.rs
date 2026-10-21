@@ -908,7 +908,10 @@ fn the_profile_carries_blq_rows_and_editing_a_cell_clears_its_flag() {
     let ws = project.worksheet(id).unwrap();
     assert!(ws.revision() > revision);
     assert_eq!(ws.column("conc").unwrap().blq, vec![2]);
-    assert_eq!(ws.profile(Some("B")).unwrap().blq, vec![false, false, false]);
+    assert_eq!(
+        ws.profile(Some("B")).unwrap().blq,
+        vec![false, false, false]
+    );
 }
 
 #[test]
@@ -945,21 +948,38 @@ fn blq_rows_must_be_sorted_zeros_of_a_number_column() {
         blq: Vec::new(),
     };
     let cases = [
-        (column(ColumnData::Number(vec![Some(1.0), Some(0.0)]), vec![0]), "blq_row_not_zero"),
-        (column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![2]), "blq_row_not_zero"),
-        (column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![1, 0]), "blq_rows_unsorted"),
-        (column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![1, 1]), "blq_rows_unsorted"),
+        (
+            column(ColumnData::Number(vec![Some(1.0), Some(0.0)]), vec![0]),
+            "blq_row_not_zero",
+        ),
+        (
+            column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![2]),
+            "blq_row_not_zero",
+        ),
+        (
+            column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![1, 0]),
+            "blq_rows_unsorted",
+        ),
+        (
+            column(ColumnData::Number(vec![Some(0.0), Some(0.0)]), vec![1, 1]),
+            "blq_rows_unsorted",
+        ),
         (
             Column {
                 role: ColumnRole::Other,
-                ..column(ColumnData::Text(vec!["BLQ".to_owned(), "1".to_owned()]), vec![0])
+                ..column(
+                    ColumnData::Text(vec!["BLQ".to_owned(), "1".to_owned()]),
+                    vec![0],
+                )
             },
             "blq_on_text",
         ),
     ];
     for (conc, code) in cases {
         let mut project = Project::new("p");
-        let err = project.add_worksheet("w", vec![time.clone(), conc]).unwrap_err();
+        let err = project
+            .add_worksheet("w", vec![time.clone(), conc])
+            .unwrap_err();
         assert_eq!(err.code, code);
     }
 }
