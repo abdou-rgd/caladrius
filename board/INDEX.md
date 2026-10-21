@@ -107,3 +107,5 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-094 | OptChat: byte guard on the digest and raw zone, forced level merges in the overflow recovery | optchat | done | |
 | T-095 | OptChat: model-free merge of two short lines, verbatim cap raised to the line cap | optchat | done | |
 | T-096 | OptChat: clean cut of summary lines, head and tail of long messages for the compactor | optchat | done | |
+| T-097 | Import: read below-the-limit text cells (`< LQ`, `BLQ`, `<LOQ`) as BLQ points | interface, reader | in progress | |
+| T-098 | Units: a dose per body weight (mg/kg) gives CL in L/time/kg and volumes in L/kg | engine, interface | in progress | |
