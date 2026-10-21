@@ -639,8 +639,9 @@ With time unit [T], concentration unit [C] and dose unit [D]:
 | R², adjusted R², Corr_XY, span ratio, number of points, percent values | dimensionless |
 | dose-normalised value | parameter unit / [D] |
 
-The dose unit may be a plain amount or an amount per body weight; units propagate formally (for example (mg/kg)/(h·mg/L) reduces to L/h/kg).
+The dose unit may be a plain amount or an amount per body weight; units propagate formally (for example (mg/kg)/(h·mg/L) reduces to L/h/kg). Implemented for a mass per kilogram (`ng/kg`, `µg/kg` and its spellings, `mg/kg`, `g/kg`; task T-098): the numbers are those of the same mass given as an absolute dose, CL is labelled `L/<time>/kg`, Vz and Vss `L/kg`, and dose-normalised values `(<unit>)/(<mass>/kg)`. Other bases, such as a dose per body surface (`mg/m2`), are refused by the NCA and warned by the worksheet (`dose_per_body_size`).
 - Status: `documented, untested`
+- Tested by (engine tests, not an oracle): `crates/caladrius-nca/tests/units.rs` (`a_dose_per_kg_keeps_the_numbers_and_labels_cl_and_volumes_per_kg`, `a_dose_per_body_surface_or_per_volume_is_still_refused`), `crates/caladrius-project/src/tests.rs` (`a_dose_per_kg_gives_clearance_and_volume_per_kg`), `crates/caladrius-engine/src/tests.rs` (`a_dose_per_kg_labels_the_nca_and_the_worksheet_per_kg`).
 - Sources: S-02:v07 (derived unit strings in its examples); S-05 (Table 3 units).
 
 ### NCA-UNIT-02 Unit compatibility check

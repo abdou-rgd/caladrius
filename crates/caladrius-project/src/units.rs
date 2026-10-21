@@ -63,6 +63,11 @@ fn time_in_seconds(unit: &str) -> Option<f64> {
     }
 }
 
+/// The mass of a dose per kilogram of body weight, such as `mg` for `mg/kg`.
+fn per_kg_mass(unit: &str) -> Option<&str> {
+    unit.strip_suffix("/kg").filter(|m| mass_in_grams(m).is_some())
+}
+
 /// (mass unit, volume unit) of a concentration such as `ng/mL`.
 fn split_concentration(unit: &str) -> Option<(&str, &str)> {
     let (mass, volume) = unit.split_once('/')?;
@@ -110,10 +115,12 @@ pub fn unit_warnings(
         }
     }
     if let Some(d) = &dose {
-        if d.contains("/kg") || d.contains("/m2") || d.contains("/m^2") {
+        // A mass per kg of body weight (NCA-UNIT-01, task T-098) is checked by its mass.
+        let d = per_kg_mass(d).unwrap_or(d);
+        if d.contains("/m2") || d.contains("/m^2") || d.contains("/m\u{b2}") {
             out.push(warning(
                 "dose_per_body_size",
-                format!("the dose unit `{d}` is per body size; give the absolute dose (for example mg) to compute clearance and volumes"),
+                format!("the dose unit `{d}` is per body size other than body weight; give the absolute dose (for example mg) or a dose per kg (mg/kg) to compute clearance and volumes"),
             ));
         } else if mass_in_grams(d).is_none() {
             out.push(warning(
@@ -157,10 +164,14 @@ pub fn derived_units(
         put("aumc", format!("{t}^2*{c}"));
     }
     if let (Some(t), Some(c), Some(d)) = (&time, &conc, &dose) {
+        let (mass_of_dose, per_kg) = match per_kg_mass(d) {
+            Some(m) => (m, "/kg"),
+            None => (d.as_str(), ""),
+        };
         match split_concentration(c) {
-            Some((mass, volume)) if mass == d => {
-                put("cl", format!("{volume}/{t}"));
-                put("v", volume.to_owned());
+            Some((mass, volume)) if mass == mass_of_dose => {
+                put("cl", format!("{volume}/{t}{per_kg}"));
+                put("v", format!("{volume}{per_kg}"));
             }
             _ => {
                 put("cl", format!("{d}/({t}*{c})"));

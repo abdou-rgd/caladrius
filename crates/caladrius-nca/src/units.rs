@@ -1,6 +1,7 @@
-//! Units of an NCA (`specs/nca.md` NCA-UNIT-01, UNIT-02; task T-025): a small table of time, mass
-//! and volume units, the concentration as mass/volume, and the unit of every result. Units are
-//! data (golden rule 5): without them the analysis is unitless, as before, and flagged.
+//! Units of an NCA (`specs/nca.md` NCA-UNIT-01, UNIT-02; tasks T-025, T-098): a small table of
+//! time, mass and volume units, the concentration as mass/volume, the dose as a mass or a mass per
+//! kilogram of body weight, and the unit of every result. Units are data (golden rule 5): without
+//! them the analysis is unitless, as before, and flagged.
 
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +15,8 @@ pub struct Units {
     pub time: String,
     /// Concentration unit, mass/volume: e.g. `ng/mL`, `mg/L`, `µg/L`.
     pub concentration: String,
-    /// Dose unit, a mass: `ng`, `µg`, `mg` or `g`.
+    /// Dose unit, a mass (`ng`, `µg`, `mg` or `g`) or a mass per kilogram of body weight
+    /// (`mg/kg`...): CL is then per kg (`L/h/kg`) and so are the volumes (`L/kg`).
     pub dose: String,
 }
 
@@ -56,6 +58,8 @@ pub(crate) struct Checked {
     time: String,
     conc: String,
     dose: String,
+    /// The dose is per kilogram of body weight: CL and volumes are per kg too.
+    per_kg: bool,
     /// (dose mass in the concentration's mass unit) × (concentration's volume unit in litres).
     pub volume_factor: f64,
 }
@@ -68,11 +72,23 @@ pub(crate) fn check(units: &Units) -> Result<Checked, NcaError> {
         return Err(invalid("time", &units.time, "use one of s, min, h, d"));
     }
     let dose = units.dose.trim();
-    let Some(dose_grams) = mass(dose) else {
-        let reason = if volume(dose).is_some() || dose.contains('/') {
-            "the dose must be a mass (ng, µg, mg, g)"
+    // A mass per kilogram of body weight (NCA-UNIT-01): the factor comes from the mass alone.
+    let (dose_mass, per_kg) = match dose.split_once('/') {
+        Some((m, body)) if body.trim() == "kg" => (m.trim(), true),
+        Some((_, body)) if mass(body.trim()).is_none() && volume(body.trim()).is_none() => {
+            return Err(invalid(
+                "dose",
+                &units.dose,
+                "the dose must be a mass or a mass per kilogram of body weight (mg/kg); other bases, such as a body surface or a time, are not supported",
+            ));
+        }
+        _ => (dose, false),
+    };
+    let Some(dose_grams) = mass(dose_mass) else {
+        let reason = if volume(dose_mass).is_some() || dose_mass.contains('/') || dose.contains('/') {
+            "the dose must be a mass (ng, µg, mg, g) or a mass per kg (mg/kg)"
         } else {
-            "unknown unit; use ng, µg, mg or g"
+            "unknown unit; use ng, µg, mg or g, or a mass per kg such as mg/kg"
         };
         return Err(invalid("dose", &units.dose, reason));
     };
@@ -95,7 +111,12 @@ pub(crate) fn check(units: &Units) -> Result<Checked, NcaError> {
     Ok(Checked {
         time: time.to_string(),
         conc: conc.to_string(),
-        dose: dose.to_string(),
+        dose: if per_kg {
+            format!("{dose_mass}/kg")
+        } else {
+            dose_mass.to_string()
+        },
+        per_kg,
         volume_factor: dose_grams / conc_grams * litres,
     })
 }
@@ -122,8 +143,13 @@ impl Checked {
         let aumc = format!("{t}²·{c}");
         if let Some(base) = name.strip_suffix(".dn") {
             let unit = self.unit_of(base)?;
-            return Some(format!("({unit})/{}", self.dose));
+            return Some(if self.per_kg {
+                format!("({unit})/({})", self.dose)
+            } else {
+                format!("({unit})/{}", self.dose)
+            });
         }
+        let per_kg = if self.per_kg { "/kg" } else { "" };
         let unit = match name {
             "c0" | "cmax" | "clast.obs" | "clast.pred" => c.clone(),
             "tmax"
@@ -143,9 +169,9 @@ impl Checked {
             "auclast" | "aucall" | "aucinf.obs" | "aucinf.pred" | "aucivlast" | "aucivall"
             | "aucivinf.obs" | "aucivinf.pred" => auc,
             "aumclast" | "aumcall" | "aumcinf.obs" | "aumcinf.pred" => aumc,
-            "cl.obs" | "cl.pred" => format!("L/{t}"),
+            "cl.obs" | "cl.pred" => format!("L/{t}{per_kg}"),
             "vz.obs" | "vz.pred" | "vss.obs" | "vss.pred" | "vss.iv.obs" | "vss.iv.pred"
-            | "vss.iv.last" => "L".to_string(),
+            | "vss.iv.last" => format!("L{per_kg}"),
             "aucpext.obs" | "aucpext.pred" | "aumcpext.obs" | "aumcpext.pred"
             | "aucivpbextlast" | "aucivpbextall" | "aucivpbextinf.obs" | "aucivpbextinf.pred" => {
                 "%".to_string()

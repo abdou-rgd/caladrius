@@ -260,9 +260,21 @@ fn units_are_checked_together() {
         codes(Some("h"), Some("ng/mL"), Some("mg")),
         ["mass_mismatch"]
     );
+    // A dose per kg is checked by its mass (task T-098); a dose per body surface is still warned.
     assert_eq!(
         codes(Some("h"), Some("ng/mL"), Some("mg/kg")),
+        ["mass_mismatch"]
+    );
+    assert!(codes(Some("h"), Some("mg/L"), Some("mg/kg")).is_empty());
+    assert!(codes(Some("h"), Some("ng/mL"), Some("\u{b5}g / kg")).len() == 1);
+    assert_eq!(
+        codes(Some("h"), Some("mg/L"), Some("mg/m2")),
         ["dose_per_body_size"]
+    );
+    // A dose written as a concentration is not a body size: it is an unrecognised dose unit.
+    assert_eq!(
+        codes(Some("h"), Some("mg/L"), Some("mg/L")),
+        ["unrecognised_unit"]
     );
     assert_eq!(codes(None, Some("ng/mL"), Some("ng")), ["missing_unit"]);
     assert_eq!(
@@ -950,4 +962,20 @@ fn blq_rows_must_be_sorted_zeros_of_a_number_column() {
         let err = project.add_worksheet("w", vec![time.clone(), conc]).unwrap_err();
         assert_eq!(err.code, code);
     }
+}
+
+// ---- NCA-UNIT-01: derived units of a dose per kilogram of body weight (task T-098) -----------
+
+#[test]
+fn a_dose_per_kg_gives_clearance_and_volume_per_kg() {
+    let d = derived_units(Some("h"), Some("mg/L"), Some("mg/kg"));
+    assert_eq!(d.get("cl").map(String::as_str), Some("L/h/kg"));
+    assert_eq!(d.get("v").map(String::as_str), Some("L/kg"));
+    assert_eq!(d.get("auc").map(String::as_str), Some("h*mg/L"));
+    let d = derived_units(Some("min"), Some("ug/mL"), Some("\u{b5}g/kg"));
+    assert_eq!(d.get("cl").map(String::as_str), Some("mL/min/kg"));
+    assert_eq!(d.get("v").map(String::as_str), Some("mL/kg"));
+    // Different masses: the formal unit, as for an absolute dose.
+    let d = derived_units(Some("h"), Some("ng/mL"), Some("mg/kg"));
+    assert_eq!(d.get("cl").map(String::as_str), Some("mg/kg/(h*ng/mL)"));
 }

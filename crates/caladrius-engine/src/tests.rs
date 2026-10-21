@@ -1863,3 +1863,37 @@ fn a_fit_leaves_blq_rows_out_and_counts_them() {
     );
     assert_eq!(init["n_observations"], 6);
 }
+
+// ---- NCA-UNIT-01: a dose per kilogram of body weight (task T-098) ----------------------------
+
+#[test]
+fn a_dose_per_kg_labels_the_nca_and_the_worksheet_per_kg() {
+    let mut e = Engine::new();
+    let csv = "Time (h),Conc (mg/L),Dose (mg/kg)\n0.5,40.2,50\n1,37.9,50\n2,33.1,50\n4,27.4,50\n8,18.3,50\n12,12.1,50\n24,3.2,50\n";
+    let ws = import(&mut e, "per kg", csv);
+    assert_eq!(ws["worksheet"]["derived_units"]["cl"], "L/h/kg");
+    assert_eq!(ws["worksheet"]["derived_units"]["v"], "L/kg");
+    assert!(ws["worksheet"]["unit_warnings"].as_array().unwrap().is_empty());
+    let run = |e: &mut Engine, dose_unit: &str| {
+        let r = ok(
+            e,
+            "nca.run",
+            json!({ "worksheet": 1, "route": { "iv_infusion": { "duration": 0.5 } },
+                    "options": { "units": { "time": "h", "concentration": "mg/L", "dose": dose_unit } } }),
+        );
+        r["result"]["subjects"][0]["outcome"]["ok"]["parameters"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| (p["name"].as_str().unwrap().to_owned(), (p["value"].clone(), p["unit"].clone())))
+            .collect::<std::collections::BTreeMap<_, _>>()
+    };
+    let (per_kg, absolute) = (run(&mut e, "mg/kg"), run(&mut e, "mg"));
+    for (name, (value, _)) in &absolute {
+        assert_eq!(&per_kg[name].0, value, "{name}");
+    }
+    assert_eq!(per_kg["cl.obs"].1, "L/h/kg");
+    assert_eq!(per_kg["vz.obs"].1, "L/kg");
+    assert_eq!(per_kg["vss.iv.obs"].1, "L/kg");
+    assert_eq!(absolute["cl.obs"].1, "L/h");
+}

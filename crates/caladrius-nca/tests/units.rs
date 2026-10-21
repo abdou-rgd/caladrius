@@ -133,3 +133,56 @@ fn units_are_data() {
     let plain = serde_json::to_string(&nca(None).unwrap()).unwrap();
     assert!(!plain.contains(r#""unit""#));
 }
+
+// ---- NCA-UNIT-01: a dose per kilogram of body weight (task T-098) ----------------------------
+
+#[test]
+fn a_dose_per_kg_keeps_the_numbers_and_labels_cl_and_volumes_per_kg() {
+    let absolute = nca(Some(units("h", "ng/mL", "mg"))).unwrap();
+    let per_kg = nca(Some(units("h", "ng/mL", "mg/kg"))).unwrap();
+    // Same numbers: the factor comes from the mass of the dose alone.
+    for p in absolute.parameters() {
+        assert_eq!(p.value.value(), per_kg.get(&p.name), "{}", p.name);
+    }
+    for (name, unit) in [
+        ("cl.obs", "L/h/kg"),
+        ("cl.pred", "L/h/kg"),
+        ("vz.obs", "L/kg"),
+        ("vss.obs", "L/kg"),
+        ("cmax", "ng/mL"),
+        ("auclast", "h·ng/mL"),
+        ("half.life", "h"),
+        ("cmax.dn", "(ng/mL)/(mg/kg)"),
+        ("aucinf.obs.dn", "(h·ng/mL)/(mg/kg)"),
+    ] {
+        assert_eq!(per_kg.unit(name), Some(unit), "{name}");
+    }
+    // Spacing and the micro sign spellings are read like the absolute units.
+    let spaced = nca(Some(units("min", "ng/mL", " µg / kg "))).unwrap();
+    let micro = nca(Some(units("min", "ng/mL", "ug"))).unwrap();
+    assert_eq!(spaced.get("cl.obs"), micro.get("cl.obs"));
+    assert_eq!(spaced.unit("cl.obs"), Some("L/min/kg"));
+    assert_eq!(spaced.unit("cmax.dn"), Some("(ng/mL)/(µg/kg)"));
+}
+
+#[test]
+fn a_dose_per_body_surface_or_per_volume_is_still_refused() {
+    for (dose, hint) in [
+        ("mg/m2", "per kilogram of body weight"),
+        ("mg/m²", "per kilogram of body weight"),
+        ("mg/h", "a time, are not supported"),
+        ("mg/mL", "must be a mass"),
+        ("tablet/kg", "must be a mass"),
+        ("kg", "unknown unit"),
+    ] {
+        match nca(Some(units("h", "ng/mL", dose))) {
+            Err(NcaError::InvalidUnits {
+                which: w, reason, ..
+            }) => {
+                assert_eq!(w, "dose", "{dose}");
+                assert!(reason.contains(hint), "{dose}: {reason}");
+            }
+            other => panic!("{dose}: {other:?}"),
+        }
+    }
+}
