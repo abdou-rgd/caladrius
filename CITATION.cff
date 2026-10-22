@@ -6,7 +6,7 @@ type: software
 authors:
   - given-names: Abdallah
     alias: abdou-rgd
-version: 0.3.1
+version: 0.3.2
 date-released: 2026-10-22
 license: MIT OR Apache-2.0
 repository-code: https://github.com/abdou-rgd/caladrius
