@@ -241,6 +241,8 @@ pub struct UiApp {
     /// The theme the operating system reports, when it does.
     pub(crate) system_theme: Option<ThemeMode>,
     theme_error: Option<String>,
+    /// Whether the program around can close itself: a window can, a browser tab cannot.
+    pub(crate) can_quit: bool,
 }
 
 impl Default for UiApp {
@@ -279,6 +281,7 @@ impl UiApp {
             saved_settings: Settings::default().to_json(),
             system_theme: None,
             theme_error,
+            can_quit: true,
         };
         app.mark_saved();
         app.refresh_overview();
@@ -293,6 +296,12 @@ impl UiApp {
     /// Mutable access to the engine, for tests that set a project up through commands.
     pub fn engine_mut(&mut self) -> &mut Engine {
         &mut self.engine
+    }
+
+    /// Says whether the program around can close itself. In a browser tab it cannot: "Quit" leaves
+    /// the File menu and the palette, and the person closes the tab.
+    pub fn set_can_quit(&mut self, can_quit: bool) {
+        self.can_quit = can_quit;
     }
 
     /// What the program around should do now (open a file picker...).
@@ -602,7 +611,8 @@ impl UiApp {
                 Action::OpenProject => self.guarded(Guarded::OpenProject),
                 Action::SaveProject => self.save_project(false),
                 Action::SaveProjectAs => self.save_project(true),
-                Action::Quit => self.guarded(Guarded::Close),
+                Action::Quit if self.can_quit => self.guarded(Guarded::Close),
+                Action::Quit => {}
                 Action::GuardSave => self.guard_save(),
                 Action::GuardDiscard => self.guard_discard(),
                 Action::GuardCancel => self.guard_cancel(),
@@ -821,7 +831,7 @@ impl UiApp {
             );
             ui.label(RichText::new(&self.overview.name).color(c.text_muted.color()));
             ui.separator();
-            projectmenu::file_menu(ui, actions);
+            projectmenu::file_menu(ui, actions, self.can_quit);
             if ui.button("Open CSV…").clicked() {
                 actions.push(Action::OpenCsv);
             }

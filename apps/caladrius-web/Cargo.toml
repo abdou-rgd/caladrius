@@ -1,0 +1,42 @@
+[package]
+name = "caladrius-web"
+description = "App layer: the browser application, caladrius-ui compiled to WebAssembly and drawn by eframe on WebGL."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+caladrius-ui = { path = "../../crates/caladrius-ui" }
+
+# The page: eframe draws egui on a canvas with WebGL (glow, smaller than wgpu in a browser); web-sys
+# gives the file picker, the download, local storage and the language of the browser. Only built
+# for wasm32: on the desktop this crate compiles the part that answers the interface, for its tests.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+eframe = { version = "0.32.3", default-features = false, features = ["glow", "default_fonts"] }
+js-sys = "0.3.106"
+wasm-bindgen = "0.2.129"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3.106", features = [
+    "Blob",
+    "BlobPropertyBag",
+    "Document",
+    "Element",
+    "File",
+    "FileList",
+    "HtmlAnchorElement",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlInputElement",
+    "Navigator",
+    "Storage",
+    "Url",
+    "Window",
+] }
+
+[dev-dependencies]
+serde_json = "1.0.151"
+
+[lints]
+workspace = true

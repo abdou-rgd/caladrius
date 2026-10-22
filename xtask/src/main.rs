@@ -14,6 +14,7 @@ mod layers;
 mod lint;
 mod review;
 mod wasm;
+mod web;
 mod workspace;
 
 use std::ffi::OsString;
@@ -30,6 +31,8 @@ tasks:
                and clippy::indexing_slicing denied in the four numerical crates);
                one `file:line rule message` per finding, exit 1 on any (exceptions: xtask/lint_allow.toml)
   wasm         cargo check the L0 to L3 crates for wasm32-unknown-unknown
+  web          build the browser application into target/web-page (`web --out DIR` elsewhere);
+               needs wasm-bindgen-cli at the version of Cargo.lock, uses wasm-opt when present
   conformance  run caladrius-nca on every oracle case and write docs/conformance.md
                (`conformance --private` also writes the counts of the private oracle into it)
   review       check the figures the README and the specs state against the files that own them
@@ -42,6 +45,8 @@ enum Task {
     Layers,
     Lint,
     Wasm,
+    /// The folder arguments (`--out DIR`), checked by the task.
+    Web(Vec<OsString>),
     /// `private`: also write the counts of the private oracle into `docs/conformance.md`.
     Conformance {
         private: bool,
@@ -61,6 +66,7 @@ fn parse_task(args: &[OsString]) -> std::result::Result<Task, String> {
             Some("layers") => Ok(Task::Layers),
             Some("lint") => Ok(Task::Lint),
             Some("wasm") => Ok(Task::Wasm),
+            Some("web") => Ok(Task::Web(Vec::new())),
             Some("conformance") => Ok(Task::Conformance { private: false }),
             Some("review") => Ok(Task::Review { strict: false }),
             Some("help" | "-h" | "--help") => Ok(Task::Help),
@@ -74,6 +80,7 @@ fn parse_task(args: &[OsString]) -> std::result::Result<Task, String> {
         [task, flag] if task.to_str() == Some("review") && flag.to_str() == Some("--strict") => {
             Ok(Task::Review { strict: true })
         }
+        [task, rest @ ..] if task.to_str() == Some("web") => Ok(Task::Web(rest.to_vec())),
         [_, extra, ..] => Err(format!("unexpected argument `{}`", extra.to_string_lossy())),
     }
 }
@@ -92,6 +99,7 @@ fn main() -> ExitCode {
         Task::Layers => layers::run(),
         Task::Lint => lint::run(),
         Task::Wasm => wasm::run(),
+        Task::Web(args) => web::run(&args),
         Task::Conformance { private } => conformance::run(private),
         Task::Review { strict } => review::run(strict),
         Task::Help => {
@@ -122,6 +130,14 @@ mod tests {
         assert_eq!(parse(&["layers"]), Ok(Task::Layers));
         assert_eq!(parse(&["lint"]), Ok(Task::Lint));
         assert_eq!(parse(&["wasm"]), Ok(Task::Wasm));
+        assert_eq!(parse(&["web"]), Ok(Task::Web(Vec::new())));
+        assert_eq!(
+            parse(&["web", "--out", "dist"]),
+            Ok(Task::Web(vec![
+                OsString::from("--out"),
+                OsString::from("dist")
+            ]))
+        );
         assert_eq!(
             parse(&["conformance"]),
             Ok(Task::Conformance { private: false })
