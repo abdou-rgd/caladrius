@@ -39,8 +39,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      # Reads rust-toolchain.toml. No test suite: CI already ran it on the commit.
-      - uses: dtolnay/rust-toolchain@stable
+      # Installs the pinned toolchain of rust-toolchain.toml. No test suite: CI already ran it on the commit.
+      - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release -p caladrius -p caladrius-cli -p caladrius-mcp
 
