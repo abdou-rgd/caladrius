@@ -118,4 +118,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-105 | Onizuka: an explainer agent for the owner (`.claude/agents/onizuka.md`) | orchestrator | done | |
 | T-106 | Caladrius in the browser: the egui interface compiled to WebAssembly, for the website | interface | done | T-103 |
 | T-107 | The Caladrius logo and its green in the interface (desktop and browser) | interface | done | T-106 |
-| T-109 | Plot the raw data of a worksheet, linear and semi-log, before any analysis | interface | to review | T-103, T-107 |
+| T-109 | Plot the raw data of a worksheet, linear and semi-log, before any analysis | interface | done | T-103, T-107 |
