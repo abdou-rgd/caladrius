@@ -123,6 +123,8 @@ pub struct Axes {
     pub x: (f64, f64),
     pub y: (f64, f64),
     pub log: bool,
+    /// A logarithmic horizontal axis too (`x` in decades), for observed against predicted.
+    pub x_log: bool,
     x_ticks: Vec<f64>,
     y_marks: Vec<(f64, bool)>,
     x_step: f64,
@@ -161,7 +163,26 @@ impl Axes {
             x,
             y,
             log,
+            x_log: false,
         }
+    }
+
+    /// Axes whose horizontal axis is logarithmic as well (`x` in decades, ticks on the decades).
+    pub fn log_log(x: (f64, f64), y: (f64, f64)) -> Axes {
+        let mut axes = Axes::new(x, y, true);
+        axes.x_ticks = plotdata::log_ticks(x.0, x.1)
+            .into_iter()
+            .filter(|(_, major)| *major)
+            .map(|(v, _)| v)
+            .collect();
+        axes.x_step = 1.0;
+        axes.x_log = true;
+        axes
+    }
+
+    /// The value on the horizontal axis for a value of the data.
+    pub fn x_of(&self, v: f64) -> f64 {
+        if self.x_log { v.log10() } else { v }
     }
 
     /// The value on the vertical axis for a concentration.
@@ -177,6 +198,7 @@ impl Axes {
         y_label: String,
     ) -> Plot<'static> {
         let log = self.log;
+        let x_log = self.x_log;
         let x_marks: Vec<GridMark> = self
             .x_ticks
             .iter()
@@ -209,7 +231,15 @@ impl Axes {
             .show_grid(false)
             .x_grid_spacer(move |_| x_marks.clone())
             .y_grid_spacer(move |_| y_grid.clone())
-            .x_axis_formatter(|mark, _| fmt::number(mark.value))
+            .x_axis_formatter(move |mark, _| {
+                if !x_log {
+                    fmt::number(mark.value)
+                } else if (mark.value - mark.value.round()).abs() < 1e-9 {
+                    plotdata::log_label(mark.value.round())
+                } else {
+                    String::new()
+                }
+            })
             .y_axis_formatter(move |mark, _| {
                 if log {
                     if (mark.value - mark.value.round()).abs() < 1e-9 {

@@ -542,7 +542,10 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
                         array_of(object(
                             vec![
                                 ("name", string()),
-                                ("role", one_of_strings(&["subject", "observed", "predicted"])),
+                                (
+                                    "role",
+                                    one_of_strings(&["subject", "observed", "predicted"]),
+                                ),
                                 ("slot", integer()),
                                 ("style", one_of_strings(&["points", "line", "line_points"])),
                                 (
@@ -568,7 +571,10 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
                 ("id", reference("Id")),
                 ("label", string()),
                 ("name", nullable(string())),
-                ("kind", one_of_strings(&["nca", "fit", "simulation", "plot"])),
+                (
+                    "kind",
+                    one_of_strings(&["nca", "fit", "simulation", "plot"]),
+                ),
                 ("spec", reference("AnalysisSpec")),
                 ("status", reference("AnalysisStatus")),
                 ("result", nullable(reference("AnalysisResult"))),

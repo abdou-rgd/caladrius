@@ -66,7 +66,9 @@ fn some_result() -> AnalysisResult {
 fn a_plot_is_an_analysis_named_from_its_source() {
     let (mut p, ws) = project();
     let all = p.add_analysis(sheet_plot(ws, None), None).unwrap();
-    let one = p.add_analysis(sheet_plot(ws, Some(vec!["B"])), None).unwrap();
+    let one = p
+        .add_analysis(sheet_plot(ws, Some(vec!["B"])), None)
+        .unwrap();
     let two = p
         .add_analysis(sheet_plot(ws, Some(vec!["A", "B"])), None)
         .unwrap();

@@ -29,12 +29,12 @@ pub use analysis::{
     Analysis, AnalysisId, AnalysisResult, AnalysisSpec, AnalysisStatus, FitRun, FitSpec, NcaSpec,
     NcaSubjectResult, Outcome, SimulationRun, SimulationSpec, StaleReason,
 };
+pub use csv::{CsvOptions, ImportedTable, Reading, ReadingCheck, readings};
+pub use error::ProjectError;
 pub use plot::{
     FitView, PlotAxis, PlotGuide, PlotLayout, PlotPanel, PlotPoint, PlotRun, PlotScale, PlotSeries,
     PlotSource, PlotSpec, SeriesRole, SeriesStyle,
 };
-pub use csv::{CsvOptions, ImportedTable, Reading, ReadingCheck, readings};
-pub use error::ProjectError;
 pub use project::{FORMAT_VERSION, Project};
 pub use units::{AcceptedUnits, UnitWarning, accepted_units, derived_units, unit_warnings};
 pub use worksheet::{

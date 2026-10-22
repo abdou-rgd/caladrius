@@ -170,6 +170,23 @@ impl Desktop {
         }
     }
 
+    /// Saves an exported file (an SVG plot) where the person chooses.
+    fn save_file(&mut self, suggested: &str, bytes: &[u8]) {
+        let extension = suggested.rsplit('.').next().unwrap_or("svg").to_owned();
+        let picked = rfd::FileDialog::new()
+            .add_filter(extension.to_uppercase(), &[extension.as_str()])
+            .set_title("Export")
+            .set_file_name(suggested)
+            .save_file();
+        let Some(path) = picked else {
+            return;
+        };
+        match projectio::write(&path, bytes) {
+            Ok(()) => self.ui.file_saved(&projectio::display_name(&path)),
+            Err(message) => self.ui.file_save_failed(&message),
+        }
+    }
+
     fn save_project(&mut self, suggested: &str, bytes: &[u8], ask: bool) {
         let target = match (&self.project_path, ask) {
             (Some(path), false) => Some(path.clone()),
@@ -224,6 +241,7 @@ impl Desktop {
                             self.ui.perform(vec![Action::Notice(message)]);
                         }
                     }
+                    Request::SaveFile { suggested, bytes } => self.save_file(&suggested, &bytes),
                 }
             }
         }

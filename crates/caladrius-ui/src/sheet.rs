@@ -257,11 +257,18 @@ pub fn screen(
             if ui.button("New model fit").clicked() {
                 actions.push(Action::NewFit);
             }
+            if ui
+                .button("New plot")
+                .on_hover_text("An XY plot of this worksheet, kept in the project with its options")
+                .clicked()
+            {
+                actions.push(Action::NewPlot);
+            }
         });
     });
     ui.add_space(tokens.spacing.medium);
     // Look at the data before any analysis (T-109).
-    crate::rawplot::card(ui, tokens, info, table);
+    crate::rawplot::card(ui, tokens, info, table, actions);
     ui.add_space(tokens.spacing.medium);
     tokens.card_frame().show(ui, |ui| {
         ui.label(RichText::new("Columns").strong());

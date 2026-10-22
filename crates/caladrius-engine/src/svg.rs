@@ -88,7 +88,11 @@ fn px(v: f64) -> String {
     let r = (v * 100.0).round() / 100.0;
     let s = format!("{r:.2}");
     let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s == "-0" { "0".to_owned() } else { s.to_owned() }
+    if s == "-0" {
+        "0".to_owned()
+    } else {
+        s.to_owned()
+    }
 }
 
 /// Tick values from `lo` to `hi` at a step of 1, 2 or 5 times a power of ten (about five).
@@ -125,7 +129,7 @@ fn tick_label(v: f64, step: f64) -> String {
     if v.abs() >= 1e6 || v.abs() < 1e-4 {
         return format!("{v:e}");
     }
-    let decimals = (-step.log10().floor()).max(0.0).min(8.0) as usize;
+    let decimals = (-step.log10().floor()).clamp(0.0, 8.0) as usize;
     format!("{v:.decimals$}")
 }
 
@@ -275,7 +279,12 @@ fn marker(out: &mut String, shape: usize, x: f64, y: f64, fill: &str) {
         2 => writeln!(
             out,
             "<polygon points=\"{}\" fill=\"{fill}\"/>",
-            poly(&[(0.0, -r * 1.2), (r * 1.2, 0.0), (0.0, r * 1.2), (-r * 1.2, 0.0)])
+            poly(&[
+                (0.0, -r * 1.2),
+                (r * 1.2, 0.0),
+                (0.0, r * 1.2),
+                (-r * 1.2, 0.0)
+            ])
         ),
         3 => writeln!(
             out,

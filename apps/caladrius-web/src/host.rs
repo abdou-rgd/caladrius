@@ -173,6 +173,13 @@ impl<B: Browser> Web<B> {
                             self.ui.perform(vec![Action::Notice(message)]);
                         }
                     }
+                    // An exported file (an SVG plot) is a download under its suggested name.
+                    Request::SaveFile { suggested, bytes } => {
+                        match self.browser.download(&suggested, &bytes) {
+                            Ok(()) => self.ui.file_saved(&suggested),
+                            Err(message) => self.ui.file_save_failed(&message),
+                        }
+                    }
                 }
             }
         }
@@ -295,6 +302,23 @@ mod tests {
         web.serve();
         assert_eq!(web.browser.downloads.len(), 2);
         assert_eq!(&web.browser.downloads[1].0, &web.browser.downloads[0].0);
+    }
+
+    #[test]
+    fn an_exported_plot_is_downloaded_as_svg() {
+        let mut web = page();
+        web.receive(csv(Some(Pick::Csv), "study.csv"));
+        web.ui.perform(vec![Action::ImportConfirm, Action::NewPlot]);
+        let id = web.ui.plot_page().and_then(|p| p.analysis).unwrap();
+        web.ui.perform(vec![Action::ExportPlot(id)]);
+        web.serve();
+        let (name, bytes) = web.browser.downloads.last().unwrap();
+        assert!(name.ends_with(".svg"), "{name}");
+        assert!(bytes.starts_with(b"<svg "));
+        assert_eq!(
+            web.ui.notice_text(),
+            Some(format!("Saved {name}.").as_str())
+        );
     }
 
     #[test]

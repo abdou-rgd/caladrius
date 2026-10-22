@@ -204,6 +204,12 @@ impl UiApp {
             Action::NewFitWith(Compartments::Two),
         ));
         out.push(ui(
+            "new_plot",
+            format!("New plot{from}"),
+            format!("An XY plot of this worksheet kept in the project: subjects, linear or semi-log, overlaid or one panel per subject, SVG export{needs}"),
+            Action::NewPlot,
+        ));
+        out.push(ui(
             "new_simulation",
             "New model simulation".to_owned(),
             "Draw a model's curve for a dose and parameters, no data needed".to_owned(),
@@ -307,6 +313,13 @@ impl UiApp {
             "nca.run" => Action::NewAnalysis,
             "fit.run" | "fit.initial_estimates" | "fit.evaluate" => Action::NewFit,
             "model.simulate" => Action::NewSimulation,
+            "plot.xy" => Action::NewPlot,
+            "export.plot" => match analysis {
+                Some(a) => Action::ExportPlot(a),
+                None => Action::Notice(
+                    "export.plot saves the plot in view as SVG: open a plot first.".to_owned(),
+                ),
+            },
             "project.save" => Action::SaveProject,
             "project.load" => Action::OpenProject,
             "project.new" => Action::NewProject,

@@ -17,6 +17,7 @@ use crate::model::{Overview, Status, Table, WorksheetInfo, read};
 use crate::modelinfo::Compartments;
 use crate::nca::{self, NcaPage};
 use crate::palette::{self, CommandLine, PaletteState};
+use crate::plotpage::{self, PlotPage};
 use crate::projectfile::{FileState, Guarded};
 use crate::projectmenu;
 use crate::settings::{Settings, ThemeChoice};
@@ -111,6 +112,17 @@ pub enum Action {
     ResetSetting(String),
     /// Take the decimal mark the system locale suggests.
     UseSystemSuggestion,
+    /// A new plot of the worksheet in view (`plot.xy`).
+    NewPlot,
+    /// A new plot of a fit already run: the fit and the view (`observed_predicted`...).
+    NewFitPlot {
+        fit: u64,
+        view: String,
+    },
+    /// The options of the plot page changed: draw it again.
+    PlotChanged,
+    /// Save the SVG of this plot (`export.plot`).
+    ExportPlot(u64),
 }
 
 /// What the engine understood of a typed cell, when that is not what was typed (`3,25` is 3.25).
@@ -151,6 +163,8 @@ enum Shown {
     Nca,
     Fit,
     Sim,
+    /// A plot object: its page fills the main area, with no side plot.
+    Plot,
     Nothing,
 }
 
@@ -174,6 +188,9 @@ pub enum Request {
     Close,
     /// Store the settings (JSON text) with the application's configuration.
     SaveSettings(String),
+    /// Save an exported file (an SVG plot): ask where, offering `suggested`, and write `bytes`.
+    /// Answer with [`UiApp::file_saved`] or [`UiApp::file_save_failed`].
+    SaveFile { suggested: String, bytes: Vec<u8> },
 }
 
 /// The UI state that is worth keeping: serializable (golden rule 7).
@@ -198,6 +215,9 @@ pub struct UiState {
     /// The table being typed, kept while the person looks elsewhere.
     #[serde(default)]
     pub entry: Option<DataEntry>,
+    /// The plot page being worked on.
+    #[serde(default)]
+    pub plot: Option<PlotPage>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -337,6 +357,27 @@ impl UiApp {
         self.state.sim.as_ref()
     }
 
+    /// The current plot page, for tests.
+    pub fn plot_page(&self) -> Option<&PlotPage> {
+        self.state.plot.as_ref()
+    }
+
+    /// An exported file was written (the program says under which name).
+    pub fn file_saved(&mut self, name: &str) {
+        self.notice = Some(Notice {
+            kind: NoticeKind::Info,
+            text: format!("Saved {name}."),
+        });
+    }
+
+    /// An exported file could not be written; the message says why.
+    pub fn file_save_failed(&mut self, message: &str) {
+        self.notice = Some(Notice {
+            kind: NoticeKind::Error,
+            text: message.to_owned(),
+        });
+    }
+
     /// The import waiting for a decision, for tests.
     pub fn pending_import(&self) -> Option<&PendingImport> {
         self.pending.as_ref()
@@ -431,6 +472,7 @@ impl UiApp {
         match view.get("kind").and_then(Value::as_str) {
             Some("fit") => return self.open_fit(&view),
             Some("simulation") => return self.open_simulation(&view),
+            Some("plot") => return self.open_plot(&view),
             _ => {}
         }
         match NcaPage::from_view(&view) {
@@ -458,6 +500,9 @@ impl UiApp {
             page.adopt(view);
         }
         if let Some(page) = self.state.fit.as_mut().filter(|p| p.analysis == id) {
+            page.adopt(view);
+        }
+        if let Some(page) = self.state.plot.as_mut().filter(|p| p.analysis == id) {
             page.adopt(view);
         }
     }
@@ -632,6 +677,10 @@ impl UiApp {
                 Action::SetSetting { key, value } => self.set_setting(&key, value),
                 Action::ResetSetting(key) => self.reset_setting(&key),
                 Action::UseSystemSuggestion => self.use_system_suggestion(),
+                Action::NewPlot => self.new_plot(),
+                Action::NewFitPlot { fit, view } => self.new_fit_plot(fit, &view),
+                Action::PlotChanged => self.plot_changed(),
+                Action::ExportPlot(id) => self.export_plot(id),
             }
         }
     }
@@ -726,7 +775,7 @@ impl UiApp {
             .frame(tokens.panel_frame(tokens.colors.panel_alt))
             .show(ctx, |ui| self.tree(ui, &mut actions));
         let shown = self.shown();
-        if shown != Shown::Nothing {
+        if shown != Shown::Nothing && shown != Shown::Plot {
             egui::SidePanel::right("plot-panel")
                 .default_width(tokens.size.plot_panel_width)
                 .min_width(tokens.size.plot_panel_min_width)
@@ -763,6 +812,15 @@ impl UiApp {
     /// Which page the main area shows.
     fn shown(&self) -> Shown {
         let page = match self.state.selection {
+            Selection::Analysis(id)
+                if self
+                    .state
+                    .plot
+                    .as_ref()
+                    .is_some_and(|p| p.analysis == Some(id)) =>
+            {
+                Shown::Plot
+            }
             Selection::Analysis(_) => {
                 if self.state.nca.is_some() {
                     Shown::Nca
@@ -828,7 +886,7 @@ impl UiApp {
                     sim::plot_panel(ui, tokens, page, info, &mut self.state.log_axis);
                 }
             }
-            Shown::Nothing => {}
+            Shown::Plot | Shown::Nothing => {}
         }
     }
 
@@ -875,6 +933,13 @@ impl UiApp {
                     }
                     if ui.button("Model simulation").clicked() {
                         actions.push(Action::NewSimulation);
+                    }
+                    if ui
+                        .add_enabled(has_sheet, egui::Button::new("XY plot of the data"))
+                        .on_disabled_hover_text("Open a CSV file first")
+                        .clicked()
+                    {
+                        actions.push(Action::NewPlot);
                     }
                 });
             let hint = ui.ctx().format_shortcut(&palette::OPEN);
@@ -1079,6 +1144,12 @@ impl UiApp {
                     (Shown::Fit, Some(s)) => {
                         if let Some(page) = self.state.fit.as_mut() {
                             fitform::central(ui, tokens, page, &s.info, &s.table, actions);
+                        }
+                    }
+                    (Shown::Plot, _) => {
+                        let worksheets = self.plot_worksheets();
+                        if let Some(page) = self.state.plot.as_mut() {
+                            plotpage::central(ui, tokens, page, &worksheets, actions);
                         }
                     }
                     (Shown::Sim, sheet) => {

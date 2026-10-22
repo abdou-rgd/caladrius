@@ -13,7 +13,9 @@ use crate::Engine;
 use crate::error::CommandError;
 use crate::export;
 use crate::run;
-use crate::schema::{array_of, described, integer, nullable, object, one_of_strings, reference, root, string};
+use crate::schema::{
+    array_of, described, integer, nullable, object, one_of_strings, reference, root, string,
+};
 use crate::svg;
 
 // ---- plot.xy -----------------------------------------------------------------------------
@@ -117,10 +119,7 @@ pub(crate) const PLOT_XY: CommandDef = CommandDef {
                             "Plot the stored result of this fit analysis.",
                         ),
                     ),
-                    (
-                        "view",
-                        one_of_strings(&FitView::ALL.map(FitView::id)),
-                    ),
+                    ("view", one_of_strings(&FitView::ALL.map(FitView::id))),
                     (
                         "subjects",
                         described(

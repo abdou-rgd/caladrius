@@ -148,7 +148,10 @@ fn subjects_scale_layout_and_title_are_options() {
         .iter()
         .map(|p| p["title"].as_str().unwrap())
         .collect();
-    assert_eq!(titles, vec!["Q, linear", "Q, semi-log", "P, linear", "P, semi-log"]);
+    assert_eq!(
+        titles,
+        vec!["Q, linear", "Q, semi-log", "P, linear", "P, semi-log"]
+    );
     // A subject given as a number is the same label.
     let mut n = Engine::new();
     ok(
@@ -156,7 +159,11 @@ fn subjects_scale_layout_and_title_are_options() {
         "data.import",
         json!({ "name": "n", "csv": "subject,time,conc\n1,0,5\n1,1,3\n2,0,4\n2,1,2\n" }),
     );
-    let v = ok(&mut n, "plot.xy", json!({ "worksheet": 1, "subjects": [2] }));
+    let v = ok(
+        &mut n,
+        "plot.xy",
+        json!({ "worksheet": 1, "subjects": [2] }),
+    );
     assert_eq!(v["result"]["panels"][0]["series"][0]["name"], "2");
 }
 
@@ -168,7 +175,11 @@ fn a_single_profile_takes_the_observed_role() {
         "data.import",
         json!({ "name": "one", "csv": "time,conc\n0,5\n1,3\n2,2\n" }),
     );
-    let v = ok(&mut e, "plot.xy", json!({ "worksheet": 1, "scale": "linear" }));
+    let v = ok(
+        &mut e,
+        "plot.xy",
+        json!({ "worksheet": 1, "scale": "linear" }),
+    );
     let s = &v["result"]["panels"][0]["series"][0];
     assert_eq!(s["role"], "observed");
     assert_eq!(s["name"], "observed");
@@ -181,14 +192,42 @@ fn wrong_plot_requests_say_what_to_fix_and_change_nothing() {
     let before = e.project().clone();
     let cases = [
         (json!({}), "invalid_parameters", "give `worksheet`"),
-        (json!({ "worksheet": 1, "fit": 2 }), "invalid_parameters", "not both"),
-        (json!({ "worksheet": 1, "view": "profile" }), "invalid_parameters", "a worksheet plot has none"),
+        (
+            json!({ "worksheet": 1, "fit": 2 }),
+            "invalid_parameters",
+            "not both",
+        ),
+        (
+            json!({ "worksheet": 1, "view": "profile" }),
+            "invalid_parameters",
+            "a worksheet plot has none",
+        ),
         (json!({ "worksheet": 9 }), "unknown_worksheet", "inv"),
-        (json!({ "worksheet": 1, "subjects": ["Z"] }), "unknown_subject", "P, Q"),
-        (json!({ "worksheet": 1, "subjects": [] }), "no_subjects", "at least one subject"),
-        (json!({ "worksheet": 1, "scale": "cubic" }), "invalid_parameters", "cubic"),
-        (json!({ "worksheet": 1, "colour": "red" }), "invalid_parameters", "colour"),
-        (json!({ "fit": 7 }), "unknown_analysis", "there is no analysis 7"),
+        (
+            json!({ "worksheet": 1, "subjects": ["Z"] }),
+            "unknown_subject",
+            "P, Q",
+        ),
+        (
+            json!({ "worksheet": 1, "subjects": [] }),
+            "no_subjects",
+            "at least one subject",
+        ),
+        (
+            json!({ "worksheet": 1, "scale": "cubic" }),
+            "invalid_parameters",
+            "cubic",
+        ),
+        (
+            json!({ "worksheet": 1, "colour": "red" }),
+            "invalid_parameters",
+            "colour",
+        ),
+        (
+            json!({ "fit": 7 }),
+            "unknown_analysis",
+            "there is no analysis 7",
+        ),
     ];
     for (params, code, says) in cases {
         let e2 = err(&mut e, "plot.xy", params.clone());
@@ -197,7 +236,11 @@ fn wrong_plot_requests_say_what_to_fix_and_change_nothing() {
     }
     assert_eq!(e.project(), &before);
     // A plot cannot be redrawn as another kind, nor another kind as a plot.
-    let nca = ok(&mut e, "nca.run", json!({ "worksheet": 1, "route": "extravascular" }));
+    let nca = ok(
+        &mut e,
+        "nca.run",
+        json!({ "worksheet": 1, "route": "extravascular" }),
+    );
     let id = nca["id"].as_u64().unwrap();
     assert_eq!(
         err(&mut e, "plot.xy", json!({ "analysis": id, "worksheet": 1 })).code,
@@ -269,7 +312,11 @@ fn a_fit_is_plotted_from_its_stored_result_never_fitted_again() {
         ("residuals_time", "residual"),
         ("weighted_residuals_time", "weighted_residual"),
     ] {
-        let v = ok(&mut e, "plot.xy", json!({ "fit": fit_id, "view": view, "scale": "linear" }));
+        let v = ok(
+            &mut e,
+            "plot.xy",
+            json!({ "fit": fit_id, "view": view, "scale": "linear" }),
+        );
         let panel = &v["result"]["panels"][0];
         assert_eq!(panel["guide"], "zero");
         for (p, o) in xy(&panel["series"][0]).iter().zip(&obs) {
@@ -286,7 +333,9 @@ fn a_fit_is_plotted_from_its_stored_result_never_fitted_again() {
     let v = ok(&mut e, "plot.xy", json!({ "fit": fit_id }));
     let panels = v["result"]["panels"].as_array().unwrap();
     assert_eq!(panels.len(), 2);
-    let curve = stored["result"]["outcome"]["ok"]["curve"].as_array().unwrap();
+    let curve = stored["result"]["outcome"]["ok"]["curve"]
+        .as_array()
+        .unwrap();
     let predicted = &panels[0]["series"][1];
     assert_eq!(predicted["role"], "predicted");
     assert_eq!(predicted["style"], "line");
@@ -365,7 +414,11 @@ fn a_failed_fit_or_a_fit_never_run_cannot_be_plotted() {
 #[test]
 fn export_plot_gives_the_svg_of_the_stored_panels() {
     let mut e = engine();
-    let v = ok(&mut e, "plot.xy", json!({ "worksheet": 1, "title": "Invented & co" }));
+    let v = ok(
+        &mut e,
+        "plot.xy",
+        json!({ "worksheet": 1, "title": "Invented & co" }),
+    );
     let id = v["id"].as_u64().unwrap();
     let out = ok(&mut e, "export.plot", json!({ "analysis": id }));
     assert_eq!(out["format"], "svg");
@@ -383,17 +436,35 @@ fn export_plot_gives_the_svg_of_the_stored_panels() {
     let again = ok(&mut e, "export.plot", json!({ "analysis": id }));
     assert_eq!(again["svg"], out["svg"]);
     // Panel size within bounds; another format, or a non-plot, is refused.
-    let big = ok(&mut e, "export.plot", json!({ "analysis": id, "width": 600, "height": 400 }));
+    let big = ok(
+        &mut e,
+        "export.plot",
+        json!({ "analysis": id, "width": 600, "height": 400 }),
+    );
     assert!(big["svg"].as_str().unwrap().contains("width=\"1200\""));
     assert_eq!(
-        err(&mut e, "export.plot", json!({ "analysis": id, "width": 50 })).code,
+        err(
+            &mut e,
+            "export.plot",
+            json!({ "analysis": id, "width": 50 })
+        )
+        .code,
         "invalid_parameters"
     );
     assert_eq!(
-        err(&mut e, "export.plot", json!({ "analysis": id, "format": "png" })).code,
+        err(
+            &mut e,
+            "export.plot",
+            json!({ "analysis": id, "format": "png" })
+        )
+        .code,
         "invalid_parameters"
     );
-    let nca = ok(&mut e, "nca.run", json!({ "worksheet": 1, "route": "extravascular" }));
+    let nca = ok(
+        &mut e,
+        "nca.run",
+        json!({ "worksheet": 1, "route": "extravascular" }),
+    );
     assert_eq!(
         err(&mut e, "export.plot", json!({ "analysis": nca["id"] })).code,
         "not_a_plot"
@@ -407,7 +478,11 @@ fn export_plot_gives_the_svg_of_the_stored_panels() {
     let stale = ok(&mut e, "export.plot", json!({ "analysis": id }));
     assert_eq!(stale["status"], "stale");
     // The points are also a table.
-    let t = ok(&mut e, "export.table", json!({ "table": "plot.points", "analysis": id }));
+    let t = ok(
+        &mut e,
+        "export.table",
+        json!({ "table": "plot.points", "analysis": id }),
+    );
     assert_eq!(t["columns"], json!(["panel", "series", "x", "y", "blq"]));
     assert_eq!(t["rows"][0], json!(["Linear", "P", 0.0, 0.0, "true"]));
     assert_eq!(t["rows"].as_array().unwrap().len(), 2 * (4 + 7));

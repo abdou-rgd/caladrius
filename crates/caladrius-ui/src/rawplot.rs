@@ -216,12 +216,32 @@ fn hidden_id(info: &WorksheetInfo) -> Id {
     Id::new(("raw-plot-hidden", info.id))
 }
 
-/// The raw-data card of the worksheet screen.
-pub fn card(ui: &mut Ui, tokens: &Tokens, info: &WorksheetInfo, table: &Table) {
+/// The raw-data card of the worksheet screen: the quick look; "Keep as a plot" makes it a plot
+/// object of the project (T-110) with its own options.
+pub fn card(
+    ui: &mut Ui,
+    tokens: &Tokens,
+    info: &WorksheetInfo,
+    table: &Table,
+    actions: &mut Vec<crate::Action>,
+) {
     let c = &tokens.colors;
     let data = raw_data(info, table);
     tokens.card_frame().show(ui, |ui| {
-        ui.label(RichText::new("Raw data").strong());
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Raw data").strong());
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui
+                    .small_button("Keep as a plot")
+                    .on_hover_text(
+                        "Make this a plot of the project: choose the subjects, the scale and the layout, and export it as SVG",
+                    )
+                    .clicked()
+                {
+                    actions.push(crate::Action::NewPlot);
+                }
+            });
+        });
         ui.label(
             RichText::new(
                 "The concentrations as entered, before any analysis: look at the shape of the curves first. Nothing is computed here.",
@@ -374,7 +394,7 @@ fn legend(ui: &mut Ui, tokens: &Tokens, data: &RawData, hidden: &mut BTreeSet<St
 }
 
 /// A legend swatch: a short line and the marker, filled or hollow.
-fn swatch(ui: &mut Ui, tokens: &Tokens, color: Color32, shape: MarkerShape, line: bool) {
+pub(crate) fn swatch(ui: &mut Ui, tokens: &Tokens, color: Color32, shape: MarkerShape, line: bool) {
     let side = tokens.size.row_height;
     let (rect, _) = ui.allocate_exact_size(Vec2::new(side, side), Sense::hover());
     let painter = ui.painter_at(rect);
