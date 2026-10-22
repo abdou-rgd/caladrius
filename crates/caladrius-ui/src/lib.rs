@@ -12,9 +12,12 @@
 //! - [`theme`]: the tokens (colours, radii, spacing, font sizes) read from `theme.json`, light and dark.
 //! - [`model`]: typed views of the engine's JSON answers.
 //! - [`plotdata`]: what the profile plot draws, including the safe semi-log view.
-//! - [`app`]: the application, its project tree and its screens ([`import`], [`sheet`], [`nca`]).
+//! - [`app`]: the application, its project tree and its screens ([`import`], [`entry`], [`sheet`],
+//!   [`nca`]).
 
 pub mod app;
+pub mod entry;
+pub mod entryflow;
 pub mod fit;
 pub mod fitform;
 pub mod fitplots;
@@ -45,6 +48,8 @@ pub use app::{Action, Request, Selection, UiApp, UiState};
 #[cfg(test)]
 mod tests;
 pub use theme::{ThemeMode, Tokens};
+#[cfg(test)]
+mod tests_entry;
 #[cfg(test)]
 mod tests_fitpreset;
 #[cfg(test)]

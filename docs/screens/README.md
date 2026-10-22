@@ -31,6 +31,18 @@ units are detected and shown, with the reading of each value stated.</td>
 decimal mark or a thousands separator, the page says which reading was chosen, which one is the other,
 and where to change it. Nothing is written to the project until <code>Import</code>.</td>
 </tr>
+<tr>
+<td width="50%"><img src="type-or-paste-data.png" alt="A table filled by pasting cells copied from a French spreadsheet"></td>
+<td width="50%"></td>
+</tr>
+<tr>
+<td><b>No file needed for a few points.</b> <code>Type data</code> opens a table (time, concentration,
+dose, and a subject column on request, units in the headers). Cells copied from a spreadsheet are
+pasted with Ctrl+V, decimal commas and a header line included; the dose is typed once per subject.
+<code>Create worksheet</code> sends the table through the same preview and import as a file, with the
+same checks.</td>
+<td></td>
+</tr>
 </table>
 
 ## Non-compartmental analysis
