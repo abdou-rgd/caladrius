@@ -602,6 +602,14 @@ fn the_semi_log_toggle_never_fails_on_zeros_and_says_what_is_hidden() {
 }
 
 #[test]
+fn the_version_is_shown_on_the_welcome_page_and_in_the_status_bar() {
+    let mut h = harness(UiApp::new());
+    h.run_steps(2);
+    let label = format!("Caladrius {}", crate::VERSION);
+    assert_eq!(h.query_all_by_label(&label).count(), 2);
+}
+
+#[test]
 fn the_buttons_do_what_they_say() {
     let mut h = harness(UiApp::new());
     h.run_steps(2);

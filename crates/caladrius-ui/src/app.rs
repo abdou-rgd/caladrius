@@ -896,6 +896,20 @@ impl UiApp {
 
     fn status_bar(&self, ui: &mut Ui) {
         let c = &self.tokens.colors;
+        ui.horizontal(|ui| {
+            self.status_text(ui);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(
+                    RichText::new(format!("Caladrius {}", crate::VERSION))
+                        .small()
+                        .color(c.text_muted.color()),
+                );
+            });
+        });
+    }
+
+    fn status_text(&self, ui: &mut Ui) {
+        let c = &self.tokens.colors;
         match (&self.theme_error, &self.notice) {
             (Some(e), _) => {
                 ui.label(RichText::new(e).color(c.error.color()));
@@ -1079,8 +1093,14 @@ impl UiApp {
         if let Some(logo) = &self.logo {
             let side = tokens.size.logo_large;
             ui.add(egui::Image::new(&logo.large).fit_to_exact_size(egui::vec2(side, side)));
-            ui.add_space(tokens.spacing.large);
+            ui.add_space(tokens.spacing.small);
         }
+        ui.label(
+            RichText::new(format!("Caladrius {}", crate::VERSION))
+                .small()
+                .color(c.text_muted.color()),
+        );
+        ui.add_space(tokens.spacing.medium);
         ui.label(
             RichText::new("Pharmacokinetic analysis")
                 .size(tokens.font.display)

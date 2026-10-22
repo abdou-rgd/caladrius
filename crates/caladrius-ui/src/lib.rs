@@ -47,6 +47,9 @@ pub mod widgets;
 
 pub use app::{Action, Request, Selection, UiApp, UiState};
 
+/// The version of Caladrius, shown on the welcome page and in the status bar.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[cfg(test)]
 mod tests;
 pub use theme::{ThemeMode, Tokens};
