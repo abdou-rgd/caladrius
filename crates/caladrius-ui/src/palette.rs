@@ -217,6 +217,12 @@ impl UiApp {
             Action::NewSimulationWith(Compartments::Two),
         ));
         out.push(ui(
+            "type_data",
+            "Type or paste data".to_owned(),
+            "A table to type a few points into, or to paste cells copied from a spreadsheet; it becomes a worksheet like an imported file".to_owned(),
+            Action::OpenEntry,
+        ));
+        out.push(ui(
             "theme",
             match self.state.mode {
                 crate::theme::ThemeMode::Light => "Switch to the dark theme".to_owned(),
