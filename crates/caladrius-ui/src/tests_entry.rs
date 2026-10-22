@@ -5,7 +5,7 @@ use egui_kittest::kittest::Queryable;
 use serde_json::{Value, json};
 
 use crate::app::{Action, Selection, UiApp, UiState};
-use crate::entry::{DataEntry, EntryRow, Field};
+use crate::entry::{DataEntry, EntryRow, Field, Layout};
 use crate::tests::harness;
 
 /// A synthetic oral profile: ten samples, one dose of 100 mg.
@@ -327,4 +327,391 @@ fn ctrl_v_in_a_cell_spreads_the_copied_cells_from_that_cell() {
     h.run_steps(2);
     let entry = h.state().state.entry.clone().unwrap();
     assert_eq!(entry.rows[3].time, "");
+}
+
+/// A synthetic wide table (T-108): three subjects, times down the first column, French decimal
+/// commas, a value below the limit of quantification, a sample missing, and a Dose line.
+const WIDE: &str = "Temps (h)\tA\tB\tC\r\n\
+Dose (mg/kg)\t30\t30\t45\r\n\
+0,5\t9,1\t12,4\t7,8\r\n\
+1\t8,4\t11\t7,5\r\n\
+2\t7,3\t9,2\t\r\n\
+\r\n\
+4\t5,6\t6,5\t5,9\r\n\
+8\t3,2\t3,4\t4,3\r\n\
+12\t1,9\t1,7\t3,1\r\n\
+24\t0,6\t< LQ\t1,6\r\n";
+
+/// The same samples as a long CSV file, one row per sample, subject by subject, the dose on each
+/// subject's first row.
+fn wide_as_csv(dose_on_every_row: bool) -> String {
+    let times = ["0.5", "1", "2", "4", "8", "12", "24"];
+    let subjects = [
+        ("A", "30", ["9.1", "8.4", "7.3", "5.6", "3.2", "1.9", "0.6"]),
+        (
+            "B",
+            "30",
+            ["12.4", "11", "9.2", "6.5", "3.4", "1.7", "< LQ"],
+        ),
+        ("C", "45", ["7.8", "7.5", "", "5.9", "4.3", "3.1", "1.6"]),
+    ];
+    let mut out = "Subject,Time (h),Concentration (mg/L),Dose (mg/kg)\n".to_owned();
+    for (s, dose, concs) in subjects {
+        let mut first = true;
+        for (t, c) in times.iter().zip(concs) {
+            if c.is_empty() {
+                continue;
+            }
+            let d = if first || dose_on_every_row { dose } else { "" };
+            out.push_str(&format!("{s},{t},{c},{d}\n"));
+            first = false;
+        }
+    }
+    out
+}
+
+fn imported_csv(csv: &str) -> UiApp {
+    let mut app = UiApp::new();
+    app.load_csv("Typed data.csv", csv.as_bytes());
+    app.perform(vec![Action::ImportConfirm]);
+    assert_eq!(app.engine().project().worksheets().len(), 1, "{csv}");
+    app
+}
+
+/// The NCA of every subject: the "New analysis" one (the first subject), then `nca.run` on each
+/// subject with the units of the worksheet.
+fn nca_all(app: &mut UiApp) -> String {
+    let mut all = nca(app);
+    for subject in ["A", "B", "C"] {
+        let v = app
+            .engine_mut()
+            .execute(
+                "nca.run",
+                json!({ "worksheet": 1, "subject": subject, "route": "extravascular",
+                        "options": { "units": { "time": "h", "concentration": "mg/L", "dose": "mg/kg" } } }),
+            )
+            .unwrap();
+        let result = &v["result"];
+        assert!(result["subjects"][0]["outcome"].get("ok").is_some(), "{v}");
+        all.push_str(&serde_json::to_string(result).unwrap());
+    }
+    all
+}
+
+#[test]
+fn a_wide_table_pasted_gives_the_worksheet_and_the_nca_of_the_same_long_table() {
+    let mut file = imported_csv(&wide_as_csv(false));
+    let reference = nca_all(&mut file);
+
+    // Pasted with "Several subjects" off: switched on, subjects in columns, units taken.
+    let mut note = String::new();
+    let mut pasted = typed(|e| {
+        assert!(!e.subjects);
+        note = e.paste(None, WIDE);
+        assert!(e.in_columns());
+        assert_eq!(e.grid.subjects, ["A", "B", "C"]);
+        assert_eq!(e.filled().len(), 20);
+        assert_eq!((e.time_unit.as_str(), e.dose_unit.as_str()), ("h", "mg/kg"));
+    });
+    assert!(
+        note.starts_with("Pasted 3 subjects × 7 times, subjects in columns (20 samples)."),
+        "{note}"
+    );
+    assert!(note.contains("\"Several subjects\" is now on."), "{note}");
+    assert!(note.contains("1 empty cell was left out."), "{note}");
+    assert!(note.contains("from the Dose line"), "{note}");
+    assert_eq!(sheet(&mut pasted), sheet(&mut file));
+    assert_eq!(described(&mut pasted), described(&mut file));
+    assert_eq!(nca_all(&mut pasted), reference);
+
+    // Pasted under rows already typed one per sample: the rows go under them.
+    let mut e = DataEntry::new();
+    e.subjects = true;
+    e.rows[0] = EntryRow {
+        subject: "Z".to_owned(),
+        time: "0".to_owned(),
+        concentration: "1".to_owned(),
+        dose: "5".to_owned(),
+    };
+    let said = e.paste(None, WIDE);
+    assert!(
+        said.contains("as 20 rows from row 2, one per sample."),
+        "{said}"
+    );
+    assert!(!e.in_columns());
+    assert_eq!(e.filled().len(), 21);
+
+    // The same long table typed by hand.
+    let csv = wide_as_csv(false);
+    let mut by_hand = typed(|e| {
+        e.subjects = true;
+        e.dose_unit = "mg/kg".to_owned();
+        e.rows = csv
+            .lines()
+            .skip(1)
+            .map(|line| {
+                let c: Vec<&str> = line.split(',').collect();
+                EntryRow {
+                    subject: c[0].to_owned(),
+                    time: c[1].to_owned(),
+                    concentration: c[2].to_owned(),
+                    dose: c[3].to_owned(),
+                }
+            })
+            .collect();
+    });
+    assert_eq!(nca_all(&mut by_hand), reference);
+}
+
+#[test]
+fn without_a_dose_line_one_dose_is_given_to_every_subject() {
+    let file_csv = wide_as_csv(true).replace(",45\n", ",30\n");
+    let mut file = imported_csv(&file_csv);
+    let reference = nca_all(&mut file);
+    let no_dose: String = WIDE
+        .lines()
+        .filter(|l| !l.starts_with("Dose"))
+        .map(|l| format!("{l}\n"))
+        .collect();
+    let mut app = typed(|e| {
+        e.dose_unit = "mg/kg".to_owned();
+        let note = e.paste(None, &no_dose);
+        assert!(note.contains("No Dose line"), "{note}");
+        assert!(e.grid.doses.iter().all(String::is_empty));
+        assert_eq!(e.fill_dose(), "Type the dose to give first.");
+        e.common_dose = "30".to_owned();
+        assert_eq!(e.fill_dose(), "Dose 30 given to 3 subjects that had none.");
+        assert_eq!(e.grid.doses, ["30", "30", "30"]);
+        // A subject that has a dose keeps it.
+        e.grid.doses[0].clear();
+        e.grid.doses[1] = "40".to_owned();
+        assert_eq!(e.fill_dose(), "Dose 30 given to 1 subject that had none.");
+        assert_eq!(e.grid.doses[1], "40");
+        e.grid.doses[1] = "30".to_owned();
+        assert_eq!(
+            e.fill_dose(),
+            "Every subject already has a dose: nothing changed."
+        );
+        // The same on one row per sample: the dose goes on each subject's first row.
+        e.set_layout(Layout::Long);
+        for r in &mut e.rows {
+            r.dose.clear();
+        }
+        assert_eq!(e.fill_dose(), "Dose 30 given to 3 subjects that had none.");
+        let firsts: Vec<usize> = e
+            .rows
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| !r.dose.is_empty())
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(firsts, [0, 7, 14]);
+    });
+    assert_eq!(nca_all(&mut app), reference);
+}
+
+#[test]
+fn a_paste_that_is_not_a_wide_table_is_spread_as_before() {
+    // No time header: the header line has digits and is read as data, cell for cell.
+    let mut e = DataEntry::new();
+    let said = e.paste(None, "Visit\t1\t2\n0,5\t9\t8\n1\t7\t6");
+    assert!(said.starts_with("Pasted 3 rows from row 1."), "{said}");
+    assert!(!e.subjects);
+    assert_eq!(e.rows[0].time, "Visit");
+    // One subject column: the time and its concentration, the header left out.
+    let mut e = DataEntry::new();
+    let said = e.paste(None, "t (h)\tA\n0,5\t9\n1\t7");
+    assert!(said.contains("header"), "{said}");
+    assert_eq!(
+        (e.rows[1].time.as_str(), e.rows[1].concentration.as_str()),
+        ("1", "7")
+    );
+    assert!(!e.subjects);
+}
+
+#[test]
+fn a_spreadsheet_cell_in_quotes_with_a_line_break_stays_one_cell() {
+    // A spreadsheet quotes a cell holding a line break; the wide header is then still found.
+    let mut e = DataEntry::new();
+    let said = e.paste(None, "\"Temps\n(h)\"\tA\tB\n0\t1\t2\n1\t3\t4\n");
+    assert!(said.starts_with("Pasted 2 subjects × 2 times"), "{said}");
+    assert_eq!(e.time_unit, "h");
+    assert_eq!(e.filled()[2].subject, "B");
+    // In a long paste, a quoted cell with a tab stays one cell and a doubled quote is a quote.
+    let mut e = DataEntry::new();
+    e.paste(None, "0\t\"a\tb \"\"x\"\"\"\t5\n1\t2\t");
+    assert_eq!(e.rows[0].concentration, "a b \"x\"");
+    assert_eq!(e.rows[0].dose, "5");
+    assert_eq!(e.rows[1].concentration, "2");
+}
+
+#[test]
+fn the_unit_cells_offer_the_engine_units_and_say_at_once_when_one_is_not_recognised() {
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    let mut h = harness(app);
+    h.run_steps(2);
+    // The list comes from the engine, mg/kg among the doses; the default units pass.
+    let units = h.state().units.clone();
+    assert!(units.dose.contains(&"mg/kg".to_owned()), "{units:?}");
+    assert_eq!(units.time, ["s", "min", "h", "d"]);
+    let checks = h.state().state.entry.as_ref().unwrap().unit_checks.clone();
+    assert_eq!(checks.map(|(_, m)| m), Some(Vec::new()));
+    // A unit the engine does not know: said under the name line, once the cell is left.
+    if let Some(e) = h.state_mut().state.entry.as_mut() {
+        e.dose_unit = "mg per kg".to_owned();
+    }
+    h.run_steps(2);
+    let messages = h
+        .state()
+        .state
+        .entry
+        .as_ref()
+        .unwrap()
+        .unit_checks
+        .clone()
+        .unwrap()
+        .1;
+    assert_eq!(messages.len(), 1, "{messages:?}");
+    assert!(
+        messages[0].contains("`mgperkg` is not recognised"),
+        "{messages:?}"
+    );
+    // The menu next to the dose unit puts a listed unit in the cell.
+    h.get_all_by_label("\u{23f7}").nth(2).unwrap().click();
+    h.run_steps(2);
+    h.get_by_label("mg/kg").click();
+    h.run_steps(3);
+    let entry = h.state().state.entry.clone().unwrap();
+    assert_eq!(entry.dose_unit, "mg/kg");
+    assert_eq!(entry.unit_checks.map(|(_, m)| m), Some(Vec::new()));
+}
+
+#[test]
+fn the_worksheet_unit_cells_offer_the_same_list() {
+    // An imported file: the menu next to the time unit sets the column's unit with data.set_column.
+    let mut h = harness(imported());
+    h.run_steps(2);
+    h.get_all_by_label("\u{23f7}").next().unwrap().click();
+    h.run_steps(2);
+    h.get_by_label("min").click();
+    h.run_steps(3);
+    let unit = described(h.state_mut())["worksheet"]["columns"][0]["unit"].clone();
+    assert_eq!(unit, "min");
+}
+
+#[test]
+fn the_subjects_typed_in_columns_give_the_nca_of_the_wide_paste_and_of_the_long_file() {
+    let mut file = imported_csv(&wide_as_csv(false));
+    let reference = nca_all(&mut file);
+    // "Several subjects" ticked on an empty table: three subjects in columns, the times typed once.
+    let mut app = typed(|e| {
+        e.set_subjects(true);
+        assert!(e.in_columns());
+        assert_eq!(e.grid.subjects, ["1", "2", "3"]);
+        e.dose_unit = "mg/kg".to_owned();
+        e.grid.subjects = vec!["A".to_owned(), "B".to_owned(), "C".to_owned()];
+        e.grid.doses = vec!["30".to_owned(), "30".to_owned(), "45".to_owned()];
+        // The times first (one column), then each subject's column from its first cell.
+        e.grid_focus = Some((0, 0));
+        e.paste(None, "0,5\n1\n2\n4\n8\n12\n24");
+        for (j, column) in [
+            "9,1\n8,4\n7,3\n5,6\n3,2\n1,9\n0,6",
+            "12,4\n11\n9,2\n6,5\n3,4\n1,7\n< LQ",
+            "7,8\n7,5\n\n5,9\n4,3\n3,1\n1,6",
+        ]
+        .iter()
+        .enumerate()
+        {
+            e.grid_focus = Some((0, j + 1));
+            e.paste(None, column);
+        }
+        e.grid_focus = None;
+        assert_eq!(e.grid.filled_times(), 7);
+        assert_eq!(e.filled().len(), 20);
+    });
+    assert_eq!(sheet(&mut app), sheet(&mut file));
+    assert_eq!(nca_all(&mut app), reference);
+
+    // The same grid as the wide paste, and back and forth between the layouts.
+    let mut pasted = DataEntry::new();
+    pasted.paste(None, WIDE);
+    let typed_grid = app.state.entry.clone();
+    assert!(
+        typed_grid.is_none(),
+        "the table is dropped once the worksheet exists"
+    );
+    let mut e = pasted.clone();
+    e.set_layout(Layout::Long);
+    assert!(!e.in_columns());
+    assert_eq!(e.filled(), pasted.filled());
+    e.set_layout(Layout::SubjectsInColumns);
+    assert_eq!(e.filled(), pasted.filled());
+    // Unticking "Several subjects" turns the grid into rows.
+    e.set_subjects(false);
+    assert_eq!(e.layout, Layout::Long);
+    assert_eq!(e.rows[0].time, "0,5");
+}
+
+#[test]
+fn the_number_of_subjects_and_add_a_row_shape_the_grid() {
+    let mut e = DataEntry::new();
+    e.set_subjects(true);
+    e.grid.set_subject_count(20);
+    assert_eq!(e.grid.subjects.last().map(String::as_str), Some("20"));
+    let times = e.grid.rows.len();
+    e.add_row();
+    assert_eq!(e.grid.rows.len(), times + 1);
+    assert!(e.grid.rows.iter().all(|r| r.values.len() == 20));
+    e.remove_row(0);
+    assert_eq!(e.grid.rows.len(), times);
+    // A long table that would lose a sample in columns stays as it is, and says why.
+    let mut e = DataEntry::new();
+    e.subjects = true;
+    for (i, c) in ["1", "2"].iter().enumerate() {
+        e.rows[i] = EntryRow {
+            subject: "A".to_owned(),
+            time: "1".to_owned(),
+            concentration: (*c).to_owned(),
+            dose: String::new(),
+        };
+    }
+    e.set_layout(Layout::SubjectsInColumns);
+    assert_eq!(e.layout, Layout::Long);
+    assert!(e.note.as_deref().unwrap().contains("two samples"));
+    // Ticking "Several subjects" over typed rows keeps one row per sample.
+    let mut e = DataEntry::new();
+    e.rows[0].time = "0".to_owned();
+    e.set_subjects(true);
+    assert_eq!(e.layout, Layout::Long);
+}
+
+#[test]
+fn the_grid_is_drawn_and_takes_a_paste_in_the_cell_in_focus() {
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    let mut h = harness(app);
+    h.run_steps(2);
+    h.get_by_label("Several subjects").click();
+    h.run_steps(2);
+    assert!(h.state().state.entry.as_ref().unwrap().in_columns());
+    // Text inputs: the name, three units, three subject names, three doses,
+    // then the grid row by row (time, subject 1, 2, 3).
+    let first_concentration = 1 + 3 + 3 + 3 + 1;
+    h.get_all_by_role(egui::accesskit::Role::TextInput)
+        .nth(first_concentration)
+        .unwrap()
+        .focus();
+    h.run_steps(2);
+    assert_eq!(
+        h.state().state.entry.as_ref().unwrap().grid_focus,
+        Some((0, 1))
+    );
+    h.input_mut()
+        .events
+        .push(egui::Event::Paste("4,1\t5,2\n3,3\t4,0".to_owned()));
+    h.run_steps(2);
+    let e = h.state().state.entry.clone().unwrap();
+    assert_eq!(e.grid.rows[0].values, ["4,1", "5,2", ""]);
+    assert_eq!(e.grid.rows[1].values, ["3,3", "4,0", ""]);
 }

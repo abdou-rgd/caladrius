@@ -2,12 +2,64 @@
 //! checks and `data.import` to store it, with the roles and units of the columns said explicitly.
 //! A table with a failed check waits, like an import, until the person says they looked at it.
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::app::{Notice, NoticeKind, Selection, UiApp};
 use crate::entry::DataEntry;
+use crate::unitpick::Accepted;
 
 impl UiApp {
+    /// The units the engine recognises, asked once.
+    pub(crate) fn fetch_units(&mut self) {
+        if self.units == Accepted::default() {
+            if let Ok(answer) = self.call("units.check", Value::Null) {
+                self.units = answer
+                    .get("accepted")
+                    .cloned()
+                    .and_then(|a| serde_json::from_value(a).ok())
+                    .unwrap_or_default();
+            }
+        }
+    }
+
+    /// The engine's checks of the table's units (`units.check`), made again when a unit changed
+    /// and the person left the unit cell.
+    pub(crate) fn check_entry_units(&mut self) {
+        self.fetch_units();
+        let Some(entry) = self.state.entry.as_ref() else {
+            return;
+        };
+        let units = entry.units();
+        let current = entry
+            .unit_checks
+            .as_ref()
+            .is_some_and(|(checked, _)| *checked == units);
+        if entry.unit_focus || current {
+            return;
+        }
+        let given = |u: &String| if u.is_empty() { Value::Null } else { json!(u) };
+        let [time, concentration, dose] = &units;
+        let messages = match self.call(
+            "units.check",
+            json!({ "time": given(time), "concentration": given(concentration), "dose": given(dose) }),
+        ) {
+            Ok(answer) => answer
+                .get("warnings")
+                .and_then(Value::as_array)
+                .map(|w| {
+                    w.iter()
+                        .filter_map(|w| w.get("message").and_then(Value::as_str))
+                        .map(str::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default(),
+            Err(message) => vec![message],
+        };
+        if let Some(entry) = self.state.entry.as_mut() {
+            entry.unit_checks = Some((units, messages));
+        }
+    }
+
     /// Shows the table being typed, or a new one.
     pub(crate) fn open_entry(&mut self) {
         if self.state.entry.is_none() {

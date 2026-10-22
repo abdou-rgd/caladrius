@@ -296,6 +296,52 @@ fn units_are_checked_together() {
 }
 
 #[test]
+fn every_unit_listed_as_accepted_passes_the_checks_and_nothing_else_is_listed() {
+    // The list shown to the person (T-108) comes from the tables the checks use: each unit and
+    // each other spelling is recognised, a dose per kg among them.
+    let a = accepted_units();
+    assert_eq!(a.time, ["s", "min", "h", "d"]);
+    assert_eq!(a.concentration.len(), 6 * 4);
+    assert!(a.concentration.contains(&"ng/mL".to_owned()));
+    assert!(a.dose.contains(&"mg/kg".to_owned()));
+    assert_eq!(a.other_spellings["\u{b5}g"], ["ug", "mcg"]);
+    let unrecognised = |t: &str, c: &str, d: &str| {
+        unit_warnings(Some(t), Some(c), Some(d))
+            .into_iter()
+            .filter(|w| w.code == "unrecognised_unit")
+            .count()
+    };
+    for t in &a.time {
+        assert_eq!(unrecognised(t, "mg/L", "mg"), 0, "{t}");
+    }
+    for c in &a.concentration {
+        assert_eq!(unrecognised("h", c, "mg"), 0, "{c}");
+    }
+    for d in &a.dose {
+        assert_eq!(unrecognised("h", "mg/L", d), 0, "{d}");
+    }
+    for (unit, others) in &a.other_spellings {
+        for o in others {
+            let t = if a.time.contains(unit) {
+                o.as_str()
+            } else {
+                "h"
+            };
+            let c = if a.time.contains(unit) {
+                "mg/L".to_owned()
+            } else if unit.ends_with('L') {
+                format!("mg/{o}")
+            } else {
+                format!("{o}/L")
+            };
+            assert_eq!(unrecognised(t, &c, "mg"), 0, "{unit} {o}");
+        }
+    }
+    assert_eq!(unrecognised("week", "mg/L", "mg"), 1);
+    assert_eq!(unrecognised("h", "mmol/L", "mg"), 1);
+}
+
+#[test]
 fn a_worksheet_reports_its_unit_warnings() {
     let (project, id) = sample_project();
     let w = project.worksheet(id).unwrap().unit_warnings();

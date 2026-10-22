@@ -227,6 +227,8 @@ pub struct UiApp {
     applied: Option<ThemeMode>,
     pub(crate) overview: Overview,
     pub(crate) sheet: Option<SheetView>,
+    /// The units the engine recognises (`units.check`), asked once for the unit cells.
+    pub(crate) units: crate::unitpick::Accepted,
     pub(crate) rejected: Option<Rejected>,
     pub(crate) pending: Option<PendingImport>,
     pub(crate) notice: Option<Notice>,
@@ -274,6 +276,7 @@ impl UiApp {
             applied: None,
             overview: Overview::default(),
             sheet: None,
+            units: crate::unitpick::Accepted::default(),
             rejected: None,
             pending: None,
             notice: None,
@@ -1037,21 +1040,28 @@ impl UiApp {
                 Some(p) => import::screen(ui, tokens, p, actions),
                 None => self.welcome(ui, tokens, actions),
             },
-            Selection::Entry => match self.state.entry.as_mut() {
-                Some(e) => entry::screen(ui, tokens, e, actions),
-                None => self.welcome(ui, tokens, actions),
-            },
-            Selection::Worksheet(_) => match &self.sheet {
-                Some(s) => sheet::screen(
-                    ui,
-                    tokens,
-                    &s.info,
-                    &s.table,
-                    self.rejected.as_ref(),
-                    actions,
-                ),
-                None => self.welcome(ui, tokens, actions),
-            },
+            Selection::Entry => {
+                self.check_entry_units();
+                match self.state.entry.as_mut() {
+                    Some(e) => entry::screen(ui, tokens, e, &self.units, actions),
+                    None => self.welcome(ui, tokens, actions),
+                }
+            }
+            Selection::Worksheet(_) => {
+                self.fetch_units();
+                match &self.sheet {
+                    Some(s) => sheet::screen(
+                        ui,
+                        tokens,
+                        &s.info,
+                        &s.table,
+                        self.rejected.as_ref(),
+                        &self.units,
+                        actions,
+                    ),
+                    None => self.welcome(ui, tokens, actions),
+                }
+            }
             Selection::Settings => settingspage::central(
                 ui,
                 tokens,

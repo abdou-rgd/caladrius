@@ -20,6 +20,8 @@
 pub mod app;
 pub mod entry;
 pub mod entryflow;
+pub mod entrygrid;
+pub mod entrywide;
 pub mod fit;
 pub mod fitform;
 pub mod fitplots;
@@ -45,6 +47,7 @@ pub mod settingspage;
 pub mod sheet;
 pub mod sim;
 pub mod theme;
+pub mod unitpick;
 pub mod widgets;
 
 pub use app::{Action, Request, Selection, UiApp, UiState};

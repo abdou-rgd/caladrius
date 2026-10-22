@@ -5,6 +5,7 @@ mod analysis;
 mod compare;
 mod data;
 mod project;
+mod units;
 
 pub(crate) use project::document;
 
@@ -37,6 +38,7 @@ pub(crate) const COMMANDS: &[CommandDef] = &[
     data::DESCRIBE,
     data::SET_COLUMN,
     data::SET_CELL,
+    units::CHECK,
     analysis::NCA_RUN,
     analysis::ANALYSIS_GET,
     analysis::FIT_INITIAL_ESTIMATES,

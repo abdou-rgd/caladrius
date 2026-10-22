@@ -25,6 +25,10 @@ const PASTED: &str = "Temps (h)\tConc (mg/L)\tDose (mg)\r\n0\t0\t100\r\n0,25\t1,
 /// Six invented oral profiles (no real subject): BLQ before the dose and at the end of some.
 const SIX_SUBJECTS: &str = "Subject,Time (h),Conc (mg/L),Dose (mg)\nS1,0,BLQ,100\nS1,0.5,4.37,100\nS1,1,6.51,100\nS1,2,7.73,100\nS1,4,6.78,100\nS1,6,5.4,100\nS1,8,4.25,100\nS1,12,2.63,100\nS1,24,0.624,100\nS1,36,0.148,100\nS2,0,BLQ,100\nS2,0.5,2.68,100\nS2,1,4.36,100\nS2,2,5.95,100\nS2,4,6.17,100\nS2,6,5.39,100\nS2,8,4.55,100\nS2,12,3.19,100\nS2,24,1.08,100\nS2,36,0.368,100\nS3,0,BLQ,100\nS3,0.5,6.6,100\nS3,1,9.09,100\nS3,2,9.66,100\nS3,4,7.55,100\nS3,6,5.61,100\nS3,8,4.15,100\nS3,12,2.28,100\nS3,24,0.377,100\nS3,36,BLQ,100\nS4,0,BLQ,100\nS4,0.5,2.76,100\nS4,1,4.34,100\nS4,2,5.64,100\nS4,4,5.66,100\nS4,6,5.03,100\nS4,8,4.38,100\nS4,12,3.32,100\nS4,24,1.43,100\nS4,36,0.618,100\nS5,0,BLQ,100\nS5,0.5,6.63,100\nS5,1,8.44,100\nS5,2,8.05,100\nS5,4,5.54,100\nS5,6,3.72,100\nS5,8,2.49,100\nS5,12,1.12,100\nS5,24,0.102,100\nS5,36,BLQ,100\nS6,0,BLQ,100\nS6,0.5,2.3,100\nS6,1,3.88,100\nS6,2,5.65,100\nS6,4,6.32,100\nS6,6,5.69,100\nS6,8,4.81,100\nS6,12,3.28,100\nS6,24,0.99,100\nS6,36,0.298,100\n";
 
+/// Invented data shaped like a course handout (T-108): times down the first column, one column per
+/// subject, a Dose line, decimal commas and one value below the limit of quantification.
+const WIDE: &str = "Temps (h)\t1\t2\t3\t4\r\nDose (mg/kg)\t30\t30\t45\t45\r\n0,5\t9,1\t12,4\t7,8\t10,2\r\n1\t8,4\t11,0\t7,5\t9,6\r\n2\t7,3\t9,2\t6,6\t8,1\r\n4\t5,6\t6,5\t5,9\t6,0\r\n8\t3,2\t3,4\t4,3\t3,5\r\n12\t1,9\t1,7\t3,1\t2,0\r\n24\t0,6\t< LQ\t1,6\t0,7\r\n";
+
 /// The reported failure: a decimal comma read with a comma separator.
 const AMBIGUOUS: &str = "time,conc\n0,25\n0,5\n1,2\n2,1\n";
 
@@ -38,7 +42,11 @@ fn out_dir() -> PathBuf {
 
 /// The scenes whose page is longer than one screen are drawn on a taller canvas.
 fn size_of(name: &str) -> (f32, f32) {
-    if name.starts_with("35-") || name.starts_with("36-") || name.contains("more-options") {
+    if name.starts_with("35-")
+        || name.starts_with("36-")
+        || name.contains("more-options")
+        || name.contains("wide")
+    {
         (SIZE.0, 2000.0)
     } else {
         SIZE
@@ -59,6 +67,13 @@ fn render(name: &str, mut app: UiApp) -> Result<(), String> {
     // A scene named for "More options" shows the collapsed section open.
     if name.contains("more-options") {
         harness.get_by_label("More options").click_accesskit();
+        harness.run_steps(6);
+    }
+    // A scene named for the unit menu shows the dose unit's list open.
+    if name.contains("unit-menu") {
+        if let Some(button) = harness.get_all_by_label("\u{23f7}").nth(2) {
+            button.click_accesskit();
+        }
         harness.run_steps(6);
     }
     let image = harness.render()?;
@@ -524,6 +539,37 @@ fn scenes() -> Vec<(&'static str, UiApp)> {
     let mut app = UiApp::new();
     app.state.mode = ThemeMode::Dark;
     scenes.push(("48-welcome-dark", app));
+
+    // A wide table pasted with "Several subjects" on: one row per sample (T-108).
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.subjects = true;
+        let note = entry.paste(None, WIDE);
+        entry.note = Some(note);
+    }
+    scenes.push(("49-entry-pasted-wide-table", app));
+
+    // "Several subjects" ticked: five subjects in columns, the times typed once (T-108).
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.set_subjects(true);
+        entry.grid.set_subject_count(5);
+        entry.grid_focus = Some((0, 0));
+        entry.paste(None, "0,5\n1\n2\n4\n8");
+        entry.grid_focus = Some((0, 1));
+        entry.paste(None, "9,1\t12,4\n8,4\t11,0");
+    }
+    scenes.push(("51-entry-subjects-in-columns", app));
+
+    // A dose unit the engine does not recognise, and the list of the recognised ones.
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.dose_unit = "mg per kg".to_owned();
+    }
+    scenes.push(("50-entry-unit-menu-and-check", app));
 
     scenes
 }

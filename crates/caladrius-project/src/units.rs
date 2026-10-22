@@ -28,38 +28,107 @@ fn normalise(unit: &str) -> String {
         .replace(' ', "")
 }
 
+/// A unit a column may carry: the spelling shown, the other spellings read the same, and its size
+/// in the base unit of its kind (grams, litres, seconds). These tables are the units Caladrius
+/// recognises; [`accepted_units`] lists them for the person and the agents.
+type Known = (&'static str, &'static [&'static str], f64);
+
+/// Units of mass, grams in one unit.
+const MASSES: [Known; 6] = [
+    ("pg", &[], 1e-12),
+    ("ng", &[], 1e-9),
+    ("\u{b5}g", &["ug", "mcg"], 1e-6),
+    ("mg", &[], 1e-3),
+    ("g", &[], 1.0),
+    ("kg", &[], 1e3),
+];
+
+/// Units of volume, litres in one unit.
+const VOLUMES: [Known; 4] = [
+    ("\u{b5}L", &["uL", "ul"], 1e-6),
+    ("mL", &["ml"], 1e-3),
+    ("dL", &["dl"], 1e-1),
+    ("L", &["l"], 1.0),
+];
+
+/// Units of time, seconds in one unit.
+const TIMES: [Known; 4] = [
+    ("s", &["sec"], 1.0),
+    ("min", &[], 60.0),
+    ("h", &["hr", "hour", "hours"], 3600.0),
+    ("d", &["day", "days"], 86400.0),
+];
+
+/// The size of a normalised unit in a table, when the table has it.
+fn size_in(table: &[Known], unit: &str) -> Option<f64> {
+    table
+        .iter()
+        .find(|(shown, other, _)| normalise(shown) == unit || other.contains(&unit))
+        .map(|(_, _, size)| *size)
+}
+
 /// Grams in one unit of mass, for the units written as a prefix and `g`.
 fn mass_in_grams(unit: &str) -> Option<f64> {
-    match unit {
-        "kg" => Some(1e3),
-        "g" => Some(1.0),
-        "mg" => Some(1e-3),
-        "ug" | "mcg" => Some(1e-6),
-        "ng" => Some(1e-9),
-        "pg" => Some(1e-12),
-        _ => None,
-    }
+    size_in(&MASSES, unit)
 }
 
 /// Litres in one unit of volume.
 fn volume_in_litres(unit: &str) -> Option<f64> {
-    match unit {
-        "L" | "l" => Some(1.0),
-        "dL" | "dl" => Some(1e-1),
-        "mL" | "ml" => Some(1e-3),
-        "uL" | "ul" => Some(1e-6),
-        _ => None,
-    }
+    size_in(&VOLUMES, unit)
 }
 
 /// Seconds in one unit of time.
 fn time_in_seconds(unit: &str) -> Option<f64> {
-    match unit {
-        "s" | "sec" => Some(1.0),
-        "min" => Some(60.0),
-        "h" | "hr" | "hour" | "hours" => Some(3600.0),
-        "d" | "day" | "days" => Some(86400.0),
-        _ => None,
+    size_in(&TIMES, unit)
+}
+
+/// The units recognised for each kind of column, as shown to the person (`units.check`). Any
+/// other text is still accepted as a unit; it is only not checked.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AcceptedUnits {
+    /// The units of time.
+    pub time: Vec<String>,
+    /// Every mass per volume, by mass then volume: `pg/µL` … `kg/L`.
+    pub concentration: Vec<String>,
+    /// Every mass, then every mass per kg of body weight (`mg/kg`).
+    pub dose: Vec<String>,
+    /// The other spellings read the same as a unit shown, such as `ug` for `µg` or `hr` for `h`;
+    /// spaces are ignored and the Greek mu is read as the micro sign.
+    pub other_spellings: BTreeMap<String, Vec<String>>,
+}
+
+/// The units recognised, from the same tables the checks use.
+pub fn accepted_units() -> AcceptedUnits {
+    let shown = |table: &[Known]| -> Vec<String> {
+        table.iter().map(|(s, _, _)| (*s).to_owned()).collect()
+    };
+    let masses = shown(&MASSES);
+    let concentration = masses
+        .iter()
+        .flat_map(|m| VOLUMES.iter().map(move |(v, _, _)| format!("{m}/{v}")))
+        .collect();
+    let dose = masses
+        .iter()
+        .cloned()
+        .chain(masses.iter().map(|m| format!("{m}/kg")))
+        .collect();
+    let other_spellings = MASSES
+        .iter()
+        .chain(&VOLUMES)
+        .chain(&TIMES)
+        .filter(|(_, other, _)| !other.is_empty())
+        .map(|(s, other, _)| {
+            (
+                (*s).to_owned(),
+                other.iter().map(|o| (*o).to_owned()).collect(),
+            )
+        })
+        .collect();
+    AcceptedUnits {
+        time: shown(&TIMES),
+        concentration,
+        dose,
+        other_spellings,
     }
 }
 
