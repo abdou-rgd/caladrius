@@ -4,10 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Caladrius</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="caladrius-icon-32.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="caladrius-icon-256.png">
+  <link rel="apple-touch-icon" href="caladrius-icon-256.png">
+  <meta name="theme-color" content="#83d383">
   <meta name="description" content="Caladrius in the browser: non-compartmental analysis, compartmental models and fitting, computed on this computer. Nothing is sent anywhere.">
   <style>
-    :root { color-scheme: light dark; --bg: #f7f7f4; --text: #1f2a24; --muted: #5b665f; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #16191a; --text: #e6e9e4; --muted: #9aa49d; } }
+    :root { color-scheme: light dark; --bg: #f6f7f2; --text: #132017; --muted: #5b675e; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0e1310; --text: #e5ece6; --muted: #95a399; } }
     html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); }
     /* eframe sizes the canvas to its parent. */
     #caladrius { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
@@ -18,11 +22,13 @@
     }
     #loading p { margin: 0; max-width: 34rem; }
     #loading .muted { color: var(--muted); font-size: 14px; }
+    #loading img { width: 72px; height: 72px; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
   <canvas id="caladrius"></canvas>
   <div id="loading">
+    <img src="caladrius-icon-256.png" alt="">
     <p><strong>Caladrius</strong> is loading (about 2 MB, once).</p>
     <p class="muted">Everything runs in this page: the files you open and the numbers it computes stay on this computer. Best on a computer with a mouse.</p>
     <noscript><p>Caladrius needs JavaScript and WebAssembly.</p></noscript>

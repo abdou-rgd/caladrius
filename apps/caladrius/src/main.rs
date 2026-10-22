@@ -283,13 +283,23 @@ fn main() -> ExitCode {
         }
         Launch::Window(file) => file,
     };
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title("Caladrius")
+        .with_app_id("caladrius")
+        .with_inner_size([1400.0, 900.0])
+        .with_min_inner_size([900.0, 600.0])
+        .with_drag_and_drop(true);
+    // The logo in the title bar and the task bar; without it the system's default icon.
+    if let Ok(icon) = caladrius_ui::logo::decode(caladrius_ui::logo::ICON_256) {
+        viewport = viewport.with_icon(egui::IconData {
+            rgba: icon.rgba,
+            width: icon.width,
+            height: icon.height,
+        });
+    }
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Caladrius")
-            .with_inner_size([1400.0, 900.0])
-            .with_min_inner_size([900.0, 600.0])
-            .with_drag_and_drop(true),
+        viewport,
         ..eframe::NativeOptions::default()
     };
     let result = eframe::run_native(

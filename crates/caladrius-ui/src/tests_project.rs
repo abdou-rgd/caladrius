@@ -38,11 +38,11 @@ fn edit_a_cell(app: &mut UiApp) {
 fn a_project_is_modified_when_it_differs_from_the_last_saved_one() {
     let mut app = UiApp::new();
     assert!(!app.is_dirty());
-    assert_eq!(app.window_title(), "Untitled project - Caladrius");
+    assert_eq!(app.window_title(), "Caladrius - Untitled project");
     app.load_csv("oral.csv", crate::tests::ORAL.as_bytes());
     app.perform(vec![Action::ImportConfirm]);
     assert!(app.is_dirty());
-    assert_eq!(app.window_title(), "* Untitled project - Caladrius");
+    assert_eq!(app.window_title(), "Caladrius - Untitled project *");
     // A first save has no file yet: it asks where, and suggests the name from the project.
     app.perform(vec![Action::SaveProject]);
     let (suggested, bytes, ask) = saved(&mut app);
@@ -53,7 +53,7 @@ fn a_project_is_modified_when_it_differs_from_the_last_saved_one() {
     app.project_saved("study.caladrius.json");
     assert!(!app.is_dirty());
     assert_eq!(app.file_name(), Some("study.caladrius.json"));
-    assert_eq!(app.window_title(), "Untitled project - Caladrius");
+    assert_eq!(app.window_title(), "Caladrius - Untitled project");
     // The document is the project as `project.save` gives it.
     let doc: Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(doc["format"], "caladrius-project");

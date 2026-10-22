@@ -386,7 +386,9 @@ fn no_colour_radius_or_margin_is_written_outside_the_theme() {
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
-        if name == "theme.rs" || name == "tests.rs" || !name.ends_with(".rs") {
+        // `logo.rs` turns the decoded pixels of the logo image into a texture: image data, not
+        // an interface colour.
+        if name == "theme.rs" || name == "tests.rs" || name == "logo.rs" || !name.ends_with(".rs") {
             continue;
         }
         let text = std::fs::read_to_string(&path).unwrap();
@@ -464,7 +466,9 @@ fn sizes_and_spacing_are_tokens_not_numbers_in_the_screens() {
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
-        if name == "theme.rs" || name == "tests.rs" || !name.ends_with(".rs") {
+        // `logo.rs` turns the decoded pixels of the logo image into a texture: image data, not
+        // an interface colour.
+        if name == "theme.rs" || name == "tests.rs" || name == "logo.rs" || !name.ends_with(".rs") {
             continue;
         }
         let text = std::fs::read_to_string(&path).unwrap();
@@ -595,6 +599,14 @@ fn the_semi_log_toggle_never_fails_on_zeros_and_says_what_is_hidden() {
         )
         .unwrap();
     assert_eq!(table["rows"][0], json!([0.0, 0.0, 100.0]));
+}
+
+#[test]
+fn the_version_is_shown_on_the_welcome_page_and_in_the_status_bar() {
+    let mut h = harness(UiApp::new());
+    h.run_steps(2);
+    let label = format!("Caladrius {}", crate::VERSION);
+    assert_eq!(h.query_all_by_label(&label).count(), 2);
 }
 
 #[test]

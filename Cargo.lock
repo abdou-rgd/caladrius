@@ -659,6 +659,7 @@ dependencies = [
  "egui_kittest",
  "egui_plot",
  "image",
+ "png",
  "serde",
  "serde_json",
 ]
