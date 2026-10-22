@@ -112,4 +112,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-099 | Frozen demo tier: generator, 40 exercises, multi-seed runner, stub dry run | apothicaire | done | T-066, T-071, T-083 |
 | T-100 | pass^k next to the per-turn rate; paired v1/v2 comparison on exercises | apothicaire | done | T-083, T-099 |
 | T-101 | PKNCA recomputes the frozen gold (independent truth, RT-B8) | apothicaire | done | T-099 |
-| T-102 | Apothicaire: accept a dose per kg (mg/kg) and carry it to the units of CL and V | apothicaire | to review | T-098 |
+| T-102 | Apothicaire: accept a dose per kg (mg/kg) and carry it to the units of CL and V | apothicaire | done | T-098 |
