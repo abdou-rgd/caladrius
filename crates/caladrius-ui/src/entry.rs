@@ -8,8 +8,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::app::Action;
+use crate::entrywide::{self, Wide};
 use crate::import::{PendingImport, ReadOptions};
 use crate::theme::Tokens;
+use crate::unitpick::{self, Accepted};
 
 /// The name a worksheet gets when the name field is left empty.
 pub const DEFAULT_NAME: &str = "Typed data";
@@ -100,6 +102,9 @@ pub struct DataEntry {
     pub concentration_unit: String,
     pub dose_unit: String,
     pub rows: Vec<EntryRow>,
+    /// The dose given to every subject without one ("Same dose for every subject").
+    #[serde(default)]
+    pub common_dose: String,
     /// The cell that had the keyboard focus at the last frame, where a paste lands.
     #[serde(skip)]
     pub focus: Option<(usize, Field)>,
@@ -109,6 +114,14 @@ pub struct DataEntry {
     /// What the last paste did.
     #[serde(skip)]
     pub note: Option<String>,
+    /// The engine's checks of the units (`units.check`): the time, concentration and dose units
+    /// they were made on, and their messages.
+    #[serde(skip)]
+    pub unit_checks: Option<([String; 3], Vec<String>)>,
+    /// Whether a unit cell had the keyboard focus at the last frame: the units are checked once
+    /// the person leaves the cell.
+    #[serde(skip)]
+    pub unit_focus: bool,
 }
 
 impl Default for DataEntry {
@@ -126,9 +139,12 @@ impl DataEntry {
             concentration_unit: "mg/L".to_owned(),
             dose_unit: "mg".to_owned(),
             rows: vec![EntryRow::default(); START_ROWS],
+            common_dose: String::new(),
             focus: None,
             review: None,
             note: None,
+            unit_checks: None,
+            unit_focus: false,
         }
     }
 
@@ -268,13 +284,14 @@ impl DataEntry {
     /// Spreads a paste of several cells (rows on lines, cells separated by tabs, as a spreadsheet
     /// copies them) over the table from `at`, or from the first empty row when no cell has the
     /// focus. Rows are added as needed. A first line without a digit is a header and is left out.
-    /// Returns what was done, in one sentence.
+    /// A wide table (times down, one column per subject) is turned into one row per sample first
+    /// ([`entrywide`]). Returns what was done, in one sentence or a few.
     pub fn paste(&mut self, at: Option<(usize, Field)>, text: &str) -> String {
+        let mut lines = split_paste(text);
+        if let Some(wide) = entrywide::read(&lines) {
+            return self.paste_wide(at.map(|(row, _)| row), wide);
+        }
         let fields = self.fields();
-        let mut lines: Vec<Vec<String>> = text
-            .lines()
-            .map(|line| split_cells(line.trim_end_matches('\r')))
-            .collect();
         while lines.last().is_some_and(|l| l.iter().all(|c| c.is_empty())) {
             lines.pop();
         }
@@ -329,15 +346,186 @@ impl DataEntry {
         }
         said
     }
+
+    /// Writes the rows of a wide table from row `at`, or under the last filled row, whole rows
+    /// (subject, time, concentration, dose). Shows the subject column, and takes the units written
+    /// in the time header and the dose line.
+    fn paste_wide(&mut self, at: Option<usize>, wide: Wide) -> String {
+        let switched = !self.subjects;
+        self.subjects = true;
+        let fields = self.fields();
+        let start = at.unwrap_or_else(|| {
+            self.rows
+                .iter()
+                .rposition(|r| !r.is_blank(&fields))
+                .map_or(0, |last| last + 1)
+        });
+        let n = wide.rows.len();
+        for (i, row) in wide.rows.into_iter().enumerate() {
+            while self.rows.len() <= start + i {
+                self.add_row();
+            }
+            if let Some(r) = self.rows.get_mut(start + i) {
+                *r = row;
+            }
+        }
+        if let Some(unit) = wide.time_unit {
+            self.time_unit = unit;
+        }
+        if let Some(unit) = wide.dose_unit {
+            self.dose_unit = unit;
+        }
+        let subjects = wide.subjects.len();
+        let mut said = format!(
+            "Pasted {subjects} subjects × {} time{} as {n} rows from row {}, one per sample (the table had one column per subject).",
+            wide.times,
+            if wide.times == 1 { "" } else { "s" },
+            start + 1
+        );
+        if switched {
+            said.push_str(" \"Several subjects\" is now on.");
+        }
+        let empty = subjects * wide.times - n;
+        if empty > 0 {
+            said.push_str(&format!(
+                " {empty} empty cell{} left out.",
+                if empty == 1 { " was" } else { "s were" }
+            ));
+        }
+        if wide.titles > 0 {
+            said.push_str(&format!(
+                " {} line{} above the table left out.",
+                wide.titles,
+                if wide.titles == 1 { " was" } else { "s were" }
+            ));
+        }
+        if wide.dose_row {
+            said.push_str(" Each subject's dose comes from the Dose line, on its first row.");
+        } else {
+            said.push_str(" No Dose line: type each subject's dose on its first row, or give the same dose to every subject below.");
+        }
+        said
+    }
+
+    /// Gives [`DataEntry::common_dose`] to every subject that has no dose yet, on the subject's
+    /// first filled row (the worksheet takes a subject's dose from there). A subject with a dose
+    /// keeps it.
+    pub fn fill_dose(&mut self) -> String {
+        let dose = self.common_dose.trim().to_owned();
+        if dose.is_empty() {
+            return "Type the dose to give first.".to_owned();
+        }
+        let fields = self.fields();
+        let subject = |r: &EntryRow| {
+            if self.subjects {
+                r.subject.trim().to_owned()
+            } else {
+                String::new()
+            }
+        };
+        let mut first_rows: Vec<(String, usize)> = Vec::new();
+        let mut dosed: Vec<String> = Vec::new();
+        for (i, r) in self.rows.iter().enumerate() {
+            if r.is_blank(&fields) {
+                continue;
+            }
+            let s = subject(r);
+            if !r.dose.trim().is_empty() {
+                dosed.push(s.clone());
+            }
+            if !first_rows.iter().any(|(k, _)| *k == s) {
+                first_rows.push((s, i));
+            }
+        }
+        let mut given = 0;
+        for (s, i) in first_rows {
+            if dosed.contains(&s) {
+                continue;
+            }
+            if let Some(r) = self.rows.get_mut(i) {
+                r.dose.clone_from(&dose);
+                given += 1;
+            }
+        }
+        if given == 0 {
+            "Every subject already has a dose: nothing changed.".to_owned()
+        } else {
+            format!(
+                "Dose {dose} given to {given} subject{} that had none.",
+                if given == 1 { "" } else { "s" }
+            )
+        }
+    }
+
+    /// The units to check, as typed.
+    pub fn units(&self) -> [String; 3] {
+        [
+            self.time_unit.trim().to_owned(),
+            self.concentration_unit.trim().to_owned(),
+            self.dose_unit.trim().to_owned(),
+        ]
+    }
 }
 
-/// The cells of one pasted line: tabs when there are any, else runs of spaces.
-fn split_cells(line: &str) -> Vec<String> {
-    if line.contains('\t') {
-        line.split('\t').map(|c| c.trim().to_owned()).collect()
-    } else {
-        line.split_whitespace().map(str::to_owned).collect()
+/// The cells of a paste, line by line. With tabs, as a spreadsheet copies cells: a cell in double
+/// quotes may hold a tab or a line break (read as a space), and a blank line has no cell. Without
+/// tabs, the cells of a line are separated by spaces.
+fn split_paste(text: &str) -> Vec<Vec<String>> {
+    if !text.contains('\t') {
+        return text
+            .lines()
+            .map(|line| split_cells(line.trim_end_matches('\r')))
+            .collect();
     }
+    let mut lines = Vec::new();
+    let mut line: Vec<String> = Vec::new();
+    let mut cell = String::new();
+    let mut quoted = false;
+    let mut chars = text.chars().peekable();
+    let end_line = |line: &mut Vec<String>, lines: &mut Vec<Vec<String>>| {
+        if line.iter().all(|c| c.is_empty()) {
+            line.clear();
+        }
+        lines.push(std::mem::take(line));
+    };
+    while let Some(ch) = chars.next() {
+        if quoted {
+            match ch {
+                '"' if chars.peek() == Some(&'"') => {
+                    chars.next();
+                    cell.push('"');
+                }
+                '"' => quoted = false,
+                '\r' => {}
+                '\n' | '\t' => cell.push(' '),
+                _ => cell.push(ch),
+            }
+            continue;
+        }
+        match ch {
+            '"' if cell.trim().is_empty() => {
+                cell.clear();
+                quoted = true;
+            }
+            '\t' => line.push(std::mem::take(&mut cell).trim().to_owned()),
+            '\r' => {}
+            '\n' => {
+                line.push(std::mem::take(&mut cell).trim().to_owned());
+                end_line(&mut line, &mut lines);
+            }
+            _ => cell.push(ch),
+        }
+    }
+    if !cell.is_empty() || !line.is_empty() {
+        line.push(cell.trim().to_owned());
+        end_line(&mut line, &mut lines);
+    }
+    lines
+}
+
+/// The cells of one pasted line without tabs: runs of spaces separate them.
+fn split_cells(line: &str) -> Vec<String> {
+    line.split_whitespace().map(str::to_owned).collect()
 }
 
 /// A cell for the tab-separated text: quoted only when it holds a quote.
@@ -355,7 +543,13 @@ pub fn is_table_paste(text: &str) -> bool {
 }
 
 /// The screen.
-pub fn screen(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, actions: &mut Vec<Action>) {
+pub fn screen(
+    ui: &mut Ui,
+    tokens: &Tokens,
+    entry: &mut DataEntry,
+    accepted: &Accepted,
+    actions: &mut Vec<Action>,
+) {
     let c = &tokens.colors;
     // A paste of several cells fills the table; a single value goes to the cell as usual.
     let pasted = ui.input_mut(|i| {
@@ -380,7 +574,7 @@ pub fn screen(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, actions: &mut
             .strong(),
     );
     ui.label(
-        RichText::new("One row per sample. Copy the cells in a spreadsheet and press Ctrl+V in the table to fill it at once; the dose is needed once per subject.")
+        RichText::new("One row per sample. Copy the cells in a spreadsheet and press Ctrl+V in the table to fill it at once; the dose is needed once per subject. A table with one column per subject (times down the first column) is turned into one row per sample.")
             .color(c.text_muted.color()),
     );
     ui.add_space(tokens.spacing.medium);
@@ -396,10 +590,26 @@ pub fn screen(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, actions: &mut
         );
     });
     ui.add_space(tokens.spacing.medium);
+    // The engine's checks of the units, made once the person left the unit cell.
+    if let Some((_, messages)) = &entry.unit_checks {
+        for m in messages {
+            ui.label(RichText::new(format!("Check the units: {m}.")).color(c.warning.color()));
+        }
+        if !messages.is_empty() {
+            ui.label(
+                RichText::new(
+                    "The \u{23f7} button next to each unit lists the units Caladrius recognises.",
+                )
+                .small()
+                .color(c.text_muted.color()),
+            );
+        }
+    }
 
     let fields = entry.fields();
     let mut remove = None;
     let mut focus = None;
+    let mut unit_focus = false;
     egui::Grid::new("entry-table")
         .striped(true)
         .spacing([tokens.spacing.small, tokens.spacing.small])
@@ -414,10 +624,16 @@ pub fn screen(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, actions: &mut
             for f in &fields {
                 match entry.unit_mut(*f) {
                     Some(unit) => {
-                        ui.add_sized(
-                            cell,
-                            egui::TextEdit::singleline(unit).id(Id::new(("entry-unit", f.role()))),
+                        let (response, _) = unitpick::field(
+                            ui,
+                            tokens,
+                            Id::new(("entry-unit", f.role())),
+                            unit,
+                            f.role(),
+                            accepted,
+                            cell[0],
                         );
+                        unit_focus |= response.has_focus();
                     }
                     None => {
                         ui.label("");
@@ -455,6 +671,7 @@ pub fn screen(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, actions: &mut
             }
         });
     entry.focus = focus;
+    entry.unit_focus = unit_focus;
     if let Some(i) = remove {
         entry.remove_row(i);
     }
@@ -471,6 +688,23 @@ pub fn screen(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, actions: &mut
                 .color(c.text_muted.color()),
         );
     });
+    if entry.subjects {
+        ui.horizontal(|ui| {
+            ui.label("Same dose for every subject");
+            ui.add(
+                egui::TextEdit::singleline(&mut entry.common_dose)
+                    .desired_width(tokens.size.cell_width),
+            );
+            ui.label(RichText::new(entry.dose_unit.trim()).color(c.text_muted.color()));
+            if ui
+                .button("Give it to the subjects without a dose")
+                .on_hover_text("Writes this dose on the first row of each subject whose dose cells are all empty.")
+                .clicked()
+            {
+                entry.note = Some(entry.fill_dose());
+            }
+        });
+    }
     if let Some(note) = &entry.note {
         ui.label(RichText::new(note).small().color(c.text_muted.color()));
     }

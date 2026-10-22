@@ -57,6 +57,7 @@ fn the_commands_are_the_documented_ones() {
             "data.describe",
             "data.set_column",
             "data.set_cell",
+            "units.check",
             "nca.run",
             "analysis.get",
             "fit.initial_estimates",

@@ -9,6 +9,7 @@ use crate::app::Action;
 use crate::fmt;
 use crate::model::{Table, WorksheetInfo};
 use crate::theme::Tokens;
+use crate::unitpick::{self, Accepted};
 
 /// A cell entry the engine refused, kept so the person sees what was typed.
 #[derive(Debug, Clone, PartialEq)]
@@ -231,6 +232,7 @@ pub fn screen(
     info: &WorksheetInfo,
     table: &Table,
     rejected: Option<&Rejected>,
+    accepted: &Accepted,
     actions: &mut Vec<Action>,
 ) {
     let c = &tokens.colors;
@@ -300,11 +302,19 @@ pub fn screen(
                 let mut text: String = ui
                     .data(|d| d.get_temp::<String>(id))
                     .unwrap_or_else(|| col.unit.clone().unwrap_or_default());
-                let response = ui.add(egui::TextEdit::singleline(&mut text).desired_width(tokens.size.text_box_width));
+                let (response, picked) = unitpick::field(
+                    ui,
+                    tokens,
+                    id.with("edit"),
+                    &mut text,
+                    &col.role,
+                    accepted,
+                    tokens.size.text_box_width,
+                );
                 if response.changed() {
                     ui.data_mut(|d| d.insert_temp(id, text.clone()));
                 }
-                if response.lost_focus() {
+                if response.lost_focus() || picked.is_some() {
                     ui.data_mut(|d| d.remove::<String>(id));
                     if text.trim() != col.unit.clone().unwrap_or_default() {
                         actions.push(Action::SetColumn {

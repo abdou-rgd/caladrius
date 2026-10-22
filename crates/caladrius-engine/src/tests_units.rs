@@ -60,3 +60,44 @@ fn nca_run_passes_the_units_through() {
         Err(e) => assert!(e.to_string().contains("hours"), "{e}"),
     }
 }
+
+#[test]
+fn units_check_lists_the_recognised_units_and_checks_the_ones_given() {
+    // T-108: the typed table and the worksheet show these lists next to their unit cells.
+    let mut e = Engine::new();
+    let listed = run(&mut e, "units.check", Value::Null);
+    assert!(listed["warnings"].as_array().unwrap().is_empty());
+    let dose = listed["accepted"]["dose"].as_array().unwrap();
+    assert!(dose.contains(&json!("mg/kg")) && dose.contains(&json!("mg")));
+    assert_eq!(listed["accepted"]["time"], json!(["s", "min", "h", "d"]));
+    let checked = run(
+        &mut e,
+        "units.check",
+        json!({ "time": "h", "concentration": "mg/L", "dose": "mg/kg" }),
+    );
+    assert!(
+        checked["warnings"].as_array().unwrap().is_empty(),
+        "{checked}"
+    );
+    let wrong = run(
+        &mut e,
+        "units.check",
+        json!({ "time": "hrs", "concentration": "mg/L", "dose": "mg" }),
+    );
+    assert_eq!(wrong["warnings"][0]["code"], "unrecognised_unit");
+    assert!(
+        wrong["warnings"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("`hrs`")
+    );
+    let schema = describe()
+        .into_iter()
+        .find(|c| c.id == "units.check")
+        .unwrap()
+        .result_schema;
+    for answer in [&listed, &checked, &wrong] {
+        validate::check(&schema, &schema, answer).unwrap();
+    }
+    assert!(e.execute("units.check", json!({ "mass": "mg" })).is_err());
+}
