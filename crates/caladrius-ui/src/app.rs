@@ -7,6 +7,7 @@ use egui::{Context, RichText, Ui};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use crate::entry::{self, DataEntry};
 use crate::fit::FitPage;
 use crate::fitform;
 use crate::fitplots;
@@ -29,6 +30,12 @@ use crate::theme::{ThemeMode, Tokens};
 pub enum Action {
     Select(Selection),
     OpenCsv,
+    /// Type or paste data into a table instead of opening a file.
+    OpenEntry,
+    /// Check the typed table and make it a worksheet (`data.preview`, then `data.import`).
+    EntryCreate,
+    /// Leave the typed table, dropping it.
+    EntryCancel,
     /// A new NCA from the worksheet in view.
     NewAnalysis,
     /// A new model fit from the worksheet in view.
@@ -126,6 +133,8 @@ pub enum Selection {
     #[default]
     Welcome,
     Import,
+    /// The table to type or paste data into.
+    Entry,
     Worksheet(u64),
     Analysis(u64),
     /// A model fit being set up, not yet run.
@@ -186,6 +195,9 @@ pub struct UiState {
     /// What is typed in the search box of the settings page.
     #[serde(default)]
     pub settings_query: String,
+    /// The table being typed, kept while the person looks elsewhere.
+    #[serde(default)]
+    pub entry: Option<DataEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -488,6 +500,9 @@ impl UiApp {
             match action {
                 Action::Select(s) => self.select(s),
                 Action::OpenCsv => self.requests.push(Request::PickCsv),
+                Action::OpenEntry => self.open_entry(),
+                Action::EntryCreate => self.create_from_entry(),
+                Action::EntryCancel => self.cancel_entry(),
                 Action::NewAnalysis => self.new_analysis(),
                 Action::NewFit => self.new_fit(),
                 Action::NewSimulation => self.new_simulation(),
@@ -810,6 +825,9 @@ impl UiApp {
             if ui.button("Open CSV…").clicked() {
                 actions.push(Action::OpenCsv);
             }
+            if ui.button("Type data").clicked() {
+                actions.push(Action::OpenEntry);
+            }
             let has_sheet = !self.overview.worksheets.is_empty();
             let tokens = self.tokens.clone();
             egui::containers::menu::MenuButton::from_button(tokens.primary_button("New analysis"))
@@ -982,6 +1000,10 @@ impl UiApp {
                 Some(p) => import::screen(ui, tokens, p, actions),
                 None => self.welcome(ui, tokens, actions),
             },
+            Selection::Entry => match self.state.entry.as_mut() {
+                Some(e) => entry::screen(ui, tokens, e, actions),
+                None => self.welcome(ui, tokens, actions),
+            },
             Selection::Worksheet(_) => match &self.sheet {
                 Some(s) => sheet::screen(
                     ui,
@@ -1037,7 +1059,7 @@ impl UiApp {
                 .strong(),
         );
         ui.add_space(tokens.spacing.medium);
-        ui.label("Open a CSV file with a time column and a concentration column (and, if you have them, a subject and a dose column), or drop it on this window.");
+        ui.label("Open a CSV file with a time column and a concentration column (and, if you have them, a subject and a dose column), or drop it on this window. For a few points, type them or paste them from a spreadsheet.");
         ui.label(
             RichText::new("You see the table as it will be read before anything is imported.")
                 .color(c.text_muted.color()),
@@ -1048,6 +1070,13 @@ impl UiApp {
             .clicked()
         {
             actions.push(Action::OpenCsv);
+        }
+        ui.add_space(tokens.spacing.small);
+        if ui
+            .button(RichText::new("Type or paste data…").strong())
+            .clicked()
+        {
+            actions.push(Action::OpenEntry);
         }
     }
 }

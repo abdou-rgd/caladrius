@@ -76,7 +76,7 @@ pub struct ReadOptions {
 }
 
 /// A file waiting for the person's decision.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct PendingImport {
     pub name: String,
     pub csv: String,

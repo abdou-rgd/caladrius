@@ -4,6 +4,7 @@
 
 use std::path::PathBuf;
 
+use caladrius_ui::entry::EntryRow;
 use caladrius_ui::modelinfo::{Compartments, Input, ParameterSet};
 use caladrius_ui::{Action, Selection, ThemeMode, UiApp};
 use egui_kittest::Harness;
@@ -17,6 +18,9 @@ const ORAL: &str = "Time (h),Conc (mg/L),Dose (mg)\n0,0,100\n0.25,1.279,100\n0.5
 
 /// Two subjects, semicolons and decimal commas (a French spreadsheet export).
 const FRENCH: &str = "Sujet;Time (h);Conc (mg/L);Dose (mg)\n1;0;0;100\n1;0,25;1,279;100\n1;0,5;2,195;100\n1;1;3,293;100\n1;2;3,971;100\n1;4;3,611;100\n1;8;2,451;100\n1;24;0,495;100\n2;0;0;100\n2;0,5;1,8;100\n2;1;2,9;100\n2;2;3,5;100\n2;4;3,2;100\n2;8;2,2;100\n2;24;0,4;100\n";
+
+/// The oral profile as cells copied from a French spreadsheet: a header line, tabs, decimal commas.
+const PASTED: &str = "Temps (h)\tConc (mg/L)\tDose (mg)\r\n0\t0\t100\r\n0,25\t1,279\t\r\n0,5\t2,195\t\r\n1\t3,293\t\r\n2\t3,971\t\r\n4\t3,611\t\r\n6\t2,989\t\r\n8\t2,451\t\r\n12\t1,643\t\r\n24\t0,495\t\r\n";
 
 /// The reported failure: a decimal comma read with a comma separator.
 const AMBIGUOUS: &str = "time,conc\n0,25\n0,5\n1,2\n2,1\n";
@@ -425,6 +429,78 @@ fn scenes() -> Vec<(&'static str, UiApp)> {
         page.set_option(&["max_iterations"], json!(80));
     }
     scenes.push(("42-fit-more-options-custom", app));
+
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    scenes.push(("43-entry-empty", app));
+
+    // Cells copied from a French spreadsheet (header line, tabs, decimal commas) and pasted.
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.name = "Oral 100 mg".to_owned();
+        let note = entry.paste(None, PASTED);
+        entry.note = Some(note);
+    }
+    scenes.push(("44-entry-pasted-from-a-spreadsheet", app));
+
+    // Time 1 typed twice: the same check as a file, and the same "anyway" box.
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.rows = [
+            ("0", "0", "100"),
+            ("1", "3.2", ""),
+            ("1", "3.0", ""),
+            ("4", "2", ""),
+            ("8", "1", ""),
+        ]
+        .iter()
+        .map(|(t, c, d)| EntryRow {
+            time: (*t).to_owned(),
+            concentration: (*c).to_owned(),
+            dose: (*d).to_owned(),
+            ..EntryRow::default()
+        })
+        .collect();
+    }
+    app.perform(vec![Action::EntryCreate]);
+    scenes.push(("45-entry-with-a-check", app));
+
+    // Two subjects, dark theme.
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry, Action::ToggleTheme]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.subjects = true;
+        entry.dose_unit = "mg/kg".to_owned();
+        entry.rows = [
+            ("A", "0", "0", "2"),
+            ("A", "1", "3,2", ""),
+            ("A", "4", "2,1", ""),
+            ("B", "0", "0", "4"),
+            ("B", "1", "6,0", ""),
+            ("B", "4", "3,9", ""),
+        ]
+        .iter()
+        .map(|(s, t, c, d)| EntryRow {
+            subject: (*s).to_owned(),
+            time: (*t).to_owned(),
+            concentration: (*c).to_owned(),
+            dose: (*d).to_owned(),
+        })
+        .collect();
+    }
+    scenes.push(("46-entry-two-subjects-dark", app));
+
+    // The pasted table made a worksheet: the same screen as an imported file.
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.name = "Oral 100 mg".to_owned();
+        entry.paste(None, PASTED);
+    }
+    app.perform(vec![Action::EntryCreate]);
+    scenes.push(("47-entry-made-a-worksheet", app));
 
     scenes
 }
