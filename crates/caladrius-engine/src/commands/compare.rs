@@ -173,6 +173,12 @@ fn side(project: &Project, id: AnalysisId) -> Result<Side, CommandError> {
                 format!("analysis {id} is a simulation; compare NCA or fit results"),
             ));
         }
+        AnalysisResult::Plot(_) => {
+            return Err(CommandError::new(
+                "wrong_kind",
+                format!("analysis {id} is a plot; compare NCA or fit results"),
+            ));
+        }
     };
     Ok(Side { info, entries })
 }

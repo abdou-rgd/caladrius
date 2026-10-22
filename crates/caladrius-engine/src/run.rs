@@ -22,6 +22,7 @@ pub(crate) fn run_spec(
         AnalysisSpec::Nca(s) => run_nca(project, s),
         AnalysisSpec::Fit(s) => run_fit(project, s),
         AnalysisSpec::Simulation(s) => run_simulation(s),
+        AnalysisSpec::Plot(s) => Ok(AnalysisResult::Plot(crate::plot::draw(project, s)?)),
     }
 }
 

@@ -22,8 +22,10 @@ mod commands;
 mod error;
 mod export;
 mod history;
+mod plot;
 mod run;
 mod schema;
+mod svg;
 
 #[cfg(test)]
 mod tests;
@@ -32,11 +34,14 @@ mod tests_compare;
 #[cfg(test)]
 mod tests_pk2;
 #[cfg(test)]
+mod tests_plot;
+#[cfg(test)]
 mod tests_units;
 
 pub use caladrius_project::{self as project, Project};
 pub use error::CommandError;
 pub use history::{History, HistoryEntry, MAX_RECORDED_PARAMS_BYTES};
+pub use svg::{COLORS as SVG_COLORS, SvgColors};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};

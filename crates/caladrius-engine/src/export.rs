@@ -3,15 +3,15 @@
 
 use caladrius_nca::NcaResult;
 use caladrius_project::{
-    Analysis, AnalysisResult, ColumnData, FitRun, NcaSubjectResult, Outcome, SimulationRun,
-    Worksheet,
+    Analysis, AnalysisResult, ColumnData, FitRun, NcaSubjectResult, Outcome, PlotRun,
+    SimulationRun, Worksheet,
 };
 use serde_json::{Value, json};
 
 use crate::error::CommandError;
 
 /// The tables that can be exported, by id.
-pub(crate) const TABLES: [&str; 8] = [
+pub(crate) const TABLES: [&str; 9] = [
     "worksheet",
     "nca.parameters",
     "fit.parameters",
@@ -20,6 +20,7 @@ pub(crate) const TABLES: [&str; 8] = [
     "fit.curve",
     "fit.trace",
     "simulation",
+    "plot.points",
 ];
 
 /// One cell.
@@ -313,6 +314,25 @@ fn simulation(run: &SimulationRun) -> Result<Table, CommandError> {
     Ok(table)
 }
 
+/// The points of a plot, one row per point, as drawn: panel, series, x, y, BLQ flag.
+fn plot_points(run: &PlotRun) -> Table {
+    let mut table = Table::new(&["panel", "series", "x", "y", "blq"]);
+    for panel in &run.panels {
+        for series in &panel.series {
+            for p in &series.points {
+                table.rows.push(vec![
+                    Cell::text(&panel.title),
+                    Cell::text(&series.name),
+                    Cell::number(Some(p.x)),
+                    Cell::number(Some(p.y)),
+                    Cell::text(if p.blq { "true" } else { "false" }),
+                ]);
+            }
+        }
+    }
+    table
+}
+
 /// The table `name` of the last result of `analysis`.
 pub(crate) fn analysis_table(name: &str, analysis: &Analysis) -> Result<Table, CommandError> {
     if !TABLES.contains(&name) {
@@ -333,6 +353,7 @@ pub(crate) fn analysis_table(name: &str, analysis: &Analysis) -> Result<Table, C
         ("fit.curve", AnalysisResult::Fit(run)) => fit_curve(run),
         ("fit.trace", AnalysisResult::Fit(run)) => fit_trace(run),
         ("simulation", AnalysisResult::Simulation(run)) => simulation(run),
+        ("plot.points", AnalysisResult::Plot(run)) => Ok(plot_points(run)),
         _ => Err(wrong(name, analysis)),
     }
 }

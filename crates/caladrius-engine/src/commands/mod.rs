@@ -4,6 +4,7 @@
 mod analysis;
 mod compare;
 mod data;
+mod plot;
 mod project;
 mod units;
 
@@ -45,8 +46,10 @@ pub(crate) const COMMANDS: &[CommandDef] = &[
     analysis::FIT_EVALUATE,
     analysis::FIT_RUN,
     analysis::MODEL_SIMULATE,
+    plot::PLOT_XY,
     analysis::ANALYSIS_RUN,
     analysis::EXPORT_TABLE,
+    plot::EXPORT_PLOT,
     compare::ANALYSIS_COMPARE,
     project::DESCRIBE,
     project::SAVE,
@@ -90,6 +93,27 @@ where
     T: serde::Deserialize<'de>,
 {
     Ok(Some(Option::deserialize(deserializer)?))
+}
+
+/// A list of subject labels, each a string or a number (see [`label`]); absent or null means
+/// none given.
+pub(crate) fn labels<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    match Option::<Vec<Value>>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(items) => items
+            .into_iter()
+            .map(|v| {
+                label(v)
+                    .map_err(D::Error::custom)?
+                    .ok_or_else(|| D::Error::custom("a subject in the list is null"))
+            })
+            .collect::<Result<Vec<String>, D::Error>>()
+            .map(Some),
+    }
 }
 
 /// A subject label given as a string or as a number (`subject: 1` and `subject: "1"` name the
