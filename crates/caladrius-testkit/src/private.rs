@@ -471,24 +471,24 @@ pub fn extract_entries(table: &RawTable, what: &str) -> Result<Vec<ExportEntry>,
         &["parameter", "param", "name", "variable", "pkparameter"],
     );
     let value_col = header_has(header, &["value", "estimate", "result", "final"]);
-    if let (Some(n), Some(v)) = (name_col, value_col) {
-        if n != v {
-            let entries: Vec<ExportEntry> = body
-                .iter()
-                .filter_map(|row| {
-                    let name = row.get(n)?;
-                    let value = row.get(v)?;
-                    (!name.is_empty()).then(|| entry(name, value))
-                })
-                .collect();
-            if entries.is_empty() {
-                return Err(format_error(
-                    what,
-                    "a long-layout table without parameter rows",
-                ));
-            }
-            return Ok(entries);
+    if let (Some(n), Some(v)) = (name_col, value_col)
+        && n != v
+    {
+        let entries: Vec<ExportEntry> = body
+            .iter()
+            .filter_map(|row| {
+                let name = row.get(n)?;
+                let value = row.get(v)?;
+                (!name.is_empty()).then(|| entry(name, value))
+            })
+            .collect();
+        if entries.is_empty() {
+            return Err(format_error(
+                what,
+                "a long-layout table without parameter rows",
+            ));
         }
+        return Ok(entries);
     }
 
     // Wide layout: parameter names in the header, a profile or a statistic per row.
@@ -926,10 +926,10 @@ pub fn rtf_to_text(rtf: &str) -> String {
                 let Some(&next) = chars.get(i) else { break };
                 if next == '\'' {
                     let hex: String = chars[i + 1..chars.len().min(i + 3)].iter().collect();
-                    if let Ok(byte) = u8::from_str_radix(&hex, 16) {
-                        if skip_from.is_none() {
-                            out.push(byte as char);
-                        }
+                    if let Ok(byte) = u8::from_str_radix(&hex, 16)
+                        && skip_from.is_none()
+                    {
+                        out.push(byte as char);
                     }
                     i += 3;
                 } else if next.is_ascii_alphabetic() {

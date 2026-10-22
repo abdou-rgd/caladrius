@@ -4,7 +4,8 @@ description = "Test layer: oracles, tolerances and table comparison for the conf
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-rust-version.workspace = true
+# calamine 0.37 (zip 9, quick-xml 0.42) needs Rust 1.88; this crate is never shipped.
+rust-version = "1.88"
 
 [lints]
 workspace = true
@@ -15,4 +16,4 @@ serde = { version = "1.0.229", features = ["derive"] }
 # values were computed from (task T-032: 17-digit inputs).
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
 # Reads the .xls worksheets the reference software exports (pure Rust, MIT); test layer only.
-calamine = { version = "0.36.1", default-features = false }
+calamine = { version = "0.37.0", default-features = false }

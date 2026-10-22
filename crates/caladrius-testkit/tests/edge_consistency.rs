@@ -359,13 +359,13 @@ fn parameter_relations_hold_in_every_edge_case() {
                 }
             }
             // No terminal-phase point during an infusion (NCA-LZ-02 rule 3).
-            if infusion > 0.0 {
-                if let Some(first) = g("lambda.z.time.first") {
-                    assert!(
-                        first > infusion,
-                        "{name} subject {s}: window starts at {first}"
-                    );
-                }
+            if infusion > 0.0
+                && let Some(first) = g("lambda.z.time.first")
+            {
+                assert!(
+                    first > infusion,
+                    "{name} subject {s}: window starts at {first}"
+                );
             }
         }
     }
