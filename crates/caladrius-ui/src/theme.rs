@@ -147,6 +147,10 @@ pub struct Sizes {
     pub palette_list_height: f32,
     /// The width of the label column of the settings page.
     pub settings_label_width: f32,
+    /// The side of the logo in the top bar.
+    pub logo_small: f32,
+    /// The side of the logo on the welcome page.
+    pub logo_large: f32,
 }
 
 /// Line widths.
@@ -415,6 +419,11 @@ mod tests {
                 (c.text_muted, c.panel, "muted text on panel"),
                 (c.accent_text, c.accent, "accent text on accent"),
                 (c.text, c.selected, "text on a selected item"),
+                (c.text, c.hover, "text on a hovered item"),
+                (c.accent, c.panel, "accent (links, the name) on panel"),
+                (c.accent, c.background, "accent on background"),
+                (c.accent, c.panel_alt, "accent on the tree and status bar"),
+                (c.accent, c.selected, "accent on a selected item"),
                 (
                     c.stale,
                     c.stale_background,

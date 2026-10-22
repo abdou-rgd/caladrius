@@ -9,6 +9,7 @@
 //! `caladrius-engine`, holds no numerical code and reads no file: the program around it passes
 //! the bytes of a CSV file in ([`UiApp::load_csv`]) and asks for a file picker ([`Request`]).
 //!
+//! - [`logo`]: the Caladrius logo, embedded as PNG renderings of `assets/logo/`.
 //! - [`theme`]: the tokens (colours, radii, spacing, font sizes) read from `theme.json`, light and dark.
 //! - [`model`]: typed views of the engine's JSON answers.
 //! - [`plotdata`]: what the profile plot draws, including the safe semi-log view.
@@ -26,6 +27,7 @@ pub mod fitresult;
 pub mod flow;
 pub mod fmt;
 pub mod import;
+pub mod logo;
 pub mod model;
 pub mod modelinfo;
 pub mod modelpick;

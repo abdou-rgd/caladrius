@@ -14,4 +14,6 @@ Credit: original drawing by Amina.
 
 All files share the same square `viewBox` (`0.5 89.5 1040 1040`). Use the `small` set below roughly 64 px, the full set above.
 
+PNG renderings for the application and the browser page (window icon, favicon, top bar) are in `../icons/`; `sh assets/icons/render.sh` regenerates them from these SVGs.
+
 Licence: like the rest of the repository, `MIT OR Apache-2.0` (see `LICENSE-MIT` and `LICENSE-APACHE`).

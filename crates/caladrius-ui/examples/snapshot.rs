@@ -502,6 +502,11 @@ fn scenes() -> Vec<(&'static str, UiApp)> {
     app.perform(vec![Action::EntryCreate]);
     scenes.push(("47-entry-made-a-worksheet", app));
 
+    // The welcome page in the dark theme: the logo on a dark background.
+    let mut app = UiApp::new();
+    app.state.mode = ThemeMode::Dark;
+    scenes.push(("48-welcome-dark", app));
+
     scenes
 }
 

@@ -3,7 +3,8 @@
 //!
 //! Steps: `cargo build --profile web --target wasm32-unknown-unknown -p caladrius-web`, then
 //! `wasm-bindgen --target web`, then `wasm-opt -Os` when it is on the PATH (optional: it saves
-//! about a fifth of the raw size, a few percent once compressed), then the page's `index.html`.
+//! about a fifth of the raw size, a few percent once compressed), then the page's `index.html` and
+//! the two logo images it links (`assets/icons/`).
 //! The task installs nothing: a missing tool gives the command that installs it. `wasm-bindgen`
 //! must be the version of `wasm-bindgen` in `Cargo.lock`, or the generated glue does not match.
 
@@ -22,6 +23,9 @@ const CRATE: &str = "caladrius-web";
 const PROFILE: &str = "web";
 /// The name of the generated files: `caladrius.js`, `caladrius_bg.wasm`.
 const OUT_NAME: &str = "caladrius";
+/// The logo renderings of `assets/icons/` the page uses (favicon, loading screen), copied next to
+/// `index.html` under the same names.
+const PAGE_ICONS: [&str; 2] = ["caladrius-icon-32.png", "caladrius-icon-256.png"];
 /// The WebAssembly features the Rust target emits, which `wasm-opt` must accept.
 const WASM_OPT_FEATURES: [&str; 6] = [
     "--enable-bulk-memory",
@@ -195,6 +199,11 @@ pub fn run(args: &[OsString]) -> Result<()> {
     let page = root.join("apps").join(CRATE).join("index.html");
     let target = out.join("index.html");
     std::fs::copy(&page, &target).map_err(|e| XtaskError::io("copy", &page, &e))?;
+    let icons = root.join("assets").join("icons");
+    for name in PAGE_ICONS {
+        let icon = icons.join(name);
+        std::fs::copy(&icon, out.join(name)).map_err(|e| XtaskError::io("copy", &icon, &e))?;
+    }
     console::out(&format!(
         "web: ok, {} (index.html, {OUT_NAME}.js {}, {OUT_NAME}_bg.wasm {})",
         out.display(),
@@ -243,6 +252,20 @@ mod tests {
             text.join(" "),
             "m.wasm --target web --no-typescript --out-name caladrius --out-dir out"
         );
+    }
+
+    #[test]
+    fn the_page_links_the_icons_that_are_copied_and_they_exist() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let page = std::fs::read_to_string(root.join("apps").join(CRATE).join("index.html"))
+            .unwrap_or_default();
+        for name in PAGE_ICONS {
+            assert!(page.contains(&format!("href=\"{name}\"")), "{name}");
+            assert!(
+                root.join("assets").join("icons").join(name).is_file(),
+                "{name}"
+            );
+        }
     }
 
     #[test]

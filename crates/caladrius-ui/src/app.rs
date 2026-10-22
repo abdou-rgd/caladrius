@@ -241,6 +241,9 @@ pub struct UiApp {
     /// The theme the operating system reports, when it does.
     pub(crate) system_theme: Option<ThemeMode>,
     theme_error: Option<String>,
+    /// The logo textures, uploaded on the first frame (`None` before, or if they cannot be read).
+    logo: Option<crate::logo::Logo>,
+    logo_loaded: bool,
     /// Whether the program around can close itself: a window can, a browser tab cannot.
     pub(crate) can_quit: bool,
 }
@@ -281,6 +284,8 @@ impl UiApp {
             saved_settings: Settings::default().to_json(),
             system_theme: None,
             theme_error,
+            logo: None,
+            logo_loaded: false,
             can_quit: true,
         };
         app.mark_saved();
@@ -679,6 +684,10 @@ impl UiApp {
             self.tokens.apply(ctx, self.state.mode);
             self.applied = Some(self.state.mode);
         }
+        if !self.logo_loaded {
+            self.logo = crate::logo::Logo::load(ctx);
+            self.logo_loaded = true;
+        }
         let dropped = ctx.input(|i| i.raw.dropped_files.clone());
         for file in dropped {
             if let Some(bytes) = file.bytes {
@@ -823,6 +832,10 @@ impl UiApp {
     fn top_bar(&mut self, ui: &mut Ui, actions: &mut Vec<Action>) {
         let c = self.tokens.colors.clone();
         ui.horizontal(|ui| {
+            if let Some(logo) = &self.logo {
+                let side = self.tokens.size.logo_small;
+                ui.add(egui::Image::new(&logo.small).fit_to_exact_size(egui::vec2(side, side)));
+            }
             ui.label(
                 RichText::new("Caladrius")
                     .size(self.tokens.font.heading)
@@ -1063,6 +1076,11 @@ impl UiApp {
     fn welcome(&self, ui: &mut Ui, tokens: &Tokens, actions: &mut Vec<Action>) {
         let c = &tokens.colors;
         ui.add_space(tokens.spacing.xlarge);
+        if let Some(logo) = &self.logo {
+            let side = tokens.size.logo_large;
+            ui.add(egui::Image::new(&logo.large).fit_to_exact_size(egui::vec2(side, side)));
+            ui.add_space(tokens.spacing.large);
+        }
         ui.label(
             RichText::new("Pharmacokinetic analysis")
                 .size(tokens.font.display)
@@ -1075,10 +1093,7 @@ impl UiApp {
                 .color(c.text_muted.color()),
         );
         ui.add_space(tokens.spacing.large);
-        if ui
-            .button(RichText::new("Open a CSV file…").strong())
-            .clicked()
-        {
+        if ui.add(tokens.primary_button("Open a CSV file…")).clicked() {
             actions.push(Action::OpenCsv);
         }
         ui.add_space(tokens.spacing.small);

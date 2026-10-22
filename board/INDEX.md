@@ -117,3 +117,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-104 | Remove the owner's family name from the four repositories | janitor | done | |
 | T-105 | Onizuka: an explainer agent for the owner (`.claude/agents/onizuka.md`) | orchestrator | done | |
 | T-106 | Caladrius in the browser: the egui interface compiled to WebAssembly, for the website | interface | done | T-103 |
+| T-107 | The Caladrius logo and its green in the interface (desktop and browser) | interface | to review | T-106 |

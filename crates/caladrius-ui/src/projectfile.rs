@@ -95,10 +95,11 @@ impl UiApp {
         self.file.name.as_deref()
     }
 
-    /// What the window title says: the project name, a marker when it has unsaved changes.
+    /// What the window title (or the browser tab) says: the program first, so a narrow tab still
+    /// shows it, then the project name and a marker when it has unsaved changes.
     pub fn window_title(&self) -> String {
-        let marker = if self.is_dirty() { "* " } else { "" };
-        format!("{marker}{} - Caladrius", self.engine.project().name())
+        let marker = if self.is_dirty() { " *" } else { "" };
+        format!("Caladrius - {}{marker}", self.engine.project().name())
     }
 
     /// The question on screen, for tests.
