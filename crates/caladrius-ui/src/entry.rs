@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::app::Action;
-use crate::entrywide::{self, Wide};
+use crate::entrywide::{self, Wide, WideGrid};
 use crate::import::{PendingImport, ReadOptions};
 use crate::theme::Tokens;
 use crate::unitpick::{self, Accepted};
@@ -18,6 +18,23 @@ pub const DEFAULT_NAME: &str = "Typed data";
 
 /// The empty rows a new table starts with (a small profile fits without adding any).
 const START_ROWS: usize = 12;
+
+/// The subjects a grid starts with when "Several subjects" is ticked on an empty table.
+const START_SUBJECTS: usize = 3;
+
+/// The most subjects the grid offers.
+const MAX_SUBJECTS: usize = 200;
+
+/// How the table of several subjects is laid out on screen. Both give the same long table.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Layout {
+    /// One row per sample: subject, time, concentration, dose.
+    #[default]
+    Long,
+    /// Times in rows, subjects in columns ([`WideGrid`]).
+    SubjectsInColumns,
+}
 
 /// One column of the table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -105,6 +122,15 @@ pub struct DataEntry {
     /// The dose given to every subject without one ("Same dose for every subject").
     #[serde(default)]
     pub common_dose: String,
+    /// With several subjects: one row per sample, or subjects in columns.
+    #[serde(default)]
+    pub layout: Layout,
+    /// The table with subjects in columns, used when [`DataEntry::in_columns`].
+    #[serde(default)]
+    pub grid: WideGrid,
+    /// The grid cell that had the keyboard focus (time row, column; column 0 is the time).
+    #[serde(skip)]
+    pub grid_focus: Option<(usize, usize)>,
     /// The cell that had the keyboard focus at the last frame, where a paste lands.
     #[serde(skip)]
     pub focus: Option<(usize, Field)>,
@@ -140,6 +166,9 @@ impl DataEntry {
             dose_unit: "mg".to_owned(),
             rows: vec![EntryRow::default(); START_ROWS],
             common_dose: String::new(),
+            layout: Layout::Long,
+            grid: WideGrid::default(),
+            grid_focus: None,
             focus: None,
             review: None,
             note: None,
@@ -174,10 +203,76 @@ impl DataEntry {
         }
     }
 
-    /// The rows with something typed in a column on screen.
-    pub fn filled(&self) -> Vec<&EntryRow> {
+    /// Whether the table on screen is the grid with subjects in columns.
+    pub fn in_columns(&self) -> bool {
+        self.subjects && self.layout == Layout::SubjectsInColumns
+    }
+
+    /// The rows with something typed in a column on screen, one per sample: the grid's turned
+    /// into one row per sample when the subjects are in columns.
+    pub fn filled(&self) -> Vec<EntryRow> {
+        if self.in_columns() {
+            return self.grid.long_rows();
+        }
         let fields = self.fields();
-        self.rows.iter().filter(|r| !r.is_blank(&fields)).collect()
+        self.rows
+            .iter()
+            .filter(|r| !r.is_blank(&fields))
+            .cloned()
+            .collect()
+    }
+
+    /// Ticks or unticks "Several subjects". Ticked on an empty table, the subjects go in columns;
+    /// unticked, a grid goes back to one row per sample.
+    pub fn set_subjects(&mut self, on: bool) {
+        if on && !self.subjects && self.filled().is_empty() {
+            self.layout = Layout::SubjectsInColumns;
+            if self.grid.subjects.is_empty() {
+                self.grid = WideGrid::new(START_SUBJECTS, START_ROWS);
+            }
+        }
+        if !on && self.in_columns() {
+            self.set_layout(Layout::Long);
+        }
+        self.subjects = on;
+    }
+
+    /// Changes the layout, carrying what is typed over; a long table the grid cannot hold without
+    /// losing a cell stays as it is, and the note says why.
+    pub fn set_layout(&mut self, layout: Layout) {
+        if layout == self.layout {
+            return;
+        }
+        match layout {
+            Layout::Long => {
+                let mut rows = self.grid.long_rows();
+                while rows.len() < START_ROWS {
+                    rows.push(EntryRow::default());
+                }
+                self.rows = rows;
+                self.layout = Layout::Long;
+            }
+            Layout::SubjectsInColumns => {
+                let filled = self.filled();
+                let grid = if filled.is_empty() {
+                    Ok(WideGrid::new(START_SUBJECTS, START_ROWS))
+                } else {
+                    WideGrid::from_long(&filled)
+                };
+                match grid {
+                    Ok(mut grid) => {
+                        while grid.rows.len() < START_ROWS {
+                            grid.add_row();
+                        }
+                        self.grid = grid;
+                        self.layout = Layout::SubjectsInColumns;
+                    }
+                    Err(why) => self.note = Some(why),
+                }
+            }
+        }
+        self.focus = None;
+        self.grid_focus = None;
     }
 
     /// The columns written to the worksheet: those on screen, without a subject column that is
@@ -261,10 +356,19 @@ impl DataEntry {
     }
 
     pub fn add_row(&mut self) {
-        self.rows.push(EntryRow::default());
+        if self.in_columns() {
+            self.grid.add_row();
+        } else {
+            self.rows.push(EntryRow::default());
+        }
     }
 
     pub fn remove_row(&mut self, index: usize) {
+        if self.in_columns() {
+            self.grid.remove_row(index);
+            self.grid_focus = None;
+            return;
+        }
         if index < self.rows.len() {
             self.rows.remove(index);
         }
@@ -276,6 +380,10 @@ impl DataEntry {
 
     pub fn clear(&mut self) {
         self.rows = vec![EntryRow::default(); START_ROWS];
+        if self.in_columns() {
+            self.grid = WideGrid::new(self.grid.subjects.len().max(1), START_ROWS);
+        }
+        self.grid_focus = None;
         self.focus = None;
         self.review = None;
         self.note = None;
@@ -303,6 +411,9 @@ impl DataEntry {
         }
         if lines.is_empty() {
             return "Nothing to paste: the clipboard holds no row with a number.".to_owned();
+        }
+        if self.in_columns() {
+            return self.paste_in_grid(&lines, header);
         }
         let (start_row, start_col) = match at {
             Some((row, field)) => (row, fields.iter().position(|f| *f == field).unwrap_or(0)),
@@ -347,27 +458,88 @@ impl DataEntry {
         said
     }
 
-    /// Writes the rows of a wide table from row `at`, or under the last filled row, whole rows
-    /// (subject, time, concentration, dose). Shows the subject column, and takes the units written
-    /// in the time header and the dose line.
+    /// Spreads pasted cells over the grid from the cell in focus, or from the time column of the
+    /// first empty time row: lines go down the times, cells across the subjects.
+    fn paste_in_grid(&mut self, lines: &[Vec<String>], header: bool) -> String {
+        let (start_row, start_col) = self
+            .grid_focus
+            .unwrap_or_else(|| (self.grid.first_free_row(), 0));
+        let mut dropped = 0;
+        for (i, cells) in lines.iter().enumerate() {
+            while self.grid.rows.len() <= start_row + i {
+                self.grid.add_row();
+            }
+            for (j, cell) in cells.iter().enumerate() {
+                match self.grid.cell_mut(start_row + i, start_col + j) {
+                    Some(target) => target.clone_from(cell),
+                    None => dropped += 1,
+                }
+            }
+        }
+        let n = lines.len();
+        let mut said = format!(
+            "Pasted {n} line{} from time row {}.",
+            if n == 1 { "" } else { "s" },
+            start_row + 1
+        );
+        if header {
+            said.push_str(" The first line had no number and was read as a header, left out.");
+        }
+        if dropped > 0 {
+            said.push_str(&format!(
+                " {dropped} cell{} beyond the last subject {} left out.",
+                if dropped == 1 { "" } else { "s" },
+                if dropped == 1 { "was" } else { "were" }
+            ));
+        }
+        said
+    }
+
+    /// A pasted wide table: it becomes the grid (subjects in columns), unless one row per sample
+    /// is on screen with rows already typed, where its rows go under them (from row `at`, or under
+    /// the last filled row). Shows the subjects, and takes the units written in the time header
+    /// and the dose line.
     fn paste_wide(&mut self, at: Option<usize>, wide: Wide) -> String {
         let switched = !self.subjects;
+        let into_rows = self.subjects && !self.in_columns() && !self.filled().is_empty();
         self.subjects = true;
-        let fields = self.fields();
-        let start = at.unwrap_or_else(|| {
-            self.rows
-                .iter()
-                .rposition(|r| !r.is_blank(&fields))
-                .map_or(0, |last| last + 1)
-        });
-        let n = wide.rows.len();
-        for (i, row) in wide.rows.into_iter().enumerate() {
-            while self.rows.len() <= start + i {
-                self.add_row();
+        let subjects = wide.grid.subjects.len();
+        let times = wide.grid.rows.len();
+        let rows = wide.grid.long_rows();
+        let n = rows.len();
+        let mut said = format!(
+            "Pasted {subjects} subjects × {times} time{}",
+            if times == 1 { "" } else { "s" }
+        );
+        if into_rows {
+            let fields = self.fields();
+            let start = at.unwrap_or_else(|| {
+                self.rows
+                    .iter()
+                    .rposition(|r| !r.is_blank(&fields))
+                    .map_or(0, |last| last + 1)
+            });
+            for (i, row) in rows.into_iter().enumerate() {
+                while self.rows.len() <= start + i {
+                    self.rows.push(EntryRow::default());
+                }
+                if let Some(r) = self.rows.get_mut(start + i) {
+                    *r = row;
+                }
             }
-            if let Some(r) = self.rows.get_mut(start + i) {
-                *r = row;
+            said.push_str(&format!(
+                " as {n} rows from row {}, one per sample.",
+                start + 1
+            ));
+        } else {
+            let mut grid = wide.grid;
+            while grid.rows.len() < START_ROWS {
+                grid.add_row();
             }
+            self.grid = grid;
+            self.layout = Layout::SubjectsInColumns;
+            self.grid_focus = None;
+            said.push_str(&format!(", subjects in columns ({n} samples)."));
         }
         if let Some(unit) = wide.time_unit {
             self.time_unit = unit;
@@ -375,17 +547,10 @@ impl DataEntry {
         if let Some(unit) = wide.dose_unit {
             self.dose_unit = unit;
         }
-        let subjects = wide.subjects.len();
-        let mut said = format!(
-            "Pasted {subjects} subjects × {} time{} as {n} rows from row {}, one per sample (the table had one column per subject).",
-            wide.times,
-            if wide.times == 1 { "" } else { "s" },
-            start + 1
-        );
         if switched {
             said.push_str(" \"Several subjects\" is now on.");
         }
-        let empty = subjects * wide.times - n;
+        let empty = subjects * times - n;
         if empty > 0 {
             said.push_str(&format!(
                 " {empty} empty cell{} left out.",
@@ -400,9 +565,9 @@ impl DataEntry {
             ));
         }
         if wide.dose_row {
-            said.push_str(" Each subject's dose comes from the Dose line, on its first row.");
+            said.push_str(" Each subject's dose comes from the Dose line.");
         } else {
-            said.push_str(" No Dose line: type each subject's dose on its first row, or give the same dose to every subject below.");
+            said.push_str(" No Dose line: type each subject's dose, or give the same dose to every subject below.");
         }
         said
     }
@@ -414,6 +579,24 @@ impl DataEntry {
         let dose = self.common_dose.trim().to_owned();
         if dose.is_empty() {
             return "Type the dose to give first.".to_owned();
+        }
+        if self.in_columns() {
+            let mut given = 0;
+            for j in 0..self.grid.subjects.len() {
+                let sampled = self
+                    .grid
+                    .rows
+                    .iter()
+                    .any(|r| r.values.get(j).is_some_and(|v| !v.trim().is_empty()));
+                if let Some(d) = self.grid.doses.get_mut(j)
+                    && sampled
+                    && d.trim().is_empty()
+                {
+                    d.clone_from(&dose);
+                    given += 1;
+                }
+            }
+            return dose_note(&dose, given);
         }
         let fields = self.fields();
         let subject = |r: &EntryRow| {
@@ -447,14 +630,7 @@ impl DataEntry {
                 given += 1;
             }
         }
-        if given == 0 {
-            "Every subject already has a dose: nothing changed.".to_owned()
-        } else {
-            format!(
-                "Dose {dose} given to {given} subject{} that had none.",
-                if given == 1 { "" } else { "s" }
-            )
-        }
+        dose_note(&dose, given)
     }
 
     /// The units to check, as typed.
@@ -464,6 +640,18 @@ impl DataEntry {
             self.concentration_unit.trim().to_owned(),
             self.dose_unit.trim().to_owned(),
         ]
+    }
+}
+
+/// What "Same dose for every subject" did.
+fn dose_note(dose: &str, given: usize) -> String {
+    if given == 0 {
+        "Every subject already has a dose: nothing changed.".to_owned()
+    } else {
+        format!(
+            "Dose {dose} given to {given} subject{} that had none.",
+            if given == 1 { "" } else { "s" }
+        )
     }
 }
 
@@ -523,9 +711,20 @@ fn split_paste(text: &str) -> Vec<Vec<String>> {
     lines
 }
 
-/// The cells of one pasted line without tabs: runs of spaces separate them.
+/// The cells of one pasted line without tabs: runs of spaces separate them, except after a lone
+/// `<`, which belongs to the next word (`< LQ`, `< 0,45`, as a copied column writes them).
 fn split_cells(line: &str) -> Vec<String> {
-    line.split_whitespace().map(str::to_owned).collect()
+    let mut cells: Vec<String> = Vec::new();
+    for word in line.split_whitespace() {
+        match cells.last_mut() {
+            Some(last) if last == "<" => {
+                last.push(' ');
+                last.push_str(word);
+            }
+            _ => cells.push(word.to_owned()),
+        }
+    }
+    cells
 }
 
 /// A cell for the tab-separated text: quoted only when it holds a quote.
@@ -574,7 +773,7 @@ pub fn screen(
             .strong(),
     );
     ui.label(
-        RichText::new("One row per sample. Copy the cells in a spreadsheet and press Ctrl+V in the table to fill it at once; the dose is needed once per subject. A table with one column per subject (times down the first column) is turned into one row per sample.")
+        RichText::new("Copy the cells in a spreadsheet and press Ctrl+V in the table to fill it at once. Several subjects go in columns, the times shared by all, or one row per sample; a table copied with one column per subject is recognised.")
             .color(c.text_muted.color()),
     );
     ui.add_space(tokens.spacing.medium);
@@ -584,10 +783,38 @@ pub fn screen(
             egui::TextEdit::singleline(&mut entry.name).desired_width(tokens.size.text_box_width),
         );
         ui.add_space(tokens.spacing.large);
-        ui.checkbox(
-            &mut entry.subjects,
-            "Several subjects (adds a subject column)",
-        );
+        let mut several = entry.subjects;
+        if ui.checkbox(&mut several, "Several subjects").changed() {
+            entry.set_subjects(several);
+        }
+        if entry.subjects {
+            ui.add_space(tokens.spacing.medium);
+            let mut layout = entry.layout;
+            ui.selectable_value(
+                &mut layout,
+                Layout::SubjectsInColumns,
+                "Subjects in columns",
+            )
+            .on_hover_text("Times in rows, one column per subject: the times are typed once.");
+            ui.selectable_value(&mut layout, Layout::Long, "One row per sample")
+                .on_hover_text("Subject, time, concentration and dose on every row.");
+            entry.set_layout(layout);
+        }
+        if entry.in_columns() {
+            ui.add_space(tokens.spacing.medium);
+            ui.label("Number of subjects");
+            let mut n = entry.grid.subjects.len();
+            let changed = ui
+                .add(
+                    egui::DragValue::new(&mut n)
+                        .range(1..=MAX_SUBJECTS)
+                        .update_while_editing(false),
+                )
+                .changed();
+            if changed {
+                entry.grid.set_subject_count(n);
+            }
+        }
     });
     ui.add_space(tokens.spacing.medium);
     // The engine's checks of the units, made once the person left the unit cell.
@@ -606,6 +833,17 @@ pub fn screen(
         }
     }
 
+    if entry.in_columns() {
+        entry.unit_focus = crate::entrygrid::table(ui, tokens, entry, accepted);
+    } else {
+        long_table(ui, tokens, entry, accepted);
+    }
+    controls(ui, tokens, entry, actions);
+}
+
+/// The table with one row per sample.
+fn long_table(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, accepted: &Accepted) {
+    let c = &tokens.colors;
     let fields = entry.fields();
     let mut remove = None;
     let mut focus = None;
@@ -675,6 +913,11 @@ pub fn screen(
     if let Some(i) = remove {
         entry.remove_row(i);
     }
+}
+
+/// The buttons under the table, the common dose, the notes, the checks and "Create worksheet".
+fn controls(ui: &mut Ui, tokens: &Tokens, entry: &mut DataEntry, actions: &mut Vec<Action>) {
+    let c = &tokens.colors;
     ui.horizontal(|ui| {
         if ui.button("Add a row").clicked() {
             entry.add_row();
@@ -682,11 +925,16 @@ pub fn screen(
         if ui.button("Clear the table").clicked() {
             entry.clear();
         }
-        ui.label(
-            RichText::new(format!("{} filled rows", entry.filled().len()))
-                .small()
-                .color(c.text_muted.color()),
-        );
+        let counted = if entry.in_columns() {
+            format!(
+                "{} times, {} samples",
+                entry.grid.filled_times(),
+                entry.filled().len()
+            )
+        } else {
+            format!("{} filled rows", entry.filled().len())
+        };
+        ui.label(RichText::new(counted).small().color(c.text_muted.color()));
     });
     if entry.subjects {
         ui.horizontal(|ui| {
@@ -698,7 +946,9 @@ pub fn screen(
             ui.label(RichText::new(entry.dose_unit.trim()).color(c.text_muted.color()));
             if ui
                 .button("Give it to the subjects without a dose")
-                .on_hover_text("Writes this dose on the first row of each subject whose dose cells are all empty.")
+                .on_hover_text(
+                    "Writes this dose for each subject that has samples and no dose yet.",
+                )
                 .clicked()
             {
                 entry.note = Some(entry.fill_dose());
@@ -847,6 +1097,13 @@ mod tests {
                 .starts_with("Nothing to paste")
         );
         assert_eq!(e, before);
+    }
+
+    #[test]
+    fn a_value_below_the_limit_stays_one_cell_in_a_paste_without_tabs() {
+        assert_eq!(split_cells("< LQ"), ["< LQ"]);
+        assert_eq!(split_cells("24 < 0,45 BLQ"), ["24", "< 0,45", "BLQ"]);
+        assert_eq!(split_cells("<LQ 3"), ["<LQ", "3"]);
     }
 
     #[test]

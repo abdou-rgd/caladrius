@@ -20,6 +20,7 @@
 pub mod app;
 pub mod entry;
 pub mod entryflow;
+pub mod entrygrid;
 pub mod entrywide;
 pub mod fit;
 pub mod fitform;

@@ -550,6 +550,19 @@ fn scenes() -> Vec<(&'static str, UiApp)> {
     }
     scenes.push(("49-entry-pasted-wide-table", app));
 
+    // "Several subjects" ticked: five subjects in columns, the times typed once (T-108).
+    let mut app = UiApp::new();
+    app.perform(vec![Action::OpenEntry]);
+    if let Some(entry) = app.state.entry.as_mut() {
+        entry.set_subjects(true);
+        entry.grid.set_subject_count(5);
+        entry.grid_focus = Some((0, 0));
+        entry.paste(None, "0,5\n1\n2\n4\n8");
+        entry.grid_focus = Some((0, 1));
+        entry.paste(None, "9,1\t12,4\n8,4\t11,0");
+    }
+    scenes.push(("51-entry-subjects-in-columns", app));
+
     // A dose unit the engine does not recognise, and the list of the recognised ones.
     let mut app = UiApp::new();
     app.perform(vec![Action::OpenEntry]);
