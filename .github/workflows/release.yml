@@ -78,3 +78,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: gh release upload "$GITHUB_REF_NAME" "caladrius-$GITHUB_REF_NAME-${{ matrix.target }}.${{ matrix.archive }}" --clobber
+
+  # The browser application of the same tag, for the website: a folder to serve as it is.
+  web:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.129
+      - run: cargo xtask web --out "caladrius-web-$GITHUB_REF_NAME"
+      - name: Package and attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          staging="caladrius-web-$GITHUB_REF_NAME"
+          cp LICENSE-MIT LICENSE-APACHE "$staging/"
+          (cd "$staging" && sha256sum index.html caladrius.js caladrius_bg.wasm > SHA256SUMS)
+          tar -czf "$staging.tar.gz" "$staging"
+          gh release upload "$GITHUB_REF_NAME" "$staging.tar.gz" --clobber

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Caladrius</title>
+  <meta name="description" content="Caladrius in the browser: non-compartmental analysis, compartmental models and fitting, computed on this computer. Nothing is sent anywhere.">
+  <style>
+    :root { color-scheme: light dark; --bg: #f7f7f4; --text: #1f2a24; --muted: #5b665f; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #16191a; --text: #e6e9e4; --muted: #9aa49d; } }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); }
+    /* eframe sizes the canvas to its parent. */
+    #caladrius { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+    #loading {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.5rem; padding: 0 16px; text-align: center; color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    #loading p { margin: 0; max-width: 34rem; }
+    #loading .muted { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <canvas id="caladrius"></canvas>
+  <div id="loading">
+    <p><strong>Caladrius</strong> is loading (about 2 MB, once).</p>
+    <p class="muted">Everything runs in this page: the files you open and the numbers it computes stay on this computer. Best on a computer with a mouse.</p>
+    <noscript><p>Caladrius needs JavaScript and WebAssembly.</p></noscript>
+  </div>
+  <script type="module">
+    import init from "./caladrius.js";
+    init().catch((error) => {
+      const loading = document.getElementById("loading");
+      if (loading) loading.textContent = "Caladrius could not start in this browser: " + error;
+    });
+  </script>
+</body>
+</html>

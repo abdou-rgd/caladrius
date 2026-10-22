@@ -29,8 +29,8 @@ pub fn shortcuts(ctx: &Context, actions: &mut Vec<Action>) {
     });
 }
 
-/// The File menu button of the top bar.
-pub fn file_menu(ui: &mut Ui, actions: &mut Vec<Action>) {
+/// The File menu button of the top bar; `quit`: whether it ends with "Quit".
+pub fn file_menu(ui: &mut Ui, actions: &mut Vec<Action>, quit: bool) {
     egui::containers::menu::MenuButton::new("File").ui(ui, |ui| {
         let ctx = ui.ctx().clone();
         let mut entry =
@@ -49,8 +49,10 @@ pub fn file_menu(ui: &mut Ui, actions: &mut Vec<Action>) {
         ui.separator();
         entry(ui, "Save", Some(&SAVE), Action::SaveProject);
         entry(ui, "Save as…", Some(&SAVE_AS), Action::SaveProjectAs);
-        ui.separator();
-        entry(ui, "Quit", None, Action::Quit);
+        if quit {
+            ui.separator();
+            entry(ui, "Quit", None, Action::Quit);
+        }
     });
 }
 

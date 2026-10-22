@@ -243,12 +243,14 @@ impl UiApp {
             "Save the project under another file name".to_owned(),
             Action::SaveProjectAs,
         ));
-        out.push(ui(
-            "quit",
-            "Quit".to_owned(),
-            "Close Caladrius (asks first when there are unsaved changes)".to_owned(),
-            Action::Quit,
-        ));
+        if self.can_quit {
+            out.push(ui(
+                "quit",
+                "Quit".to_owned(),
+                "Close Caladrius (asks first when there are unsaved changes)".to_owned(),
+                Action::Quit,
+            ));
+        }
         for a in &self.overview.analyses {
             let state = match &a.status {
                 crate::model::Status::Fresh => "up to date",

@@ -664,6 +664,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "caladrius-web"
+version = "0.2.0"
+dependencies = [
+ "caladrius-ui",
+ "eframe",
+ "js-sys",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "calamine"
 version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -967,6 +980,7 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_glow",
+ "glow",
  "glutin",
  "glutin-winit",
  "image",

@@ -30,3 +30,21 @@ jobs:
         run: |
           cargo xtask conformance
           git diff --exit-code docs/conformance.md
+
+  # The browser application: lint its wasm-only code, build the page, keep it as an artifact.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      # Prebuilt wasm-bindgen; its version must be the one of Cargo.lock (`cargo xtask web` checks).
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.129
+      - run: cargo clippy --target wasm32-unknown-unknown -p caladrius-web -- -D warnings
+      - run: cargo xtask web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caladrius-web
+          path: target/web-page

@@ -15,6 +15,7 @@ members = [
     "apps/caladrius",
     "apps/caladrius-cli",
     "apps/caladrius-mcp",
+    "apps/caladrius-web",
     # Developer tasks.
     "xtask",
 ]
@@ -36,3 +37,10 @@ expect_used = "deny"
 panic = "deny"
 todo = "deny"
 unreachable = "deny"
+
+# The browser page (`cargo xtask web`): smaller rather than faster, the download is what a visitor waits for.
+[profile.web]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1

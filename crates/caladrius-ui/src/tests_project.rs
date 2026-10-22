@@ -227,6 +227,23 @@ fn closing_the_window_with_unsaved_changes_asks_and_then_closes() {
 }
 
 #[test]
+fn a_program_that_cannot_close_itself_offers_no_quit() {
+    // A browser tab: the person closes the tab, the page cannot.
+    let mut app = with_oral();
+    app.set_can_quit(false);
+    assert!(app.palette_entries().iter().all(|e| e.key != "ui:quit"));
+    app.perform(vec![Action::Quit]);
+    assert!(app.guard().is_none());
+    assert!(app.take_requests().is_empty());
+    let mut h = harness(app);
+    h.run_steps(3);
+    h.get_by_label("File").click();
+    h.run_steps(3);
+    assert!(h.query_all_by_label_contains("Save as…").next().is_some());
+    assert!(h.query_all_by_label("Quit").next().is_none());
+}
+
+#[test]
 fn the_question_is_a_sentence_with_three_choices_and_each_one_works() {
     let mut app = with_oral();
     app.perform(vec![Action::NewProject]);

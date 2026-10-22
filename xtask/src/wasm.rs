@@ -34,7 +34,7 @@ fn check_args(crates: &[&str]) -> Vec<String> {
 }
 
 /// The message shown when the target is missing: the exact command that fixes it.
-fn missing_target_message() -> String {
+pub fn missing_target_message() -> String {
     format!(
         "the {TARGET} target is not installed for the active toolchain; install it with:\n    rustup target add {TARGET}"
     )
@@ -43,7 +43,7 @@ fn missing_target_message() -> String {
 /// Whether the active toolchain ships the standard library for the wasm target.
 ///
 /// `rustc --print target-libdir` prints where that library lives; the directory exists only once the target is installed.
-fn target_installed() -> Result<bool> {
+pub fn target_installed() -> Result<bool> {
     let rustc = env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc"));
     let output = Command::new(&rustc)
         .args(["--print", "target-libdir", "--target", TARGET])
