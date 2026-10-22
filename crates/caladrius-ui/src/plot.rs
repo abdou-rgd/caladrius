@@ -169,7 +169,13 @@ impl Axes {
         if self.log { conc.log10() } else { conc }
     }
 
-    fn plot(&self, id: &str, height: f32, x_label: String, y_label: String) -> Plot<'static> {
+    pub(crate) fn plot(
+        &self,
+        id: &str,
+        height: f32,
+        x_label: String,
+        y_label: String,
+    ) -> Plot<'static> {
         let log = self.log;
         let x_marks: Vec<GridMark> = self
             .x_ticks
@@ -221,7 +227,7 @@ impl Axes {
             })
     }
 
-    fn paint_grid(&self, plot_ui: &mut egui_plot::PlotUi<'_>, tokens: &Tokens) {
+    pub(crate) fn paint_grid(&self, plot_ui: &mut egui_plot::PlotUi<'_>, tokens: &Tokens) {
         plot_ui.set_plot_bounds(PlotBounds::from_min_max(
             [self.x.0, self.y.0],
             [self.x.1, self.y.1],
@@ -241,7 +247,7 @@ impl Axes {
     }
 }
 
-fn dot_size(tokens: &Tokens, dot: Dot) -> f32 {
+pub(crate) fn dot_size(tokens: &Tokens, dot: Dot) -> f32 {
     match dot {
         Dot::Small => tokens.size.marker_small,
         Dot::Medium => tokens.size.marker_medium,
@@ -249,7 +255,7 @@ fn dot_size(tokens: &Tokens, dot: Dot) -> f32 {
     }
 }
 
-fn weight(tokens: &Tokens, w: Weight) -> f32 {
+pub(crate) fn weight(tokens: &Tokens, w: Weight) -> f32 {
     match w {
         Weight::Thin => tokens.stroke.thin,
         Weight::Medium => tokens.stroke.medium,
