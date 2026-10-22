@@ -119,4 +119,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-106 | Caladrius in the browser: the egui interface compiled to WebAssembly, for the website | interface | done | T-103 |
 | T-107 | The Caladrius logo and its green in the interface (desktop and browser) | interface | done | T-106 |
 | T-109 | Plot the raw data of a worksheet, linear and semi-log, before any analysis | interface | done | T-103, T-107 |
-| T-108 | Paste a wide table (one column per subject) into the typed table; recognised units next to the unit cells (`units.check`) | interface | to review | T-103 |
+| T-108 | Paste a wide table (one column per subject) into the typed table; recognised units next to the unit cells (`units.check`) | interface | done | T-103 |
