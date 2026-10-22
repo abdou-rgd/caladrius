@@ -115,4 +115,5 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-102 | Apothicaire: accept a dose per kg (mg/kg) and carry it to the units of CL and V | apothicaire | done | T-098 |
 | T-103 | Type or paste data into a new worksheet, without a CSV file (same preview and import as a file) | interface | done | |
 | T-104 | Remove the owner's family name from the four repositories | janitor | done | |
+| T-105 | Onizuka: an explainer agent for the owner (`.claude/agents/onizuka.md`) | orchestrator | done | |
 | T-106 | Caladrius in the browser: the egui interface compiled to WebAssembly, for the website | interface | to review | T-103 |
