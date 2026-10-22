@@ -22,6 +22,9 @@ const FRENCH: &str = "Sujet;Time (h);Conc (mg/L);Dose (mg)\n1;0;0;100\n1;0,25;1,
 /// The oral profile as cells copied from a French spreadsheet: a header line, tabs, decimal commas.
 const PASTED: &str = "Temps (h)\tConc (mg/L)\tDose (mg)\r\n0\t0\t100\r\n0,25\t1,279\t\r\n0,5\t2,195\t\r\n1\t3,293\t\r\n2\t3,971\t\r\n4\t3,611\t\r\n6\t2,989\t\r\n8\t2,451\t\r\n12\t1,643\t\r\n24\t0,495\t\r\n";
 
+/// Six invented oral profiles (no real subject): BLQ before the dose and at the end of some.
+const SIX_SUBJECTS: &str = "Subject,Time (h),Conc (mg/L),Dose (mg)\nS1,0,BLQ,100\nS1,0.5,4.37,100\nS1,1,6.51,100\nS1,2,7.73,100\nS1,4,6.78,100\nS1,6,5.4,100\nS1,8,4.25,100\nS1,12,2.63,100\nS1,24,0.624,100\nS1,36,0.148,100\nS2,0,BLQ,100\nS2,0.5,2.68,100\nS2,1,4.36,100\nS2,2,5.95,100\nS2,4,6.17,100\nS2,6,5.39,100\nS2,8,4.55,100\nS2,12,3.19,100\nS2,24,1.08,100\nS2,36,0.368,100\nS3,0,BLQ,100\nS3,0.5,6.6,100\nS3,1,9.09,100\nS3,2,9.66,100\nS3,4,7.55,100\nS3,6,5.61,100\nS3,8,4.15,100\nS3,12,2.28,100\nS3,24,0.377,100\nS3,36,BLQ,100\nS4,0,BLQ,100\nS4,0.5,2.76,100\nS4,1,4.34,100\nS4,2,5.64,100\nS4,4,5.66,100\nS4,6,5.03,100\nS4,8,4.38,100\nS4,12,3.32,100\nS4,24,1.43,100\nS4,36,0.618,100\nS5,0,BLQ,100\nS5,0.5,6.63,100\nS5,1,8.44,100\nS5,2,8.05,100\nS5,4,5.54,100\nS5,6,3.72,100\nS5,8,2.49,100\nS5,12,1.12,100\nS5,24,0.102,100\nS5,36,BLQ,100\nS6,0,BLQ,100\nS6,0.5,2.3,100\nS6,1,3.88,100\nS6,2,5.65,100\nS6,4,6.32,100\nS6,6,5.69,100\nS6,8,4.81,100\nS6,12,3.28,100\nS6,24,0.99,100\nS6,36,0.298,100\n";
+
 /// The reported failure: a decimal comma read with a comma separator.
 const AMBIGUOUS: &str = "time,conc\n0,25\n0,5\n1,2\n2,1\n";
 
@@ -147,6 +150,21 @@ fn scenes() -> Vec<(&'static str, UiApp)> {
     scenes.push(("03-import-reading-with-a-check", app));
 
     scenes.push(("04-worksheet", with_oral()));
+
+    // The raw data before any analysis (T-109): six subjects with BLQ points, both themes.
+    for (name, mode) in [
+        (
+            "04a-worksheet-raw-plot-six-subjects-light",
+            ThemeMode::Light,
+        ),
+        ("04b-worksheet-raw-plot-six-subjects-dark", ThemeMode::Dark),
+    ] {
+        let mut app = UiApp::new();
+        app.load_csv("six-subjects.csv", SIX_SUBJECTS.as_bytes());
+        app.perform(vec![Action::ImportConfirm]);
+        app.state.mode = mode;
+        scenes.push((name, app));
+    }
 
     scenes.push(("05-nca-linear", nca(with_oral())));
 

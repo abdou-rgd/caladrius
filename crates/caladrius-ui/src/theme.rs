@@ -81,6 +81,9 @@ pub struct Colors {
     pub series_fit: Rgba,
     pub series_replaced: Rgba,
     pub series_other: Rgba,
+    /// One colour per subject of a raw-data plot, in a fixed order (colour-blind checked as a set);
+    /// past the last one the order starts again with another marker shape.
+    pub series_subjects: Vec<Rgba>,
 }
 
 /// Corner radii.

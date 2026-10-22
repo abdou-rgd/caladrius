@@ -13,6 +13,7 @@
 //! - [`theme`]: the tokens (colours, radii, spacing, font sizes) read from `theme.json`, light and dark.
 //! - [`model`]: typed views of the engine's JSON answers.
 //! - [`plotdata`]: what the profile plot draws, including the safe semi-log view.
+//! - [`rawplot`]: the raw data of a worksheet, linear and semi-log, before any analysis.
 //! - [`app`]: the application, its project tree and its screens ([`import`], [`entry`], [`sheet`],
 //!   [`nca`]).
 
@@ -37,6 +38,7 @@ pub mod plot;
 pub mod plotdata;
 pub mod projectfile;
 pub mod projectmenu;
+pub mod rawplot;
 pub mod settings;
 pub mod settingsflow;
 pub mod settingspage;

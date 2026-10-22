@@ -224,7 +224,7 @@ const ROLES: [(&str, &str); 6] = [
     ("other", "Not used"),
 ];
 
-/// The worksheet screen: column roles and units, unit warnings, the grid.
+/// The worksheet screen: the raw-data plot, column roles and units, unit warnings, the grid.
 pub fn screen(
     ui: &mut Ui,
     tokens: &Tokens,
@@ -257,6 +257,9 @@ pub fn screen(
             }
         });
     });
+    ui.add_space(tokens.spacing.medium);
+    // Look at the data before any analysis (T-109).
+    crate::rawplot::card(ui, tokens, info, table);
     ui.add_space(tokens.spacing.medium);
     tokens.card_frame().show(ui, |ui| {
         ui.label(RichText::new("Columns").strong());
