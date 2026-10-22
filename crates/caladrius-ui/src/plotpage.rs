@@ -69,6 +69,12 @@ const SCALES: [(&str, &str); 3] = [
     ("both", "Linear and semi-log"),
 ];
 
+const LOG_LOG_SCALES: [(&str, &str); 3] = [
+    ("linear", "Linear"),
+    ("log", "Log-log"),
+    ("both", "Linear and log-log"),
+];
+
 const LAYOUTS: [(&str, &str); 2] = [
     ("overlay", "Every subject on the same axes"),
     ("per_subject", "One panel per subject"),
@@ -492,6 +498,7 @@ pub fn central(
     tokens: &Tokens,
     page: &mut PlotPage,
     worksheets: &[(u64, String, Vec<String>)],
+    analyses: &[(u64, String)],
     actions: &mut Vec<Action>,
 ) {
     let c = &tokens.colors;
@@ -585,9 +592,11 @@ pub fn central(
                     }
                     Source::Fit { fit, view } => {
                         ui.label("Fit");
-                        ui.label(
-                            RichText::new(format!("analysis {fit}")).color(c.text_muted.color()),
-                        );
+                        let name = analyses
+                            .iter()
+                            .find(|(id, _)| *id == fit)
+                            .map_or_else(|| format!("analysis {fit}"), |(_, l)| l.clone());
+                        ui.label(RichText::new(name).color(c.text_muted.color()));
                         ui.end_row();
                         ui.label("Plot");
                         let views: Vec<(&str, &str)> =
@@ -608,8 +617,14 @@ pub fn central(
                 }
                 ui.label("Scale");
                 let log_ok = page.fit_view().is_none_or(FitView::allows_log);
+                // Observed against predicted puts both axes on the log scale.
+                let scales = if page.fit_view() == Some(FitView::ObservedPredicted) {
+                    LOG_LOG_SCALES
+                } else {
+                    SCALES
+                };
                 ui.horizontal(|ui| {
-                    for (value, label) in SCALES {
+                    for (value, label) in scales {
                         let enabled = log_ok || value == "linear";
                         let response = ui
                             .add_enabled(

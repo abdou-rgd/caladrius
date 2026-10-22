@@ -1148,8 +1148,14 @@ impl UiApp {
                     }
                     (Shown::Plot, _) => {
                         let worksheets = self.plot_worksheets();
+                        let analyses: Vec<(u64, String)> = self
+                            .overview
+                            .analyses
+                            .iter()
+                            .map(|a| (a.id, a.label.clone()))
+                            .collect();
                         if let Some(page) = self.state.plot.as_mut() {
-                            plotpage::central(ui, tokens, page, &worksheets, actions);
+                            plotpage::central(ui, tokens, page, &worksheets, &analyses, actions);
                         }
                     }
                     (Shown::Sim, sheet) => {
