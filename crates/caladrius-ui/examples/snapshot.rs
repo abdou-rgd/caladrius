@@ -46,6 +46,7 @@ fn size_of(name: &str) -> (f32, f32) {
         || name.starts_with("36-")
         || name.contains("more-options")
         || name.contains("wide")
+        || name.contains("per-subject")
     {
         (SIZE.0, 2000.0)
     } else {
@@ -570,13 +571,74 @@ fn scenes() -> Vec<(&'static str, UiApp)> {
         entry.dose_unit = "mg per kg".to_owned();
     }
     scenes.push(("50-entry-unit-menu-and-check", app));
+    // Plots as objects of the project (T-110): six invented subjects overlaid, both themes.
+    for (name, mode) in [
+        ("52-plot-six-subjects-light", ThemeMode::Light),
+        ("53-plot-six-subjects-dark", ThemeMode::Dark),
+    ] {
+        let mut app = UiApp::new();
+        app.load_csv("six-subjects.csv", SIX_SUBJECTS.as_bytes());
+        app.perform(vec![Action::ImportConfirm, Action::NewPlot]);
+        app.state.mode = mode;
+        scenes.push((name, app));
+    }
+    // Four subjects ticked, one panel each, semi-log only.
+    for (name, mode) in [
+        ("54-plot-per-subject-semilog-light", ThemeMode::Light),
+        ("55-plot-per-subject-semilog-dark", ThemeMode::Dark),
+    ] {
+        let mut app = UiApp::new();
+        app.load_csv("six-subjects.csv", SIX_SUBJECTS.as_bytes());
+        app.perform(vec![Action::ImportConfirm, Action::NewPlot]);
+        if let Some(page) = app.state.plot.as_mut() {
+            page.all_subjects = false;
+            page.subjects = ["S1", "S3", "S4", "S5"].map(str::to_owned).to_vec();
+            page.layout = "per_subject".to_owned();
+            page.scale = "log".to_owned();
+        }
+        app.perform(vec![Action::PlotChanged]);
+        app.state.mode = mode;
+        scenes.push((name, app));
+    }
+    // The diagnostic plots of a fit, from its stored result.
+    for (name, view, mode) in [
+        (
+            "56-plot-fit-observed-predicted-light",
+            "observed_predicted",
+            ThemeMode::Light,
+        ),
+        (
+            "57-plot-fit-residuals-dark",
+            "weighted_residuals_time",
+            ThemeMode::Dark,
+        ),
+        ("58-plot-fit-profile-light", "profile", ThemeMode::Light),
+    ] {
+        let mut app = with_oral();
+        let fit = app
+            .engine_mut()
+            .execute("fit.run", json!({ "worksheet": 1, "model": "pk1.oral_1" }));
+        if let Some(fit) = fit.ok().and_then(|v| v.get("id").and_then(|i| i.as_u64())) {
+            app.perform(vec![Action::NewFitPlot {
+                fit,
+                view: view.to_owned(),
+            }]);
+        }
+        app.state.mode = mode;
+        scenes.push((name, app));
+    }
 
     scenes
 }
 
 fn main() {
+    // An argument renders only the scenes whose name contains it (`snapshot -- plot`).
+    let only: Option<String> = std::env::args().nth(1);
     let mut failed = false;
     for (name, app) in scenes() {
+        if only.as_deref().is_some_and(|o| !name.contains(o)) {
+            continue;
+        }
         if let Err(e) = render(name, app) {
             eprintln!("{name}: {e}");
             failed = true;

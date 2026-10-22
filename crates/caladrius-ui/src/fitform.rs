@@ -159,6 +159,28 @@ pub fn central(
         fitresult::results(ui, tokens, page, info);
     });
 
+    // The diagnostic plots of a stored fit, as plot objects of the project (T-110).
+    if let (Some(fit), Some(_)) = (page.analysis, page.ok()) {
+        ui.add_space(tokens.spacing.small);
+        ui.horizontal_wrapped(|ui| {
+            ui.label(RichText::new("Keep a plot of this fit:").color(c.text_muted.color()));
+            for view in caladrius_engine::project::FitView::ALL {
+                if ui
+                    .small_button(view.title())
+                    .on_hover_text(
+                        "A plot object of the project, drawn from this result, exportable as SVG",
+                    )
+                    .clicked()
+                {
+                    actions.push(Action::NewFitPlot {
+                        fit,
+                        view: view.id().to_owned(),
+                    });
+                }
+            }
+        });
+    }
+
     if regenerate {
         actions.push(Action::FitChanged { regenerate: true });
     } else if changed {

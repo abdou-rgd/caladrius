@@ -21,7 +21,8 @@ impl UiApp {
                 .nca
                 .as_ref()
                 .map(|p| p.worksheet)
-                .or_else(|| self.state.fit.as_ref().map(|p| p.worksheet)),
+                .or_else(|| self.state.fit.as_ref().map(|p| p.worksheet))
+                .or_else(|| self.state.plot.as_ref().and_then(|p| p.worksheet())),
             _ => None,
         }
     }

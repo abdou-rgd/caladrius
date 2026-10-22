@@ -6,6 +6,7 @@ use crate::analysis::{
     Analysis, AnalysisId, AnalysisResult, AnalysisSpec, AnalysisStatus, StaleReason, StoredResult,
 };
 use crate::error::{ProjectError, Result};
+use crate::plot::{PlotSource, PlotSpec};
 use crate::worksheet::{Column, Worksheet, WorksheetId};
 
 /// Version of the saved format; a file with a larger version is refused with a message.
@@ -151,17 +152,36 @@ impl Project {
 
     // ---- analyses ------------------------------------------------------------------------
 
-    /// Adds an analysis. The worksheet it reads must exist.
-    pub fn add_analysis(&mut self, spec: AnalysisSpec, name: Option<&str>) -> Result<AnalysisId> {
+    /// Checks that what `spec` reads exists: its worksheet, and for a plot of a fit, a fit
+    /// analysis (a plot reads a fit result, never another plot).
+    fn check_inputs(&self, spec: &AnalysisSpec) -> Result<()> {
         if let Some(ws) = spec.worksheet() {
             self.worksheet(ws)?;
         }
+        if let Some(source) = spec.source_analysis() {
+            let kind = self.analysis(source)?.spec.kind();
+            if kind != "fit" {
+                return Err(ProjectError::new(
+                    "wrong_plot_source",
+                    format!(
+                        "analysis {source} is a {kind} analysis; a plot reads a worksheet or a fit"
+                    ),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Adds an analysis. The worksheet (or the fit) it reads must exist.
+    pub fn add_analysis(&mut self, spec: AnalysisSpec, name: Option<&str>) -> Result<AnalysisId> {
+        self.check_inputs(&spec)?;
         let id = AnalysisId(self.take_id()?);
         self.analyses.push(Analysis {
             id,
             name: name.map(str::to_owned),
             spec,
             spec_version: 0,
+            runs: 0,
             stored: None,
         });
         Ok(id)
@@ -202,9 +222,7 @@ impl Project {
     /// Replaces the options of an analysis. The kind cannot change. When the spec differs, the
     /// stored result becomes stale ([`StaleReason::OptionsChanged`]).
     pub fn update_spec(&mut self, id: AnalysisId, spec: AnalysisSpec) -> Result<()> {
-        if let Some(ws) = spec.worksheet() {
-            self.worksheet(ws)?;
-        }
+        self.check_inputs(&spec)?;
         let a = self.analysis_mut(id)?;
         if a.spec.kind() != spec.kind() {
             return Err(ProjectError::new(
@@ -242,24 +260,57 @@ impl Project {
     }
 
     /// Stores the result of a run of analysis `id`, computed from the current spec and the
-    /// current state of its worksheet.
+    /// current state of its worksheet (or of the analysis it reads).
     pub fn set_result(&mut self, id: AnalysisId, result: AnalysisResult) -> Result<()> {
-        let revision = match self.analysis(id)?.spec.worksheet() {
+        let spec = &self.analysis(id)?.spec;
+        let revision = match spec.worksheet() {
             Some(ws) => Some(self.worksheet(ws)?.revision()),
             None => None,
         };
+        let source_run = match spec.source_analysis() {
+            Some(source) => Some(self.analysis(source)?.runs),
+            None => None,
+        };
         let a = self.analysis_mut(id)?;
+        let runs = a
+            .runs
+            .checked_add(1)
+            .filter(|r| *r != u64::MAX)
+            .ok_or_else(|| {
+                ProjectError::new(
+                    "counter_overflow",
+                    format!("analysis {id} has been run too many times to track further runs"),
+                )
+            })?;
+        a.runs = runs;
         a.stored = Some(StoredResult {
             result,
             worksheet_revision: revision,
             spec_version: a.spec_version,
+            source_run,
         });
         Ok(())
     }
 
-    /// Removes an analysis.
+    /// Removes an analysis that no other analysis reads (a fit shown by a plot is kept until the
+    /// plot is removed).
     pub fn remove_analysis(&mut self, id: AnalysisId) -> Result<()> {
         self.analysis(id)?;
+        let readers: Vec<String> = self
+            .analyses
+            .iter()
+            .filter(|a| a.spec.source_analysis() == Some(id))
+            .map(|a| self.label(a))
+            .collect();
+        if !readers.is_empty() {
+            return Err(ProjectError::new(
+                "analysis_in_use",
+                format!(
+                    "analysis {id} is read by {}; remove those plots first",
+                    readers.join(", ")
+                ),
+            ));
+        }
         self.analyses.retain(|a| a.id != id);
         Ok(())
     }
@@ -281,6 +332,23 @@ impl Project {
                 Err(_) => reasons.push(StaleReason::WorksheetMissing),
             }
         }
+        if let Some(source) = a.spec.source_analysis() {
+            match self.analysis(source) {
+                Ok(s) => {
+                    if stored.source_run != Some(s.runs) {
+                        reasons.push(StaleReason::SourceChanged);
+                    }
+                    // The source is a fit (checked when the plot is added, updated or loaded),
+                    // which reads no other analysis: this does not recurse further.
+                    if s.spec.source_analysis().is_none()
+                        && matches!(self.status(source), Ok(AnalysisStatus::Stale { .. }))
+                    {
+                        reasons.push(StaleReason::SourceStale);
+                    }
+                }
+                Err(_) => reasons.push(StaleReason::SourceMissing),
+            }
+        }
         if stored.spec_version != a.spec_version {
             reasons.push(StaleReason::OptionsChanged);
         }
@@ -298,15 +366,21 @@ impl Project {
     }
 
     fn label(&self, a: &Analysis) -> String {
-        if let Some(n) = &a.name {
-            return n.clone();
+        match &a.name {
+            Some(n) => n.clone(),
+            None => self.describe_spec(&a.spec),
         }
+    }
+
+    /// The label an analysis with this spec and no name gets: the kind, the model or subject,
+    /// and the worksheet (or the analysis it reads).
+    pub fn describe_spec(&self, spec: &AnalysisSpec) -> String {
         let sheet = |id: WorksheetId| {
             self.worksheet(id)
                 .map(|w| w.name().to_owned())
                 .unwrap_or_else(|_| format!("worksheet {id}"))
         };
-        match &a.spec {
+        match spec {
             AnalysisSpec::Nca(s) => format!(
                 "NCA of {}, {}",
                 sheet(s.worksheet),
@@ -323,6 +397,29 @@ impl Project {
                     .map_or(String::new(), |x| format!(", subject {x}"))
             ),
             AnalysisSpec::Simulation(s) => format!("Simulation of {}", s.input.model.id()),
+            AnalysisSpec::Plot(PlotSpec {
+                source: PlotSource::Worksheet { worksheet },
+                subjects,
+                ..
+            }) => format!(
+                "Plot of {}, {}",
+                sheet(*worksheet),
+                match subjects.as_deref() {
+                    None => "all subjects".to_owned(),
+                    Some([one]) => format!("subject {one}"),
+                    Some(many) => format!("{} subjects", many.len()),
+                }
+            ),
+            AnalysisSpec::Plot(PlotSpec {
+                source: PlotSource::Fit { analysis, view },
+                ..
+            }) => {
+                let fit = self
+                    .analysis(*analysis)
+                    .map(|f| self.label(f))
+                    .unwrap_or_else(|_| format!("analysis {analysis}"));
+                format!("{} of {fit}", view.title())
+            }
         }
     }
 
@@ -401,16 +498,18 @@ impl Project {
                 ));
             }
         }
-        if self.analyses.iter().any(|a| a.spec_version == u64::MAX) {
+        if self
+            .analyses
+            .iter()
+            .any(|a| a.spec_version == u64::MAX || a.runs == u64::MAX)
+        {
             return Err(ProjectError::new(
                 "load_bad_counter",
                 "an analysis has an impossible version counter",
             ));
         }
         for a in &self.analyses {
-            if let Some(ws) = a.spec.worksheet() {
-                self.worksheet(ws)?;
-            }
+            self.check_inputs(&a.spec)?;
         }
         Ok(())
     }

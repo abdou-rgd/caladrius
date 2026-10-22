@@ -154,6 +154,11 @@ Each item states what the reference does (observed or documented), what Caladriu
 - Status: `assumed`
 - Sources: screens locale-and-preferences 11, preferences 12, 13. Proposed by the reader.
 
+### UX-PLOT-01 A plot is an object of the workflow (T-110)
+- Caladrius: an XY plot is an analysis object like an NCA or a fit (`plot.xy`): in the project tree, named from its content, saved with the project, marked out of date when its worksheet changes or when the fit it shows is run again or goes stale, redrawn by "Run again". Its page holds the few decisions that matter, top to bottom: the data (a worksheet, or a fit already run with one of its four views: observed and fitted curve, observed vs predicted, residuals vs time, weighted residuals vs time), the subjects (all, or ticked), the layout (overlaid, or one panel per subject), the scale (linear, semi-log, or both side by side; residuals are linear only; observed vs predicted is log-log), a title; the drawing follows at once. Export: SVG of the drawing in the light colours (`export.plot`), and the points as a table (`export.table plot.points`). The raw-data card of the worksheet stays the quick look, with a button that keeps it as a plot.
+- Test: `caladrius-engine` `tests_plot`, `caladrius-ui` `tests_plotpage`.
+- Status: confirmed by tests. Later cards: plots of a parameter across subjects (box plot, bars), histogram, QQ plot, scatter matrix, categorical XY, PNG export.
+
 ## 3. Required improvements (`AGENTS.md` section 7)
 
 ### UX-REQ-01 One screen from data to results for NCA

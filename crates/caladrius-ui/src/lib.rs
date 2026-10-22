@@ -14,6 +14,7 @@
 //! - [`model`]: typed views of the engine's JSON answers.
 //! - [`plotdata`]: what the profile plot draws, including the safe semi-log view.
 //! - [`rawplot`]: the raw data of a worksheet, linear and semi-log, before any analysis.
+//! - [`plotpage`]: plot objects of the project (`plot.xy`), their options and their panels.
 //! - [`app`]: the application, its project tree and its screens ([`import`], [`entry`], [`sheet`],
 //!   [`nca`]).
 
@@ -38,6 +39,7 @@ pub mod nca;
 pub mod palette;
 pub mod plot;
 pub mod plotdata;
+pub mod plotpage;
 pub mod projectfile;
 pub mod projectmenu;
 pub mod rawplot;
@@ -66,6 +68,8 @@ mod tests_fitpreset;
 mod tests_palette;
 #[cfg(test)]
 mod tests_pk2;
+#[cfg(test)]
+mod tests_plotpage;
 #[cfg(test)]
 mod tests_project;
 #[cfg(test)]

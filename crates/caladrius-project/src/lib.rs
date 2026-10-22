@@ -8,7 +8,7 @@
 //! Layer L1: project model (worksheets, workflow objects, results) as pure serializable data.
 //!
 //! A [`Project`] holds worksheets (columns with a role and a unit, all data) and analysis objects
-//! (NCA, model fit, simulation). An analysis holds its options ([`AnalysisSpec`]) and its last
+//! (NCA, model fit, simulation, XY plot). An analysis holds its options ([`AnalysisSpec`]) and its last
 //! result ([`AnalysisResult`]); whether that result is still valid is derived from revision
 //! counters ([`Project::status`], `AGENTS.md` section 7, friction 7), never stored as a flag that
 //! could drift.
@@ -20,6 +20,7 @@
 mod analysis;
 mod csv;
 mod error;
+mod plot;
 mod project;
 mod units;
 mod worksheet;
@@ -30,6 +31,10 @@ pub use analysis::{
 };
 pub use csv::{CsvOptions, ImportedTable, Reading, ReadingCheck, readings};
 pub use error::ProjectError;
+pub use plot::{
+    FitView, PlotAxis, PlotGuide, PlotLayout, PlotPanel, PlotPoint, PlotRun, PlotScale, PlotSeries,
+    PlotSource, PlotSpec, SeriesRole, SeriesStyle,
+};
 pub use project::{FORMAT_VERSION, Project};
 pub use units::{AcceptedUnits, UnitWarning, accepted_units, derived_units, unit_warnings};
 pub use worksheet::{
@@ -38,3 +43,5 @@ pub use worksheet::{
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_plot;

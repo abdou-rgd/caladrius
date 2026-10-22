@@ -1,4 +1,5 @@
-//! Analysis objects: the options of an NCA, a model fit or a simulation, and their last result.
+//! Analysis objects: the options of an NCA, a model fit, a simulation or a plot, and their last
+//! result.
 
 use std::collections::BTreeMap;
 
@@ -7,6 +8,7 @@ use caladrius_models::{ModelId, ModelInput, ModelOutput};
 use caladrius_nca::{NcaOptions, NcaResult, Route};
 use serde::{Deserialize, Serialize};
 
+use crate::plot::{PlotRun, PlotSource, PlotSpec};
 use crate::worksheet::WorksheetId;
 
 /// Stable identifier of an analysis inside a project.
@@ -84,6 +86,8 @@ pub enum AnalysisSpec {
     Fit(FitSpec),
     /// Model simulation.
     Simulation(SimulationSpec),
+    /// XY plot of a worksheet or of a fit.
+    Plot(PlotSpec),
 }
 
 impl AnalysisSpec {
@@ -93,15 +97,31 @@ impl AnalysisSpec {
             AnalysisSpec::Nca(s) => Some(s.worksheet),
             AnalysisSpec::Fit(s) => Some(s.worksheet),
             AnalysisSpec::Simulation(_) => None,
+            AnalysisSpec::Plot(s) => match s.source {
+                PlotSource::Worksheet { worksheet } => Some(worksheet),
+                PlotSource::Fit { .. } => None,
+            },
         }
     }
 
-    /// `nca`, `fit` or `simulation`.
+    /// The analysis whose result this one reads, if any (a plot of a fit).
+    pub fn source_analysis(&self) -> Option<AnalysisId> {
+        match self {
+            AnalysisSpec::Plot(PlotSpec {
+                source: PlotSource::Fit { analysis, .. },
+                ..
+            }) => Some(*analysis),
+            _ => None,
+        }
+    }
+
+    /// `nca`, `fit`, `simulation` or `plot`.
     pub fn kind(&self) -> &'static str {
         match self {
             AnalysisSpec::Nca(_) => "nca",
             AnalysisSpec::Fit(_) => "fit",
             AnalysisSpec::Simulation(_) => "simulation",
+            AnalysisSpec::Plot(_) => "plot",
         }
     }
 }
@@ -181,6 +201,8 @@ pub enum AnalysisResult {
     Fit(FitRun),
     /// A simulation.
     Simulation(SimulationRun),
+    /// The panels of a plot.
+    Plot(PlotRun),
 }
 
 /// Why a stored result no longer matches the analysis.
@@ -198,6 +220,12 @@ pub enum StaleReason {
     OptionsChanged,
     /// The worksheet no longer exists.
     WorksheetMissing,
+    /// The analysis a plot reads was run again (or its result removed) after the plot was drawn.
+    SourceChanged,
+    /// The result of the analysis a plot reads is itself out of date.
+    SourceStale,
+    /// The analysis a plot reads no longer exists.
+    SourceMissing,
 }
 
 impl StaleReason {
@@ -211,6 +239,13 @@ impl StaleReason {
                 "the options changed since this result was computed; run the analysis again"
             }
             StaleReason::WorksheetMissing => "the worksheet this result came from no longer exists",
+            StaleReason::SourceChanged => {
+                "the analysis this plot reads was run again since it was drawn; draw it again"
+            }
+            StaleReason::SourceStale => {
+                "the analysis this plot reads is out of date; run it again, then this plot"
+            }
+            StaleReason::SourceMissing => "the analysis this plot read no longer exists",
         }
     }
 }
@@ -237,6 +272,10 @@ pub(crate) struct StoredResult {
     /// Revision of the worksheet read, `None` for an analysis without a worksheet.
     pub(crate) worksheet_revision: Option<u64>,
     pub(crate) spec_version: u64,
+    /// For an analysis that reads another one (a plot of a fit): the run counter of that analysis
+    /// when this result was made. Absent from files written before it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) source_run: Option<u64>,
 }
 
 /// An analysis object: options and last result.
@@ -248,6 +287,10 @@ pub struct Analysis {
     pub(crate) spec: AnalysisSpec,
     /// Incremented when the spec changes.
     pub(crate) spec_version: u64,
+    /// Incremented each time a result is stored, so that a plot of this analysis knows when it
+    /// was run again. Absent from files written before it: 0.
+    #[serde(default)]
+    pub(crate) runs: u64,
     pub(crate) stored: Option<StoredResult>,
 }
 

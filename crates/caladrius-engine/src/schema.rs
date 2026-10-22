@@ -369,7 +369,7 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
                 object(
                     vec![
                         ("state", json!({ "const": "stale" })),
-                        ("reasons", array_of(open_object(vec![("code", one_of_strings(&["input_changed", "options_changed", "worksheet_missing"]))], &["code"]))),
+                        ("reasons", array_of(open_object(vec![("code", one_of_strings(&["input_changed", "options_changed", "worksheet_missing", "source_changed", "source_stale", "source_missing"]))], &["code"]))),
                     ],
                     &["state", "reasons"],
                 ),
@@ -512,16 +512,69 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
                     ],
                     &["kind", "times", "outcome"],
                 ),
+                open_object(
+                    vec![
+                        ("kind", json!({ "const": "plot" })),
+                        ("title", string()),
+                        ("panels", array_of(reference("PlotPanel"))),
+                        ("notes", array_of(string())),
+                    ],
+                    &["kind", "title", "panels", "notes"],
+                ),
             ] })
         }
+        "PlotPanel" => {
+            let axis = object(
+                vec![
+                    ("label", string()),
+                    ("unit", nullable(string())),
+                    ("log", boolean()),
+                ],
+                &["label", "unit", "log"],
+            );
+            object(
+                vec![
+                    ("title", string()),
+                    ("x", axis.clone()),
+                    ("y", axis),
+                    (
+                        "series",
+                        array_of(object(
+                            vec![
+                                ("name", string()),
+                                (
+                                    "role",
+                                    one_of_strings(&["subject", "observed", "predicted"]),
+                                ),
+                                ("slot", integer()),
+                                ("style", one_of_strings(&["points", "line", "line_points"])),
+                                (
+                                    "points",
+                                    array_of(object(
+                                        vec![("x", number()), ("y", number()), ("blq", boolean())],
+                                        &["x", "y"],
+                                    )),
+                                ),
+                            ],
+                            &["name", "role", "style", "points"],
+                        )),
+                    ),
+                    ("guide", one_of_strings(&["identity", "zero"])),
+                ],
+                &["title", "x", "y", "series"],
+            )
+        }
         "AnalysisSpec" => json!({ "type": "object", "required": ["kind"],
-            "properties": { "kind": one_of_strings(&["nca", "fit", "simulation"]) } }),
+            "properties": { "kind": one_of_strings(&["nca", "fit", "simulation", "plot"]) } }),
         "AnalysisView" => object(
             vec![
                 ("id", reference("Id")),
                 ("label", string()),
                 ("name", nullable(string())),
-                ("kind", one_of_strings(&["nca", "fit", "simulation"])),
+                (
+                    "kind",
+                    one_of_strings(&["nca", "fit", "simulation", "plot"]),
+                ),
                 ("spec", reference("AnalysisSpec")),
                 ("status", reference("AnalysisStatus")),
                 ("result", nullable(reference("AnalysisResult"))),

@@ -72,7 +72,7 @@ fn add_flag_messages(result: Option<&AnalysisResult>, view: &mut Value) {
 }
 
 /// Fails early when `analysis` does not exist or is of another kind.
-fn check_target(
+pub(crate) fn check_target(
     project: &Project,
     analysis: Option<AnalysisId>,
     kind: &str,
@@ -92,7 +92,7 @@ fn check_target(
 }
 
 /// Stores a finished run: updates the analysis `analysis`, or creates one.
-fn store(
+pub(crate) fn store(
     project: &mut Project,
     analysis: Option<AnalysisId>,
     name: Option<&str>,
@@ -637,7 +637,7 @@ fn export_table(engine: &mut Engine, params: Value) -> Result<Value, CommandErro
 pub(crate) const EXPORT_TABLE: CommandDef = CommandDef {
     id: "export.table",
     title: "Export a result table",
-    description: "A table of a worksheet or of the last result of an analysis, as columns and rows and as CSV text (the caller writes the file). `status` says whether the analysis result is fresh or stale. Tables: worksheet; nca.parameters (one row per subject and parameter); fit.parameters, fit.values, fit.observations, fit.curve, fit.trace; simulation.",
+    description: "A table of a worksheet or of the last result of an analysis, as columns and rows and as CSV text (the caller writes the file). `status` says whether the analysis result is fresh or stale. Tables: worksheet; nca.parameters (one row per subject and parameter); fit.parameters, fit.values, fit.observations, fit.curve, fit.trace; simulation; plot.points (one row per point of a plot: panel, series, x, y, blq).",
     mutates: false,
     params: || {
         root(

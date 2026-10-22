@@ -68,7 +68,10 @@ pub(super) fn overview_schema() -> Value {
                     vec![
                         ("id", reference("Id")),
                         ("label", string()),
-                        ("kind", one_of_strings(&["nca", "fit", "simulation"])),
+                        (
+                            "kind",
+                            one_of_strings(&["nca", "fit", "simulation", "plot"]),
+                        ),
                         ("status", reference("AnalysisStatus")),
                     ],
                     &["id", "label", "kind", "status"],

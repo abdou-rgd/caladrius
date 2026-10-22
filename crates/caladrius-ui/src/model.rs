@@ -64,6 +64,9 @@ impl Status {
                 "input_changed" => "the data changed",
                 "options_changed" => "the options changed",
                 "worksheet_missing" => "the worksheet is gone",
+                "source_changed" => "the fit it shows was run again",
+                "source_stale" => "the fit it shows is out of date",
+                "source_missing" => "the fit it showed is gone",
                 _ => "an input changed",
             })
             .collect();
