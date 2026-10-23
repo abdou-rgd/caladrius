@@ -122,3 +122,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-108 | Paste a wide table (one column per subject) into the typed table; recognised units next to the unit cells (`units.check`) | interface | done | T-103 |
 | T-110 | Plots as objects of the workflow: `plot.xy`, `export.plot` (SVG), plot page in the project tree | interface | done | T-109 |
 | T-111 | Same numbers on every machine: `libm` for the platform-dependent float functions, `cargo xtask digest`, a CI digest matrix (Linux, Windows, macOS, wasm32 under Node) | engine | done | T-110 |
+| T-112 | A seal on every result and `project.replay`: the history of a saved project run again and checked bit for bit, in the engine, the CLI, MCP, the desktop application and the browser page | engine | done | T-111 |
