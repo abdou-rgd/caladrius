@@ -13,8 +13,11 @@
 //! JSON Schema of their parameters and results, the same values the MCP server serves.
 //!
 //! An [`Engine`] owns a [`Project`] and an append-only [`History`] of the commands it executed.
-//! There is no file access and no clock here: a CSV comes in as text or bytes, a saved project
-//! goes out as bytes, so the crate compiles to WebAssembly.
+//! Each entry of the history carries a [`Seal`](seal::Seal): a SHA-256 of the command, its
+//! parameters and its answer, so that a saved project can be replayed and checked bit for bit
+//! (`project.replay`). There is no file access here and the engine reads no clock: a CSV comes in
+//! as text or bytes, a saved project goes out as bytes, the program that runs the engine may give
+//! it a clock ([`Engine::set_clock`]) to date the entries, so the crate compiles to WebAssembly.
 //!
 //! A command that fails leaves the project as it was.
 
@@ -25,6 +28,7 @@ mod history;
 mod plot;
 mod run;
 mod schema;
+pub mod seal;
 mod svg;
 
 #[cfg(test)]
@@ -36,12 +40,17 @@ mod tests_pk2;
 #[cfg(test)]
 mod tests_plot;
 #[cfg(test)]
+mod tests_seal;
+#[cfg(test)]
 mod tests_units;
 
 pub use caladrius_project::{self as project, Project};
 pub use error::CommandError;
 pub use history::{History, HistoryEntry, MAX_RECORDED_PARAMS_BYTES};
+pub use seal::{Clock, Seal};
 pub use svg::{COLORS as SVG_COLORS, SvgColors};
+
+use history::Stamp;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -93,6 +102,10 @@ pub struct Engine {
     pub(crate) history: History,
     /// Counts the commands that changed the project (see [`Engine::revision`]).
     pub(crate) revision: u64,
+    /// Where the time of an entry comes from, if anywhere (see [`Engine::set_clock`]).
+    pub(crate) clock: Option<Clock>,
+    /// True when the seals leave out the version and the commit of this build.
+    pub(crate) without_provenance: bool,
 }
 
 impl Engine {
@@ -107,7 +120,24 @@ impl Engine {
             project,
             history: History::default(),
             revision: 0,
+            clock: None,
+            without_provenance: false,
         }
+    }
+
+    /// Gives the engine a clock: the entries of the history are then dated (`at`, next to the
+    /// seal and never inside it). Without one they carry no time. The engine reads no clock
+    /// itself, so that it compiles to WebAssembly: the desktop application and the command line
+    /// pass the system clock, the page passes the one of the browser.
+    pub fn set_clock(&mut self, clock: Clock) {
+        self.clock = Some(clock);
+    }
+
+    /// Whether the seals say which engine made them (the version and the commit; on by default).
+    /// The workload of `cargo xtask digest` turns it off, so that its digest does not depend on
+    /// the commit it was built from.
+    pub fn set_provenance(&mut self, on: bool) {
+        self.without_provenance = !on;
     }
 
     /// The current project, for reading (the UI draws from it).
@@ -128,9 +158,16 @@ impl Engine {
     }
 
     /// Executes command `id` with JSON `params` (`null` means none) and records it in the
-    /// history, whether it succeeds or not. A failed command leaves the project unchanged.
+    /// history, whether it succeeds or not, with its seal. A failed command leaves the project
+    /// unchanged.
     pub fn execute(&mut self, id: &str, params: Value) -> Result<Value, CommandError> {
-        let recorded = params.clone();
+        let received = params.clone();
+        // What the command is about to read, hashed before it can change it.
+        let input = if seal::is_sealed(id) {
+            seal::input_hash(&self.project, id, &received)
+        } else {
+            None
+        };
         let (outcome, mut mutates) = match commands::find(id) {
             Some(command) => ((command.run)(self, params), command.mutates),
             None => (
@@ -153,8 +190,41 @@ impl Engine {
         if mutates && outcome.is_ok() {
             self.revision = self.revision.wrapping_add(1);
         }
-        self.history.push(id, recorded, &outcome, mutates);
+        self.record(id, received, input, &outcome, mutates);
         outcome
+    }
+
+    /// Appends the entry of a command that ran: sealed, unless it is one of the commands that
+    /// carry no seal.
+    fn record(
+        &mut self,
+        id: &str,
+        received: Value,
+        input: Option<String>,
+        outcome: &Result<Value, CommandError>,
+        mutates: bool,
+    ) {
+        let seal = seal::is_sealed(id)
+            .then(|| seal::seal(id, &received, outcome, input, !self.without_provenance));
+        let stamp = Stamp {
+            seal,
+            at: self.now(),
+        };
+        self.history.push(id, received, outcome, mutates, stamp);
+    }
+
+    /// Appends the entry of a refusal before any command ran (text that is not JSON, bytes that
+    /// are not text): there is no command and no answer to seal.
+    fn record_refusal(&mut self, id: &str, params: Value, outcome: &Result<Value, CommandError>) {
+        let stamp = Stamp {
+            seal: None,
+            at: self.now(),
+        };
+        self.history.push(id, params, outcome, false, stamp);
+    }
+
+    fn now(&self) -> Option<String> {
+        self.clock.and_then(|clock| clock()).map(seal::rfc3339)
     }
 
     /// As [`Engine::execute`], with the parameters as JSON text (what a CLI or an MCP server
@@ -167,8 +237,7 @@ impl Engine {
                 Ok(v) => v,
                 Err(e) => {
                     let outcome = Err(CommandError::invalid(id, format!("not valid JSON: {e}")));
-                    self.history
-                        .push(id, Value::String(params.to_owned()), &outcome, false);
+                    self.record_refusal(id, Value::String(params.to_owned()), &outcome);
                     return outcome;
                 }
             }
@@ -188,8 +257,7 @@ impl Engine {
                         e.valid_up_to()
                     ),
                 ));
-                self.history
-                    .push("data.import", json!({ "name": name }), &outcome, false);
+                self.record_refusal("data.import", json!({ "name": name }), &outcome);
                 outcome
             }
         }
@@ -213,8 +281,7 @@ impl Engine {
                     "load_failed",
                     "this is not a Caladrius project: the file is not UTF-8 text",
                 ));
-                self.history
-                    .push("project.load", Value::Null, &outcome, false);
+                self.record_refusal("project.load", Value::Null, &outcome);
                 outcome
             }
         }

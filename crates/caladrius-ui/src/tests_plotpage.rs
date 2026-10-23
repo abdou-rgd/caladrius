@@ -185,6 +185,21 @@ fn export_asks_the_program_to_save_an_svg() {
     };
     assert_eq!(suggested, "plot-of-inv-all-subjects.svg");
     assert!(bytes.starts_with(b"<svg "));
+    // The file says which engine drew it and carries the seal of the command, in a comment.
+    let text = String::from_utf8(bytes.clone()).unwrap();
+    assert!(
+        text.contains("<!-- caladrius engine=") && text.contains(" command=export.plot seal="),
+        "{}",
+        &text[..text.len().min(400)]
+    );
+    let seal = app
+        .engine()
+        .history()
+        .entries()
+        .last()
+        .and_then(|e| e.seal.clone())
+        .unwrap();
+    assert!(text.contains(&seal.sha256));
     app.file_saved("plot.svg");
     assert_eq!(app.notice_text(), Some("Saved plot.svg."));
 }

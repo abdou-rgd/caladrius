@@ -13,6 +13,7 @@ use crate::error::CommandError;
 use crate::schema::{
     array_of, boolean, described, integer, nullable, object, reference, root, string,
 };
+use crate::seal::strip_stamp;
 
 /// The worksheet as a machine and a person read it.
 pub(crate) fn summary(ws: &Worksheet) -> Value {
@@ -139,7 +140,8 @@ fn import(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
         delimiter: p.delimiter,
         decimal_comma: p.decimal_comma,
     };
-    let mut table = ImportedTable::from_csv(p.csv.as_bytes(), &options)?;
+    // A stamp line at the top (`# caladrius ...`, written by an export) is not data.
+    let mut table = ImportedTable::from_csv(strip_stamp(&p.csv).as_bytes(), &options)?;
     for o in &p.columns {
         override_column(&mut table.columns, o)?;
     }
@@ -189,7 +191,7 @@ fn override_column(columns: &mut [Column], o: &ColumnOverride) -> Result<(), Com
 pub(crate) const IMPORT: CommandDef = CommandDef {
     id: "data.import",
     title: "Import a CSV into a new worksheet",
-    description: "Reads CSV text (header line, one line per row; comma, semicolon or tab; a decimal comma is understood with a semicolon) into a new worksheet. Roles (time, concentration, subject, dose, route) and units written in the headers, such as `Conc (ng/mL)`, are recognised; `notes` lists what was guessed or ignored. Use `columns` to set a role or a unit explicitly.",
+    description: "Reads CSV text (header line, one line per row; comma, semicolon or tab; a decimal comma is understood with a semicolon) into a new worksheet. Roles (time, concentration, subject, dose, route) and units written in the headers, such as `Conc (ng/mL)`, are recognised; `notes` lists what was guessed or ignored. Use `columns` to set a role or a unit explicitly. A comment line `# caladrius ...` at the top, as the exports of Caladrius write it, is skipped.",
     mutates: true,
     params: || {
         root(
@@ -721,7 +723,7 @@ fn preview(_engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
         delimiter: p.delimiter,
         decimal_comma: p.decimal_comma,
     };
-    let readings = caladrius_project::readings(p.csv.as_bytes(), &options)?;
+    let readings = caladrius_project::readings(strip_stamp(&p.csv).as_bytes(), &options)?;
     let best_is_plausible = readings.first().is_some_and(|r| r.checks.is_empty());
     respond(&json!({
         "readings": readings.iter().map(|r| reading_json(r, p.rows)).collect::<Vec<_>>(),

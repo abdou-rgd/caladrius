@@ -282,6 +282,14 @@ impl UiApp {
         UiApp::with_engine(Engine::new())
     }
 
+    /// An application with an empty project whose history is dated by `clock`: seconds since 1970
+    /// (the engine reads no clock itself; the program around gives it the one of its system).
+    pub fn with_clock(clock: caladrius_engine::Clock) -> UiApp {
+        let mut engine = Engine::new();
+        engine.set_clock(clock);
+        UiApp::with_engine(engine)
+    }
+
     /// An application over an existing engine (a loaded project).
     pub fn with_engine(engine: Engine) -> UiApp {
         let state = UiState::default();
@@ -398,6 +406,16 @@ impl UiApp {
                 Err(message)
             }
         }
+    }
+
+    /// The stamp line (`caladrius engine=... seal=...`) of the last command the engine ran, for a
+    /// file that command produced; `None` when it carries no seal.
+    pub(crate) fn stamp_of_last_command(&self) -> Option<String> {
+        let entry = self.engine.history().entries().last()?;
+        Some(caladrius_engine::seal::stamp_line(
+            &entry.command,
+            entry.seal.as_ref()?,
+        ))
     }
 
     pub(crate) fn refresh_overview(&mut self) {

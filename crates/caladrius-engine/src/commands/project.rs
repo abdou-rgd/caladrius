@@ -126,7 +126,7 @@ fn save(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
 pub(crate) const SAVE: CommandDef = CommandDef {
     id: "project.save",
     title: "Save the project",
-    description: "The whole project (worksheets, analyses with options and results) and the history of the commands executed so far (under `history`, without this save) as a JSON document, and a suggested file name; the caller writes the file. `Engine::save_bytes` gives the same document as bytes, including the save in the history. Stale results are saved as such.",
+    description: "The whole project (worksheets, analyses with options and results) and the history of the commands executed so far, with their seals (under `history`, without this save), as a JSON document, and a suggested file name; the caller writes the file. `Engine::save_bytes` gives the same document as bytes, including the save in the history. Stale results are saved as such.",
     mutates: false,
     params: || root("project.save parameters", object(vec![], &[])),
     result: || {
@@ -320,7 +320,7 @@ fn history_list(engine: &mut Engine, params: Value) -> Result<Value, CommandErro
 pub(crate) const HISTORY_LIST: CommandDef = CommandDef {
     id: "history.list",
     title: "List the executed commands",
-    description: "The commands executed so far, oldest first, with their parameters and whether they succeeded. The history is append-only: entries are never changed or removed. Failed commands are recorded too.",
+    description: "The commands executed so far, oldest first, with their parameters and whether they succeeded, the seal of each answer (`seal`: the SHA-256 of the command, its parameters and its answer, and the engine that made it) and, when the program that runs the engine has a clock, the time (`at`). The history is append-only: entries are never changed or removed. Failed commands are recorded too.",
     mutates: false,
     params: || {
         root(
@@ -359,6 +359,8 @@ pub(crate) const HISTORY_LIST: CommandDef = CommandDef {
                                     )),
                                 ),
                                 ("changed_project", crate::schema::boolean()),
+                                ("seal", crate::schema::reference("Seal")),
+                                ("at", string()),
                             ],
                             &["seq", "command", "params", "ok", "error", "changed_project"],
                         )),

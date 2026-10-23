@@ -585,6 +585,25 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
             vec![("code", string()), ("message", string())],
             &["code", "message"],
         ),
+        "Seal" => described(
+            object(
+                vec![
+                    ("format", json!({ "type": "integer", "minimum": 1 })),
+                    (
+                        "sha256",
+                        json!({ "type": "string", "pattern": "^[0-9a-f]{64}$" }),
+                    ),
+                    ("engine", string()),
+                    ("commit", string()),
+                    (
+                        "input",
+                        json!({ "type": "string", "pattern": "^[0-9a-f]{64}$" }),
+                    ),
+                ],
+                &["format", "sha256"],
+            ),
+            "The seal of a command: the SHA-256 of its canonical text (the command, the parameters as received and the result, or the code of the error), and where it was made. engine, commit and input are provenance and are not in the hash.",
+        ),
         _ => return None,
     })
 }

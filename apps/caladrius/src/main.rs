@@ -52,6 +52,15 @@ fn parse(args: &[String]) -> Result<Launch, String> {
     }
 }
 
+/// The time of the system, in seconds since 1970: the engine dates the history with it (it reads
+/// no clock itself, so that it compiles to WebAssembly).
+fn system_clock() -> Option<i64> {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?;
+    i64::try_from(elapsed.as_secs()).ok()
+}
+
 /// Reads a file for the interface; the error says which file and why.
 fn read(path: &Path) -> Result<(String, Vec<u8>), String> {
     let bytes = std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
@@ -324,7 +333,7 @@ fn main() -> ExitCode {
         "Caladrius",
         options,
         Box::new(move |_cc| {
-            let mut desktop = Desktop::new(UiApp::new());
+            let mut desktop = Desktop::new(UiApp::with_clock(system_clock));
             desktop.start_settings();
             if let Some(path) = &first_file {
                 desktop.open(Path::new(path));

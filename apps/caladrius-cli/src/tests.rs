@@ -44,6 +44,17 @@ fn json_out(o: &Output) -> Value {
     serde_json::from_str(&o.stdout).unwrap()
 }
 
+/// What a program that reads the CSV an export wrote sees: the table, without the stamp line.
+trait Bare {
+    fn bare(self) -> String;
+}
+
+impl Bare for Output {
+    fn bare(self) -> String {
+        caladrius_engine::seal::strip_stamp(&self.stdout).to_owned()
+    }
+}
+
 #[test]
 fn arguments_are_parsed_in_both_flag_styles() {
     assert_eq!(parse_args(&args(&["help"])).unwrap(), Action::Help);
@@ -172,7 +183,7 @@ fn nca_from_a_csv_prints_json_or_a_table() {
         "csv",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     assert!(csv.starts_with("subject,parameter,value,not_calculated_reason\nA,"));
     assert!(csv.lines().any(|l| l.starts_with("A,cmax,3.971,")), "{csv}");
 
@@ -188,7 +199,7 @@ fn nca_from_a_csv_prints_json_or_a_table() {
         "nca.parameters",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     assert_eq!(table, csv);
     assert!(
         failure(&[
@@ -218,7 +229,7 @@ fn fit_and_simulation_have_csv_forms() {
         "csv",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     assert!(
         fit.starts_with("parameter,estimate,se,cv_percent,ci_lo,ci_hi\n"),
         "{fit}"
@@ -236,7 +247,7 @@ fn fit_and_simulation_have_csv_forms() {
         "fit.curve",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     assert_eq!(curve.lines().next(), Some("time,conc"));
     let sim = run_args(&[
         "model.simulate",
@@ -254,7 +265,7 @@ fn fit_and_simulation_have_csv_forms() {
         "csv",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     assert_eq!(sim.lines().next(), Some("time,conc,auc"));
     assert_eq!(sim.lines().count(), 4);
     assert!(sim.contains("\n0,2,0\n"), "{sim}");
@@ -369,7 +380,7 @@ fn a_project_file_carries_state_between_invocations() {
         "csv",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     assert!(table.contains("A,cmax,4.5,"), "{table}");
     let h = json_out(&run_args(&["history.list", "--project", project]).unwrap());
     let commands: Vec<&str> = h["entries"]
@@ -604,7 +615,7 @@ fn a_pk2_fit_runs_from_the_command_line() {
         "csv",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     assert!(
         fit.starts_with("parameter,estimate,se,cv_percent,ci_lo,ci_hi\n"),
         "{fit}"
@@ -709,7 +720,7 @@ fn compare_runs_on_a_project_and_prints_json_or_a_table() {
         "csv",
     ])
     .unwrap()
-    .stdout;
+    .bare();
     let lines: Vec<&str> = table.lines().collect();
     assert_eq!(
         lines[0],
@@ -760,4 +771,77 @@ fn a_reason_with_a_comma_is_quoted_in_the_table() {
         compare_csv(&result),
         "parameter,a,b,unit_a,unit_b,difference,difference_unit,relative_percent,ratio,not_comparable\nx,1.5,,h,,,,,,\"a, \"\"b\"\"\"\n"
     );
+}
+
+#[test]
+fn what_is_printed_carries_the_seal_of_the_command_unless_told_not_to() {
+    let dir = scratch("seal");
+    let file = csv_file(&dir);
+    let project = dir.join("p.caladrius.json");
+    let project = project.to_str().unwrap();
+    let base = [
+        "nca.run",
+        "--csv",
+        file.as_str(),
+        "--param",
+        "route=extravascular",
+        "--project",
+        project,
+    ];
+    let plain = |extra: &[&str]| {
+        let mut list = base.to_vec();
+        list.extend_from_slice(extra);
+        list.push("--no-seal");
+        run_args(&list).unwrap()
+    };
+    let _ = fs::remove_file(project);
+
+    // JSON: a `seal` member beside the result.
+    let sealed = json_out(&run_args(&base).unwrap());
+    assert_eq!(sealed["kind"], "nca");
+    let seal = &sealed["seal"];
+    assert_eq!(seal["format"], 1);
+    assert_eq!(seal["engine"], env!("CARGO_PKG_VERSION"));
+    let hash = seal["sha256"].as_str().unwrap().to_owned();
+    assert_eq!(hash.len(), 64);
+    // It is the seal that the history of the saved project holds for that command.
+    let saved: Value = serde_json::from_str(&fs::read_to_string(project).unwrap()).unwrap();
+    let entries = saved["history"].as_array().unwrap();
+    let run = entries.iter().find(|e| e["command"] == "nca.run").unwrap();
+    assert_eq!(run["seal"]["sha256"].as_str(), Some(hash.as_str()));
+    assert!(
+        run["at"].as_str().is_some_and(|t| t.ends_with('Z')),
+        "{run}"
+    );
+
+    // --no-seal: the result as it is.
+    let _ = fs::remove_file(project);
+    let bare = json_out(&plain(&[]));
+    assert!(bare.get("seal").is_none());
+    let mut without = sealed.clone();
+    without.as_object_mut().unwrap().remove("seal");
+    assert_eq!(bare, without);
+
+    // CSV: a first line that says where the table comes from, then the table.
+    let _ = fs::remove_file(project);
+    let csv = run_args(&[base.as_slice(), &["--format", "csv"]].concat())
+        .unwrap()
+        .stdout;
+    let first = csv.lines().next().unwrap();
+    assert!(
+        first.starts_with("# caladrius engine=") && first.contains(" command=export.table seal="),
+        "{first}"
+    );
+    let _ = fs::remove_file(project);
+    let table = plain(&["--format", "csv"]).stdout;
+    assert!(table.starts_with("subject,parameter,value,"));
+    assert_eq!(caladrius_engine::seal::strip_stamp(&csv), table);
+    // The same command twice gives the same file, byte for byte.
+    let _ = fs::remove_file(project);
+    let again = run_args(&[base.as_slice(), &["--format", "csv"]].concat())
+        .unwrap()
+        .stdout;
+    assert_eq!(again, csv);
+
+    assert!(failure(&["nca.run", "--no-seal=yes"]).contains("takes no value"));
 }

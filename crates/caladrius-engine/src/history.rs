@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::CommandError;
+use crate::seal::Seal;
 
 /// Parameters larger than this (as JSON text) are not kept: the entry holds their size and a digest.
 pub const MAX_RECORDED_PARAMS_BYTES: usize = 64 * 1024;
@@ -41,6 +42,14 @@ pub struct HistoryEntry {
     pub error: Option<CommandError>,
     /// True when it succeeded and changed the project (a command that only reads does not).
     pub changed_project: bool,
+    /// The seal of the command and its answer (see [`crate::seal`]). Absent in a project saved
+    /// before seals existed, and for the commands that carry none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seal: Option<Seal>,
+    /// When it ran, as `YYYY-MM-DDTHH:MM:SSZ` (UTC), when the program that ran it gave the engine
+    /// a clock. It sits next to the seal and is not in it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
 }
 
 /// The entries so far. There is no way to remove or change one: the only operation that adds is
@@ -88,12 +97,15 @@ impl History {
         Ok(true)
     }
 
+    /// Appends the entry of a command. `params` are the parameters as received, kept up to
+    /// [`MAX_RECORDED_PARAMS_BYTES`].
     pub(crate) fn push(
         &mut self,
         command: &str,
         params: Value,
         outcome: &Result<Value, CommandError>,
         mutates: bool,
+        stamp: Stamp,
     ) {
         let seq = self.entries.len() as u64 + 1;
         self.entries.push(HistoryEntry {
@@ -103,6 +115,15 @@ impl History {
             ok: outcome.is_ok(),
             error: outcome.as_ref().err().cloned(),
             changed_project: mutates && outcome.is_ok(),
+            seal: stamp.seal,
+            at: stamp.at,
         });
     }
+}
+
+/// What goes next to the outcome of a command in its entry: the seal and the time.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct Stamp {
+    pub(crate) seal: Option<Seal>,
+    pub(crate) at: Option<String>,
 }

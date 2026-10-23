@@ -783,9 +783,14 @@ impl UiApp {
         let Some(svg) = answer.get("svg").and_then(Value::as_str) else {
             return;
         };
+        // The file says which engine drew it and carries the seal of the command (a comment).
+        let svg = match self.stamp_of_last_command() {
+            Some(line) => caladrius_engine::seal::svg_with_stamp(svg, &line),
+            None => svg.to_owned(),
+        };
         self.requests.push(Request::SaveFile {
             suggested: name,
-            bytes: svg.as_bytes().to_vec(),
+            bytes: svg.into_bytes(),
         });
     }
 }

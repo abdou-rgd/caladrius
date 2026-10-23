@@ -1,5 +1,5 @@
-//! SHA-256 (FIPS 180-4), small and without dependency: the digest only fingerprints text, and the
-//! same integer code runs natively and in WebAssembly. Checked against the NIST test vectors.
+//! SHA-256 (FIPS 180-4), small and without dependency: seals and the digest only fingerprint text,
+//! and the same integer code runs natively and in WebAssembly. Checked against the NIST test vectors.
 
 const K: [u32; 64] = [
     0x428a_2f98,
