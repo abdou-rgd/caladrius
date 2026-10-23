@@ -85,8 +85,13 @@ pub struct Seal {
 impl Seal {
     /// The first [`SHORT`] digits of the hash, what a screen shows.
     pub fn short(&self) -> &str {
-        self.sha256.get(..SHORT).unwrap_or(&self.sha256)
+        short(&self.sha256)
     }
+}
+
+/// The first [`SHORT`] digits of a hash written as hexadecimal text, what a screen shows.
+pub fn short(hex: &str) -> &str {
+    hex.get(..SHORT).unwrap_or(hex)
 }
 
 /// True for the commands that get a seal.

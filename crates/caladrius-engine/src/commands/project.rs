@@ -1,4 +1,5 @@
-//! `project.describe`, `project.save`, `project.load`, `project.new`, `history.list`.
+//! `project.describe`, `project.save`, `project.load`, `project.replay`, `project.new`,
+//! `history.list`.
 
 use caladrius_project::Project;
 use serde::Deserialize;
@@ -8,7 +9,7 @@ use super::{CommandDef, parse, respond};
 use crate::Engine;
 use crate::error::CommandError;
 use crate::export::slug;
-use crate::history::HistoryEntry;
+use crate::history::{HistoryEntry, check_positions};
 use crate::schema::{array_of, integer, nullable, object, one_of_strings, reference, root, string};
 
 pub(super) fn overview(engine: &Engine) -> Result<Value, CommandError> {
@@ -145,25 +146,53 @@ pub(crate) const SAVE: CommandDef = CommandDef {
     run: save,
 };
 
+/// The parameters of the commands that take a saved document: the document itself, or its text.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct LoadParams {
+struct DocumentParams {
     #[serde(default)]
     project: Option<Value>,
     #[serde(default)]
     text: Option<String>,
 }
 
+/// A saved document taken apart: the project, and the history it carried as the reader found it
+/// (`Err` holds what the reader said about it).
+pub(crate) struct Saved {
+    pub(crate) project: Project,
+    pub(crate) history: Result<Vec<HistoryEntry>, String>,
+}
+
+/// The document written in `text`.
+pub(crate) fn document_of_text(text: &str) -> Result<Value, CommandError> {
+    serde_json::from_str(text).map_err(|e| {
+        CommandError::new(
+            "load_failed",
+            format!("this is not a readable Caladrius project: {e}"),
+        )
+    })
+}
+
+/// Checks a saved document and takes it apart. A history that cannot be read is not an error
+/// here: the project is what was asked for, and the caller decides what to do without the history.
+pub(crate) fn read_saved(mut doc: Value) -> Result<Saved, CommandError> {
+    let saved_history = doc.as_object_mut().and_then(|m| m.remove("history"));
+    let history = match saved_history {
+        None => Ok(Vec::new()),
+        Some(h) => serde_json::from_value::<Vec<HistoryEntry>>(h).map_err(|e| e.to_string()),
+    };
+    let bytes = serde_json::to_vec(&doc).map_err(|e| {
+        CommandError::new("load_failed", format!("the project cannot be read: {e}"))
+    })?;
+    let project = Project::from_bytes(&bytes)?;
+    Ok(Saved { project, history })
+}
+
 fn load(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
-    let p: LoadParams = parse("project.load", params)?;
-    let mut doc: Value = match (p.project, p.text) {
+    let p: DocumentParams = parse("project.load", params)?;
+    let doc: Value = match (p.project, p.text) {
         (Some(v), None) => v,
-        (None, Some(t)) => serde_json::from_str(&t).map_err(|e| {
-            CommandError::new(
-                "load_failed",
-                format!("this is not a readable Caladrius project: {e}"),
-            )
-        })?,
+        (None, Some(t)) => document_of_text(&t)?,
         _ => {
             return Err(CommandError::invalid(
                 "project.load",
@@ -173,23 +202,16 @@ fn load(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
     };
     // A history that cannot be read or is damaged is left out: the project itself is what the
     // person asked for, and the result says that the history was not restored.
-    let saved_history = doc.as_object_mut().and_then(|m| m.remove("history"));
-    let (entries, mut history_note) = match saved_history {
-        None => (Some(Vec::new()), None),
-        Some(h) => match serde_json::from_value::<Vec<HistoryEntry>>(h) {
-            Ok(entries) => (Some(entries), None),
-            Err(e) => (
-                None,
-                Some(format!(
-                    "the saved history is not readable and was left out: {e}"
-                )),
-            ),
-        },
+    let Saved { project, history } = read_saved(doc)?;
+    let (entries, mut history_note) = match history {
+        Ok(entries) => (Some(entries), None),
+        Err(e) => (
+            None,
+            Some(format!(
+                "the saved history is not readable and was left out: {e}"
+            )),
+        ),
     };
-    let bytes = serde_json::to_vec(&doc).map_err(|e| {
-        CommandError::new("load_failed", format!("the project cannot be read: {e}"))
-    })?;
-    let project = Project::from_bytes(&bytes)?;
     // Everything is checked: from here on nothing fails, so a refused file changes nothing.
     let restored = match entries.map(|e| engine.history.adopt(e)) {
         Some(Ok(restored)) => restored,
@@ -252,6 +274,130 @@ pub(crate) const LOAD: CommandDef = CommandDef {
         } })
     },
     run: load,
+};
+
+// ---- replay ------------------------------------------------------------------------------
+
+/// A saved document ready to replay: the project, and its history, which must be readable and
+/// numbered from 1 without a gap.
+fn to_replay(saved: Saved) -> Result<(Project, Vec<HistoryEntry>), CommandError> {
+    let entries = saved.history.map_err(|e| {
+        CommandError::new(
+            "history_damaged",
+            format!("the saved history is not readable: {e}"),
+        )
+    })?;
+    check_positions(&entries).map_err(|message| CommandError::new("history_damaged", message))?;
+    Ok((saved.project, entries))
+}
+
+fn replay(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
+    let p: DocumentParams = parse("project.replay", params)?;
+    let (project, entries) = match (p.project, p.text) {
+        // Neither: the project and the history of this session.
+        (None, None) => (engine.project.clone(), engine.history.entries().to_vec()),
+        (Some(doc), None) => to_replay(read_saved(doc)?)?,
+        (None, Some(text)) => to_replay(read_saved(document_of_text(&text)?)?)?,
+        (Some(_), Some(_)) => {
+            return Err(CommandError::invalid(
+                "project.replay",
+                "give at most one of `project` (the document) and `text` (its JSON text)",
+            ));
+        }
+    };
+    respond(&crate::replay::replay(
+        &project,
+        &entries,
+        !engine.without_provenance,
+    ))
+}
+
+fn hex_digest() -> Value {
+    json!({ "type": "string", "pattern": "^[0-9a-f]{64}$" })
+}
+
+pub(crate) const REPLAY: CommandDef = CommandDef {
+    id: "project.replay",
+    title: "Replay a project and check its seals",
+    description: "Runs the history of a saved project again, from an empty project and with the parameters the history kept, and checks every step against its stored seal. The project is given as the document (`project`) or its JSON text (`text`); with neither, the history of this session is replayed. Nothing of the current project is read or changed. The result lists each step with its stored seal, the seal computed now and its status (`match`; `diverged`; `no_seal` for a project saved before seals, or a command that carries none; `not_replayable` when the parameters were too large to be kept; `blocked` after such a step), the first step that diverges, and whether the project the steps produce is the project stored in the file (`state`). The verdict is `verified` (every sealed step reproduces its seal and the project is the stored one), `diverged`, `incomplete` (some steps could not be run again), `unsealed` (a project saved before seals) or `empty`. A history that cannot be read is the error `history_damaged`.",
+    mutates: false,
+    params: || {
+        root(
+            "project.replay parameters",
+            object(
+                vec![("project", json!({ "type": "object" })), ("text", string())],
+                &[],
+            ),
+        )
+    },
+    result: || {
+        let count = || json!({ "type": "integer", "minimum": 0 });
+        root(
+            "project.replay result",
+            object(
+                vec![
+                    (
+                        "verdict",
+                        one_of_strings(&[
+                            "verified",
+                            "diverged",
+                            "incomplete",
+                            "unsealed",
+                            "empty",
+                        ]),
+                    ),
+                    ("summary", string()),
+                    (
+                        "counts",
+                        object(
+                            vec![
+                                ("matched", count()),
+                                ("diverged", count()),
+                                ("no_seal", count()),
+                                ("not_replayable", count()),
+                                ("blocked", count()),
+                            ],
+                            &[
+                                "matched",
+                                "diverged",
+                                "no_seal",
+                                "not_replayable",
+                                "blocked",
+                            ],
+                        ),
+                    ),
+                    ("first_divergence", nullable(reference("ReplayStep"))),
+                    (
+                        "state",
+                        object(
+                            vec![
+                                ("matches", crate::schema::boolean()),
+                                ("stored", hex_digest()),
+                                ("replayed", hex_digest()),
+                                ("differing", array_of(string())),
+                                ("note", string()),
+                            ],
+                            &["differing"],
+                        ),
+                    ),
+                    ("engine", reference("EngineId")),
+                    ("sealed_by", array_of(reference("EngineId"))),
+                    ("steps", array_of(reference("ReplayStep"))),
+                ],
+                &[
+                    "verdict",
+                    "summary",
+                    "counts",
+                    "first_divergence",
+                    "state",
+                    "sealed_by",
+                    "steps",
+                ],
+            ),
+        )
+    },
+    example: || json!({}),
+    run: replay,
 };
 
 #[derive(Deserialize)]

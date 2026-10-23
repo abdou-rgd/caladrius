@@ -26,6 +26,7 @@ mod error;
 mod export;
 mod history;
 mod plot;
+pub mod replay;
 mod run;
 mod schema;
 pub mod seal;
@@ -39,6 +40,8 @@ mod tests_compare;
 mod tests_pk2;
 #[cfg(test)]
 mod tests_plot;
+#[cfg(test)]
+mod tests_replay;
 #[cfg(test)]
 mod tests_seal;
 #[cfg(test)]

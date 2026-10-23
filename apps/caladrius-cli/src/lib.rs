@@ -16,7 +16,8 @@
 //! caladrius-cli compare A B [--param parameters=[...]] --project FILE [--format json|csv]
 //! ```
 //!
-//! Every failure is a one-line message on stderr and exit code 1.
+//! Every failure is a one-line message on stderr and exit code 1. `project.replay --project FILE`
+//! prints its report and exits with code 1 when the replay finds a difference.
 
 use std::fs;
 use std::io::Read;
@@ -55,6 +56,9 @@ pub struct Output {
     pub stdout: String,
     /// Remarks for standard error, one per line: what an import guessed, unit warnings.
     pub notes: Vec<String>,
+    /// The exit code: 0, or 1 when `project.replay` found that the project is not what its
+    /// history produces (the report is printed all the same).
+    pub exit_code: u8,
 }
 
 /// Output format of a command.
@@ -99,7 +103,8 @@ options for a command:
   --csv FILE          import FILE as a worksheet first; commands that take a `worksheet`
                       use it when none is given
   --project FILE      load this project if it exists, and write it back after a command
-                      that changes it
+                      that changes it. For project.replay it is the project to replay:
+                      nothing is loaded or written
   --format json|csv   json (default): the command's result; csv: its table (an analysis
                       prints its main table, see --table)
   --table NAME        the table to print with --format csv (export.table names)
@@ -115,9 +120,14 @@ compare A B         short for `analysis.compare --param a=A --param b=B`: the di
                       percentage and the ratio of the parameters two analyses of the project
                       share (--format csv prints them as a table)
 
+project.replay      runs the history of a saved project again and checks every step against
+                      its seal, then the stored project against the one the steps produce. The
+                      report is printed; the exit code is 1 when something differs
+
 example:
   caladrius-cli nca.run --csv oracle/data/theoph.csv --param route=extravascular --format csv
-  caladrius-cli compare 2 3 --project study.caladrius.json --format csv";
+  caladrius-cli compare 2 3 --project study.caladrius.json --format csv
+  caladrius-cli project.replay --project study.caladrius.json";
 
 fn parse_format(text: &str) -> Result<Format, CliError> {
     match text {
@@ -306,6 +316,7 @@ fn list_commands(format: Option<Format>) -> Result<Output, CliError> {
     Ok(Output {
         stdout,
         notes: Vec::new(),
+        exit_code: 0,
     })
 }
 
@@ -573,10 +584,24 @@ fn run_command(args: &RunArgs, stdin: &mut dyn Read) -> Result<Output, CliError>
         set_path(&mut params, &path, value)?;
     }
 
+    // `project.replay` checks a file: it is the text it is given, and nothing is loaded or written.
+    let replaying = args.command == "project.replay";
+    if replaying {
+        if args.csv.is_some() {
+            return fail("`project.replay` replays a project: give it with --project FILE");
+        }
+        if let Some(path) = &args.project {
+            if params.contains_key("text") || params.contains_key("project") {
+                return fail("give the project once: --project FILE, or --param text=@FILE");
+            }
+            params.insert("text".to_owned(), Value::String(read_text(path)?));
+        }
+    }
+
     let mut notes = Vec::new();
     let mut engine = Engine::new();
     engine.set_clock(system_clock);
-    if let Some(path) = &args.project {
+    if let Some(path) = args.project.as_ref().filter(|_| !replaying) {
         match fs::read(path) {
             Ok(bytes) => {
                 engine.load_bytes(&bytes)?;
@@ -620,6 +645,26 @@ fn run_command(args: &RunArgs, stdin: &mut dyn Read) -> Result<Output, CliError>
     if args.command == "data.import" {
         notes.extend(import_notes(&result));
     }
+    let mut exit_code = 0;
+    if replaying {
+        let verdict = result["verdict"].as_str().unwrap_or("unknown");
+        let mut note = format!("{verdict}: {}", result["summary"].as_str().unwrap_or(""));
+        // The first seal that is not reproduced, as a screen shows it.
+        let first = &result["first_divergence"];
+        if let (Some(stored), Some(now)) = (first["stored"].as_str(), first["recomputed"].as_str())
+        {
+            let short = caladrius_engine::seal::short;
+            note.push_str(&format!(
+                " Stored {}, recomputed {}.",
+                short(stored),
+                short(now)
+            ));
+        }
+        notes.push(note);
+        if verdict == "diverged" {
+            exit_code = 1;
+        }
+    }
 
     let stdout = match args.format.unwrap_or(Format::Json) {
         Format::Csv => {
@@ -641,7 +686,11 @@ fn run_command(args: &RunArgs, stdin: &mut dyn Read) -> Result<Output, CliError>
             write_atomic(path, &engine.save_bytes()?)?;
         }
     }
-    Ok(Output { stdout, notes })
+    Ok(Output {
+        stdout,
+        notes,
+        exit_code,
+    })
 }
 
 /// The seal of the last command the engine executed, if it carries one.
@@ -669,6 +718,7 @@ pub fn run(args: &[String], stdin: &mut dyn Read) -> Result<Output, CliError> {
         Action::Help => Ok(Output {
             stdout: format!("{USAGE}\n"),
             notes: Vec::new(),
+            exit_code: 0,
         }),
         Action::Commands(format) => list_commands(format),
         Action::Run(run) => run_command(&run, stdin),

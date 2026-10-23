@@ -23,7 +23,11 @@
 //! Every result also carries the seal of the command in its `_meta` (`caladrius/seal`: the
 //! SHA-256 of the command, its parameters and its answer, and where it was made; `caladrius/at`:
 //! the time). It is never in `content` or in `structuredContent`: what the model reads, and what
-//! a number gate checks against, is exactly what it was before seals existed.
+//! a number gate checks against, is exactly what it was before seals existed. That holds for the
+//! three answers that would show seals of their own, the entries that `history_list` and
+//! `project_save` list and the digests of a `project_replay` report: the model reads them without
+//! those members, and the whole answer is in `_meta` under `caladrius/result` for the program
+//! that keeps the file or checks the digests.
 
 use std::io::{BufRead, Read, Write};
 
@@ -52,12 +56,15 @@ Typical session: data_import (CSV text in `csv`; roles and units are guessed fro
 data_describe to check them (data_set_column to fix a role or a unit), nca_run for a non-compartmental analysis \
 or fit_run for a model fit (the answer holds the result and its status), export_table for CSV tables. \
 Worksheets and analyses persist during the session; after data_set_cell or data_set_column an analysis is \
-`stale` until analysis_run. project_save returns the whole project to keep. To compare two analyses of one subject call analysis_compare: per shared parameter it gives both values with units, b-a, the relative difference in percent and the ratio, or `not_comparable` with the reason; quote those numbers, never compute them. Errors say what to fix.";
+`stale` until analysis_run. project_save returns the whole project to keep. project_replay with no arguments runs the work of the session again and checks every step against its seal: report its verdict and its summary in words, they say whether it reproduces bit for bit or where it does not. To compare two analyses of one subject call analysis_compare: per shared parameter it gives both values with units, b-a, the relative difference in percent and the ratio, or `not_comparable` with the reason; quote those numbers, never compute them. Errors say what to fix.";
 
 /// The keys of the `_meta` of a result (the prefix keeps them apart from other servers' keys).
 pub const SEAL_KEY: &str = "caladrius/seal";
 /// See [`SEAL_KEY`].
 pub const AT_KEY: &str = "caladrius/at";
+/// The whole answer of a command whose answer the model reads without its seals, times and
+/// digests (see [`model_view`]).
+pub const RESULT_KEY: &str = "caladrius/result";
 
 /// The time of the system, in seconds since 1970 (the engine reads no clock itself).
 fn system_clock() -> Option<i64> {
@@ -155,25 +162,37 @@ impl Server {
             ));
         };
         let arguments = map.get("arguments").cloned().unwrap_or(Value::Null);
-        let mut result = match self.engine.execute(&command, arguments) {
+        let (mut result, whole) = match self.engine.execute(&command, arguments) {
             Ok(value) => {
+                // What the model reads, and the whole answer when that is not all of it.
+                let (shown, whole) = match model_view(&command, &value) {
+                    Some(view) => (view, Some(value)),
+                    None => (value, None),
+                };
                 let text =
-                    serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string());
+                    serde_json::to_string_pretty(&shown).unwrap_or_else(|_| shown.to_string());
                 let mut result = json!({
                     "content": [{ "type": "text", "text": text }],
                     "isError": false,
                 });
-                if value.is_object() {
-                    result["structuredContent"] = value;
+                if shown.is_object() {
+                    result["structuredContent"] = shown;
                 }
-                result
+                (result, whole)
             }
-            Err(e) => json!({
-                "content": [{ "type": "text", "text": format!("{}: {}", e.code, e.message) }],
-                "isError": true,
-            }),
+            Err(e) => (
+                json!({
+                    "content": [{ "type": "text", "text": format!("{}: {}", e.code, e.message) }],
+                    "isError": true,
+                }),
+                None,
+            ),
         };
-        if let Some(meta) = self.seal_meta() {
+        let mut meta = self.seal_meta();
+        if let Some(whole) = whole {
+            meta.get_or_insert_with(|| json!({}))[RESULT_KEY] = whole;
+        }
+        if let Some(meta) = meta {
             result["_meta"] = meta;
         }
         Ok(result)
@@ -403,6 +422,52 @@ fn skip_line<R: BufRead>(input: &mut R) -> std::io::Result<()> {
 /// The tool table as `tools/list` returns it, without a session.
 pub fn tools() -> Vec<Value> {
     describe().iter().map(Server::tool).collect()
+}
+
+/// What the model reads of an answer, when that is not the whole answer: the entries that
+/// `history.list` and `project.save` list without their seals and times, and a `project.replay`
+/// report without its digests and engine versions. A hash is a string of digits that a number
+/// gate reads as numbers, and it is no use to a model that never computes anything: the program
+/// that keeps the file or checks the digests finds the whole answer in `_meta`. `None` for every
+/// other answer, which is shown as it is.
+fn model_view(command: &str, answer: &Value) -> Option<Value> {
+    let mut view = answer.clone();
+    let changed = match command {
+        "history.list" => without(view.pointer_mut("/entries"), &["seal", "at"]),
+        "project.save" => without(view.pointer_mut("/project/history"), &["seal", "at"]),
+        "project.replay" => {
+            let mut changed = without(Some(&mut view), &["engine", "sealed_by"]);
+            changed |= without(view.pointer_mut("/state"), &["stored", "replayed"]);
+            changed |= without(view.pointer_mut("/steps"), &["stored", "recomputed"]);
+            changed |= without(
+                view.pointer_mut("/first_divergence"),
+                &["stored", "recomputed"],
+            );
+            changed
+        }
+        _ => false,
+    };
+    changed.then_some(view)
+}
+
+/// Removes the members `keys` from `value`, or from each element when it is an array. True when
+/// one was there.
+fn without(value: Option<&mut Value>, keys: &[&str]) -> bool {
+    let mut removed = false;
+    match value {
+        Some(Value::Object(map)) => {
+            for key in keys {
+                removed |= map.remove(*key).is_some();
+            }
+        }
+        Some(Value::Array(items)) => {
+            for item in items {
+                removed |= without(Some(item), keys);
+            }
+        }
+        _ => {}
+    }
+    removed
 }
 
 #[cfg(test)]

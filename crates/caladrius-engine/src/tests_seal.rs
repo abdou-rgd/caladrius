@@ -67,15 +67,15 @@ fn seal_at(engine: &Engine, seq: usize) -> Seal {
 }
 
 #[test]
-fn every_command_that_ran_has_a_seal_except_the_load() {
+fn every_command_that_ran_has_a_seal_except_the_load_and_the_replay() {
     let mut engine = Engine::new();
     for command in describe() {
         let _ = engine.execute(&command.id, command.example.clone());
     }
     assert_eq!(engine.history().len(), command_ids().len());
     for entry in engine.history().entries() {
-        if entry.command == "project.load" {
-            assert!(entry.seal.is_none(), "the load carries no seal");
+        if matches!(entry.command.as_str(), "project.load" | "project.replay") {
+            assert!(entry.seal.is_none(), "{} carries no seal", entry.command);
             continue;
         }
         let seal = entry

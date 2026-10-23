@@ -845,3 +845,86 @@ fn what_is_printed_carries_the_seal_of_the_command_unless_told_not_to() {
 
     assert!(failure(&["nca.run", "--no-seal=yes"]).contains("takes no value"));
 }
+
+#[test]
+fn project_replay_checks_a_saved_project_and_exits_with_1_when_it_differs() {
+    let dir = scratch("replay");
+    let file = csv_file(&dir);
+    let project = dir.join("p.caladrius.json");
+    let project = project.to_str().unwrap();
+    run_args(&[
+        "nca.run",
+        "--csv",
+        &file,
+        "--param",
+        "route=extravascular",
+        "--project",
+        project,
+    ])
+    .unwrap();
+    let before = fs::read(project).unwrap();
+
+    let checked = run_args(&["project.replay", "--project", project]).unwrap();
+    let report = json_out(&checked);
+    assert_eq!(report["verdict"], "verified", "{report}");
+    assert_eq!(checked.exit_code, 0);
+    assert!(
+        checked.notes[0].starts_with("verified: "),
+        "{:?}",
+        checked.notes
+    );
+    assert_eq!(
+        fs::read(project).unwrap(),
+        before,
+        "a replay writes nothing"
+    );
+    assert!(report.get("seal").is_none(), "a replay carries no seal");
+    // The steps are those of the two invocations that built the file.
+    let commands: Vec<&str> = report["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["command"].as_str().unwrap())
+        .collect();
+    assert!(
+        commands.starts_with(&["data.import", "nca.run", "project.save"]),
+        "{commands:?}"
+    );
+
+    // The same by giving the text of the file.
+    let by_text = run_args(&["project.replay", "--param", &format!("text=@{project}")]).unwrap();
+    assert_eq!(json_out(&by_text), report);
+
+    // One cell of the data in the history, edited by hand.
+    let text = fs::read_to_string(project).unwrap();
+    let edited = text.replacen("A,1,3.293,100", "A,1,3.294,100", 1);
+    assert_ne!(edited, text);
+    fs::write(project, &edited).unwrap();
+    let bad = run_args(&["project.replay", "--project", project]).unwrap();
+    assert_eq!(json_out(&bad)["verdict"], "diverged");
+    assert_eq!(bad.exit_code, 1);
+    assert!(
+        bad.notes[0].starts_with("diverged: Step 1 (data.import) does not reproduce its seal"),
+        "{:?}",
+        bad.notes
+    );
+    assert_eq!(fs::read_to_string(project).unwrap(), edited);
+
+    // Refusals say what to fix.
+    let missing = dir.join("missing.json");
+    assert!(
+        failure(&["project.replay", "--project", missing.to_str().unwrap()])
+            .contains("cannot read")
+    );
+    assert!(
+        failure(&["project.replay", "--project", project, "--param", "text=x"])
+            .contains("give the project once")
+    );
+    assert!(failure(&["project.replay", "--csv", &file]).contains("--project FILE"));
+    // Nothing to replay is not a failure.
+    let none = run_args(&["project.replay"]).unwrap();
+    assert_eq!(json_out(&none)["verdict"], "empty");
+    assert_eq!(none.exit_code, 0);
+    // Every other command exits with 0.
+    assert_eq!(run_args(&["commands"]).unwrap().exit_code, 0);
+}

@@ -27,6 +27,35 @@ pub(crate) fn recorded(params: Value) -> Value {
     })
 }
 
+/// The size in bytes of the parameters that [`recorded`] left out, if `params` is the note that
+/// stands in for them (and not parameters of a command).
+pub(crate) fn omitted_bytes(params: &Value) -> Option<u64> {
+    let map = params.as_object()?;
+    let is_note = map.len() == 3
+        && map.get("omitted") == Some(&Value::Bool(true))
+        && map.get("digest").is_some_and(Value::is_string);
+    if is_note {
+        map.get("bytes").and_then(Value::as_u64)
+    } else {
+        None
+    }
+}
+
+/// Checks that the positions of saved entries run from 1 without a gap. The error says which
+/// entry is out of place.
+pub(crate) fn check_positions(entries: &[HistoryEntry]) -> Result<(), String> {
+    for (i, e) in entries.iter().enumerate() {
+        if e.seq != i as u64 + 1 {
+            return Err(format!(
+                "the history of the project is damaged: entry {} has position {}",
+                i + 1,
+                e.seq
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// One executed command.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HistoryEntry {
@@ -81,18 +110,7 @@ impl History {
         if !self.entries.is_empty() {
             return Ok(false);
         }
-        for (i, e) in entries.iter().enumerate() {
-            if e.seq != i as u64 + 1 {
-                return Err(CommandError::new(
-                    "load_failed",
-                    format!(
-                        "the history of the project is damaged: entry {} has position {}",
-                        i + 1,
-                        e.seq
-                    ),
-                ));
-            }
-        }
+        check_positions(&entries).map_err(|message| CommandError::new("load_failed", message))?;
         self.entries = entries;
         Ok(true)
     }
@@ -118,6 +136,25 @@ impl History {
             seal: stamp.seal,
             at: stamp.at,
         });
+    }
+
+    /// For the scratch engine of a replay: makes its history the stored one up to entry `index`
+    /// (from 0), so that a command that echoes the history (`project.save`, `history.list`) sees
+    /// what it saw when it ran for the first time. Puts the stored entry in place of the one the
+    /// engine just recorded for a command it ran (`executed`), or appends it for a step that was
+    /// not run.
+    pub(crate) fn follow(&mut self, stored: &[HistoryEntry], index: usize, executed: bool) {
+        if executed {
+            self.entries.pop();
+        }
+        if let Some(entry) = stored.get(index) {
+            self.entries.push(entry.clone());
+        }
+        // A command that adopted a history of its own would break the numbering: start over from
+        // the stored entries (this does not happen with a file that was written by the engine).
+        if self.entries.len() != index + 1 {
+            self.entries = stored.iter().take(index + 1).cloned().collect();
+        }
     }
 }
 
