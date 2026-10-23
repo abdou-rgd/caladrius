@@ -5,6 +5,9 @@
     clippy::todo,
     clippy::unreachable
 )]
+// Axes, ticks, colours and the shape of a marker are drawn with the platform's maths library. None of
+// it is a result: the numbers come from the engine, which uses the pure Rust `libm` (see clippy.toml).
+#![allow(clippy::disallowed_methods)]
 //! Layer L3: the egui interface. It talks to the engine only through the commands of
 //! `caladrius-engine`, holds no numerical code and reads no file: the program around it passes
 //! the bytes of a CSV file in ([`UiApp::load_csv`]) and asks for a file picker ([`Request`]).

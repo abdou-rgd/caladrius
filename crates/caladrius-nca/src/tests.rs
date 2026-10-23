@@ -83,7 +83,7 @@ fn lin_log_is_linear_up_to_tmax_then_log_both_ways() {
     let t = [0.0, 1.0, 2.0, 3.0];
     let c = [1.0, 4.0, 2.0, 3.0];
     let r = ev(&t, &c, with_method(AucMethod::LinLog));
-    assert_close(&r, "auclast", 2.5 + 2.0 / LN2 + 1.0 / 1.5_f64.ln());
+    assert_close(&r, "auclast", 2.5 + 2.0 / LN2 + 1.0 / libm::log(1.5_f64));
     // Under lin-up/log-down the rising segment after Tmax stays linear: 2.5.
     let r = ev(&t, &c, NcaOptions::default());
     assert_close(&r, "auclast", 2.5 + 2.0 / LN2 + 2.5);
@@ -95,10 +95,10 @@ fn log_segments_are_exact_on_a_mono_exponential() {
     // AUMC(0, T) = 10 (1 - e^-kT (1 + kT))/k^2.
     let k: f64 = 0.3;
     let t = [0.0, 0.5, 1.0, 2.0, 4.0, 8.0, 12.0];
-    let c: Vec<f64> = t.iter().map(|t| 10.0 * (-k * t).exp()).collect();
+    let c: Vec<f64> = t.iter().map(|t| 10.0 * libm::exp(-k * t)).collect();
     let r = ev(&t, &c, NcaOptions::default());
     let end = 12.0;
-    let decay = (-k * end).exp();
+    let decay = libm::exp(-k * end);
     assert_close(&r, "auclast", 10.0 * (1.0 - decay) / k);
     assert_close(
         &r,

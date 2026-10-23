@@ -88,6 +88,7 @@ cargo xtask layers   # prints the layer table, fails if a crate depends on a hig
 cargo xtask lint     # contract checks: forbidden names, private/ leaks, deny-lints headers, tolerances once, board hygiene, clippy::indexing_slicing denied in the four numerical crates (exceptions in xtask/lint_allow.toml)
 cargo xtask review   # the figures this README and the specs state, confronted with the files that own them (read-only; --strict also fails on a note)
 cargo xtask wasm     # checks that layers L0 to L3 compile for wasm32-unknown-unknown
+cargo xtask digest   # runs a fixed workload through the engine and prints one SHA-256 of the answers: the same on Linux, Windows, macOS and WebAssembly (--wasm runs it under Node, --dump FILE keeps the text, --diff A B compares two dumps)
 ```
 
 `cargo xtask` is an alias for the `xtask` crate (see `.cargo/config.toml`). The layers and their rules are in `AGENTS.md`, section 4.

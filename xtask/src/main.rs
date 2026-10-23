@@ -9,6 +9,7 @@
 
 mod conformance;
 mod console;
+mod digest;
 mod error;
 mod layers;
 mod lint;
@@ -37,6 +38,11 @@ tasks:
                (`conformance --private` also writes the counts of the private oracle into it)
   review       check the figures the README and the specs state against the files that own them
                (`review --strict` also fails on a note); reads only, writes nothing
+  digest       run a fixed workload (the command examples, the NCA, fit and model cases of oracle/)
+               through the engine and print one SHA-256 over the canonical JSON of the results: the
+               same line on every machine, or a number depends on the platform; `--wasm` runs the same
+               workload in the browser build under Node, `--dump FILE` keeps the canonical text,
+               `--diff LEFT RIGHT` compares two dumps
   help         show this message";
 
 /// The tasks this binary can run.
@@ -55,6 +61,8 @@ enum Task {
     Review {
         strict: bool,
     },
+    /// The arguments after `digest` (`--wasm`, `--dump FILE`, `--diff LEFT RIGHT`), checked by the task.
+    Digest(Vec<OsString>),
     Help,
 }
 
@@ -69,6 +77,7 @@ fn parse_task(args: &[OsString]) -> std::result::Result<Task, String> {
             Some("web") => Ok(Task::Web(Vec::new())),
             Some("conformance") => Ok(Task::Conformance { private: false }),
             Some("review") => Ok(Task::Review { strict: false }),
+            Some("digest") => Ok(Task::Digest(Vec::new())),
             Some("help" | "-h" | "--help") => Ok(Task::Help),
             _ => Err(format!("unknown task `{}`", task.to_string_lossy())),
         },
@@ -81,6 +90,7 @@ fn parse_task(args: &[OsString]) -> std::result::Result<Task, String> {
             Ok(Task::Review { strict: true })
         }
         [task, rest @ ..] if task.to_str() == Some("web") => Ok(Task::Web(rest.to_vec())),
+        [task, rest @ ..] if task.to_str() == Some("digest") => Ok(Task::Digest(rest.to_vec())),
         [_, extra, ..] => Err(format!("unexpected argument `{}`", extra.to_string_lossy())),
     }
 }
@@ -102,6 +112,7 @@ fn main() -> ExitCode {
         Task::Web(args) => web::run(&args),
         Task::Conformance { private } => conformance::run(private),
         Task::Review { strict } => review::run(strict),
+        Task::Digest(args) => digest::run(&args),
         Task::Help => {
             console::out(USAGE);
             Ok(())
@@ -150,6 +161,15 @@ mod tests {
         assert_eq!(
             parse(&["review", "--strict"]),
             Ok(Task::Review { strict: true })
+        );
+        assert_eq!(parse(&["digest"]), Ok(Task::Digest(Vec::new())));
+        assert_eq!(
+            parse(&["digest", "--wasm", "--dump", "d.ndjson"]),
+            Ok(Task::Digest(vec![
+                OsString::from("--wasm"),
+                OsString::from("--dump"),
+                OsString::from("d.ndjson")
+            ]))
         );
         assert_eq!(parse(&["help"]), Ok(Task::Help));
         assert_eq!(parse(&["--help"]), Ok(Task::Help));

@@ -65,7 +65,7 @@ struct FirstOrder {
 impl Steady {
     /// 1 − e^(−λτ).
     fn den(&self, rate: f64) -> f64 {
-        -(-rate * self.tau).exp_m1()
+        -libm::expm1(-rate * self.tau)
     }
 
     fn first_order(&self, rate: f64) -> FirstOrder {
@@ -73,7 +73,7 @@ impl Steady {
         let delta = b - a;
         let tau = self.tau;
         let (den_a, den_b) = (self.den(a), self.den(b));
-        let k = (-a * tau).exp() * tau * g(delta * tau) / den_a / den_b;
+        let k = libm::exp(-a * tau) * tau * g(delta * tau) / den_a / den_b;
         FirstOrder {
             a,
             b,
@@ -88,27 +88,29 @@ impl Steady {
     fn zero_order(&self, rate: f64) -> (f64, f64, f64) {
         let t = self.dur;
         let k1 = self.dose * g(rate * t) / self.den(rate);
-        (self.dose / t, k1, k1 * (-rate * (self.tau - t)).exp())
+        (self.dose / t, k1, k1 * libm::exp(-rate * (self.tau - t)))
     }
 
     /// Φ_ss(λ, u) for 0 <= u <= τ. The bolus value at u = 0 is the one just after the dose
     /// (MOD-MD-03).
     pub fn conc(&self, rate: f64, u: f64) -> f64 {
         match self.input {
-            Input::Bolus => self.dose * (-rate * u).exp() / self.den(rate),
+            Input::Bolus => self.dose * libm::exp(-rate * u) / self.den(rate),
             Input::ZeroOrder => {
                 let (r, k1, k2) = self.zero_order(rate);
                 if u <= self.dur {
-                    r * u * g(rate * u) + k2 * (-rate * u).exp()
+                    r * u * g(rate * u) + k2 * libm::exp(-rate * u)
                 } else {
-                    k1 * (-rate * (u - self.dur)).exp()
+                    k1 * libm::exp(-rate * (u - self.dur))
                 }
             }
             Input::FirstOrder => {
                 let f = self.first_order(rate);
-                let decay = (-f.a * u).exp();
+                let decay = libm::exp(-f.a * u);
                 let u_decay = if decay == 0.0 { 0.0 } else { u * decay };
-                self.dose * self.ka * (u_decay * g(f.delta * u) / f.den_a + f.k * (-f.b * u).exp())
+                self.dose
+                    * self.ka
+                    * (u_decay * g(f.delta * u) / f.den_a + f.k * libm::exp(-f.b * u))
             }
         }
     }
@@ -120,8 +122,8 @@ impl Steady {
         }
         let f = self.first_order(rate);
         let (x, z) = (f.a * u, f.delta * u);
-        let build = (-f.a * u).exp() * ((-z).exp() - x * g(z)) / f.den_a;
-        self.dose * self.ka * (build - f.b * f.k * (-f.b * u).exp())
+        let build = libm::exp(-f.a * u) * (libm::exp(-z) - x * g(z)) / f.den_a;
+        self.dose * self.ka * (build - f.b * f.k * libm::exp(-f.b * u))
     }
 
     /// ∫ Φ_ss(λ, v) dv over [u1, u1 + du], with 0 <= u1 and u1 + du <= τ.
@@ -130,7 +132,7 @@ impl Steady {
             return 0.0;
         }
         // ∫ e^(−λv) dv over [u1, u1 + d] = e^(−λ·u1)·d·g(λd).
-        let exp_area = |rate: f64, u1: f64, d: f64| (-rate * u1).exp() * d * g(rate * d);
+        let exp_area = |rate: f64, u1: f64, d: f64| libm::exp(-rate * u1) * d * g(rate * d);
         match self.input {
             Input::Bolus => self.dose * exp_area(rate, u1, du) / self.den(rate),
             Input::ZeroOrder => {
@@ -142,7 +144,8 @@ impl Steady {
                     let to_end = t - u1;
                     let d = du.min(to_end);
                     // The last input building up, R·(1 − e^(−λv))/λ, and the earlier doses, K2·e^(−λv).
-                    let build = r * d * (u1 * g(rate * u1) + (-rate * u1).exp() * d * h(rate * d));
+                    let build =
+                        r * d * (u1 * g(rate * u1) + libm::exp(-rate * u1) * d * h(rate * d));
                     let mut total = build + k2 * exp_area(rate, u1, d);
                     if du > to_end {
                         total += k1 * exp_area(rate, 0.0, du - to_end);
@@ -155,7 +158,7 @@ impl Steady {
             Input::FirstOrder => {
                 let f = self.first_order(rate);
                 // ∫ v·e^(−av)·g(δv) dv = Δ·e^(−a·u1)·[Δ·(g(aΔ) − g(bΔ))/(δΔ) + u1·g(δ·u1)·g(bΔ)].
-                let decay = (-f.a * u1).exp();
+                let decay = libm::exp(-f.a * u1);
                 let built = if decay == 0.0 {
                     0.0
                 } else {

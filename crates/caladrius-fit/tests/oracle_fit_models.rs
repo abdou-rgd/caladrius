@@ -57,17 +57,17 @@ fn partial(
             let (v, k, big_t) = (get("v")?, get("k")?, get("dur")?);
             let r0 = dose / big_t;
             let c = if t <= big_t {
-                r0 / (v * k) * (1.0 - (-k * t).exp())
+                r0 / (v * k) * (1.0 - libm::exp(-k * t))
             } else {
-                r0 / (v * k) * (1.0 - (-k * big_t).exp()) * (-k * (t - big_t)).exp()
+                r0 / (v * k) * (1.0 - libm::exp(-k * big_t)) * libm::exp(-k * (t - big_t))
             };
             match name {
                 "v" => Some(-c / v),
                 "k" if t <= big_t => {
-                    Some(r0 / v * (k * t * (-k * t).exp() - (1.0 - (-k * t).exp())) / (k * k))
+                    Some(r0 / v * (k * t * libm::exp(-k * t) - (1.0 - libm::exp(-k * t))) / (k * k))
                 }
                 "k" => {
-                    let e = (-k * big_t).exp();
+                    let e = libm::exp(-k * big_t);
                     Some(c * (-1.0 / k + big_t * e / (1.0 - e) - (t - big_t)))
                 }
                 _ => None,
@@ -80,12 +80,12 @@ fn partial(
                 return Some(0.0);
             }
             let b = dose * ka / (v * (ka - k));
-            let f = b * ((-k * s).exp() - (-ka * s).exp());
+            let f = b * (libm::exp(-k * s) - libm::exp(-ka * s));
             match name {
                 "v" => Some(-f / v),
-                "k" => Some(-b * s * (-k * s).exp() + f / (ka - k)),
-                "ka" => Some(b * s * (-ka * s).exp() - f * k / (ka * (ka - k))),
-                "tlag" => Some(b * (k * (-k * s).exp() - ka * (-ka * s).exp())),
+                "k" => Some(-b * s * libm::exp(-k * s) + f / (ka - k)),
+                "ka" => Some(b * s * libm::exp(-ka * s) - f * k / (ka * (ka - k))),
+                "tlag" => Some(b * (k * libm::exp(-k * s) - ka * libm::exp(-ka * s))),
                 _ => None,
             }
         }

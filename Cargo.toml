@@ -11,6 +11,7 @@ members = [
     "crates/caladrius-ui",
     # Test layer: oracles, tolerances, table comparison.
     "crates/caladrius-testkit",
+    "crates/caladrius-digest",
     # Applications.
     "apps/caladrius",
     "apps/caladrius-cli",

@@ -124,7 +124,7 @@ fn a_replaced_missing_value_is_integrated_but_is_not_tlast() {
 /// W2 of `specs/nca.md`: C = 10 e^(-0.2 t), D = 100.
 fn w2() -> (Vec<f64>, Vec<f64>) {
     let t = vec![0.0, 1.0, 2.0, 4.0, 8.0, 12.0];
-    let c = t.iter().map(|t: &f64| 10.0 * (-0.2 * t).exp()).collect();
+    let c = t.iter().map(|t: &f64| 10.0 * libm::exp(-0.2 * t)).collect();
     (t, c)
 }
 

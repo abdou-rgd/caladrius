@@ -69,8 +69,8 @@ pub(crate) fn c0(route: Route, points: &[ProfilePoint]) -> ParamValue {
     };
     if let Some(second) = post_dose.next() {
         if second.conc > 0.0 && second.conc < first.conc {
-            let k = (first.conc / second.conc).ln() / (second.time - first.time);
-            return ParamValue::of(first.conc * (k * (first.time - DOSE_TIME)).exp());
+            let k = libm::log(first.conc / second.conc) / (second.time - first.time);
+            return ParamValue::of(first.conc * libm::exp(k * (first.time - DOSE_TIME)));
         }
     }
     ParamValue::of(first.conc)

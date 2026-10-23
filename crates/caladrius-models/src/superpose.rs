@@ -107,16 +107,16 @@ impl Bound {
             .fold((0.0, 0.0), |(c, a), &(scale, rate)| {
                 let (b, tail) = match self.input {
                     Input::Bolus => {
-                        let b = (-rate * s).exp();
+                        let b = libm::exp(-rate * s);
                         (b, b / rate)
                     }
                     Input::ZeroOrder => {
-                        let b = (-rate * (s - self.dur_max)).exp();
+                        let b = libm::exp(-rate * (s - self.dur_max));
                         (b, b / rate)
                     }
                     Input::FirstOrder => {
                         let m = rate.min(self.ka);
-                        let decay = (-m * s).exp();
+                        let decay = libm::exp(-m * s);
                         if decay == 0.0 {
                             (0.0, 0.0)
                         } else {

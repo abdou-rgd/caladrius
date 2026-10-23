@@ -10,6 +10,7 @@
 //! Behaviour: `specs/fit.md` (rule ids `FIT-…` are cited in the code and the tests). One input
 //! value, one [`run`], results by name, like `caladrius-nca` and `caladrius-models`.
 
+mod arith;
 mod closed_forms;
 mod engine;
 mod error;

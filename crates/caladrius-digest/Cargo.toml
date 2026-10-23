@@ -1,0 +1,22 @@
+[package]
+name = "caladrius-digest"
+description = "Test layer: runs a fixed workload through the engine and fingerprints the canonical results (SHA-256), natively and in WebAssembly."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+caladrius-engine = { path = "../caladrius-engine" }
+serde = { version = "1.0.229", features = ["derive"] }
+# float_roundtrip: a dump read back must give the doubles that were written.
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+
+# The module for Node (`cargo xtask digest --wasm`); built with `cargo rustc --crate-type cdylib`,
+# so the native build does not link a library nobody loads.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.129"
+
+[lints]
+workspace = true

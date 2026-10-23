@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: helpers panic on purpose
+#![allow(clippy::disallowed_methods)] // independent reference arithmetic, with the platform's maths library
 
 //! The synthetic lambda_z cases (task T-005) must discriminate between the competing readings of
 //! the selection rule (`specs/nca.md`, open items O-01 and O-02), and PKNCA's answer recorded in

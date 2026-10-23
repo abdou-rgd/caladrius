@@ -180,7 +180,7 @@ pub fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
             put("tmax_pred", p.tlag + p.dur);
             put(
                 "cmax_pred",
-                dose / (p.dur * p.cl) * -(-p.k * p.dur).exp_m1(),
+                dose / (p.dur * p.cl) * -libm::expm1(-p.k * p.dur),
             );
             put("mrt", 1.0 / p.k + p.dur / 2.0 + p.tlag);
         }
@@ -189,7 +189,7 @@ pub fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
             put("ka", p.ka);
             put("tmax_pred", p.tlag + peak);
             // MOD-AB1-04: Cmax = (D/V)·e^(−k·Tmax), exact at the peak since ka·e^−ka·T = k·e^−k·T.
-            put("cmax_pred", dose / p.v * (-p.k * peak).exp());
+            put("cmax_pred", dose / p.v * libm::exp(-p.k * peak));
             put("mrt", 1.0 / p.k + 1.0 / p.ka + p.tlag);
         }
     }

@@ -105,7 +105,7 @@ fn regress(points: &[(f64, f64)]) -> Option<LambdaZCandidate> {
 }
 
 fn ln_points(points: &[&ProfilePoint]) -> Vec<(f64, f64)> {
-    points.iter().map(|p| (p.time, p.conc.ln())).collect()
+    points.iter().map(|p| (p.time, libm::log(p.conc))).collect()
 }
 
 /// The fit of `points`, with the count of replaced values among them.

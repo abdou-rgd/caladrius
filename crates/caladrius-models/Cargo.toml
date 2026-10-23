@@ -9,6 +9,9 @@ rust-version.workspace = true
 [dependencies]
 # Inputs, outputs and errors are data (golden rule 4).
 serde = { version = "1.0.229", features = ["derive"] }
+# Pure Rust exp, log, pow...: the same bits on every platform (clippy.toml bans the standard library's).
+# Pinned: another version may round another way, and every digest would change.
+libm = "=0.2.16"
 
 [dev-dependencies]
 caladrius-testkit = { path = "../caladrius-testkit" }

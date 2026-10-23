@@ -31,7 +31,7 @@ use caladrius_testkit::private::{
 };
 use caladrius_testkit::{OracleCase, Tolerance, list_cases, load_case};
 
-mod step3;
+pub(crate) mod step3;
 
 use crate::console;
 use crate::error::{Result, XtaskError};
@@ -152,7 +152,7 @@ fn blq_action(rule: BlqRule) -> BlqAction {
 
 /// The engine options matching the PKNCA options recorded with the case, and the engine hints the
 /// case file carries for what PKNCA has no option for (start and negative-value policies).
-fn options_of(case: &OracleCase) -> Result<NcaOptions> {
+pub(crate) fn options_of(case: &OracleCase) -> Result<NcaOptions> {
     let pk = &case.options.pknca_options;
     let unknown = |what: &str, value: &str| {
         XtaskError::new(format!(
@@ -229,7 +229,7 @@ fn options_of(case: &OracleCase) -> Result<NcaOptions> {
     })
 }
 
-fn route_of(case: &OracleCase) -> Result<Route> {
+pub(crate) fn route_of(case: &OracleCase) -> Result<Route> {
     match (case.options.route.as_str(), case.options.infusion_duration) {
         ("extravascular", _) => Ok(Route::Extravascular),
         ("iv_bolus", _) => Ok(Route::IvBolus),
@@ -740,7 +740,7 @@ fn private_engine_profile(
         let included = selected.is_some_and(|c| t >= c.time_first && t <= c.time_last);
         let predicted = selected
             .filter(|_| included)
-            .map(|c| (c.intercept - c.lambda_z * t).exp());
+            .map(|c| libm::exp(c.intercept - c.lambda_z * t));
         rows.push(ProfileEngine {
             auc,
             aumc,

@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::arith::sq;
 use crate::engine::{EXACT_FIT, Problem};
 use crate::flags::{self, FitFlag};
 use crate::linalg::{Mat, inverse_gram_from_r, least_squares, symmetric_eigenvalues};
@@ -235,13 +236,13 @@ pub(crate) fn build(
             .y
             .iter()
             .zip(&weights)
-            .map(|(y, w)| w * (y - mean_y).powi(2))
+            .map(|(y, w)| w * sq(y - mean_y))
             .sum(),
     );
     let (mut syy, mut sff, mut syf) = (0.0, 0.0, 0.0);
     for ((y, f), w) in problem.y.iter().zip(&pred).zip(&weights) {
-        syy += w * (y - mean_y).powi(2);
-        sff += w * (f - mean_f).powi(2);
+        syy += w * sq(y - mean_y);
+        sff += w * sq(f - mean_f);
         syf += w * (y - mean_y) * (f - mean_f);
     }
     if syy > 0.0 && sff > 0.0 {
@@ -253,8 +254,8 @@ pub(crate) fn build(
         // Not for an exact fit: ln(WRSS) of rounding noise means nothing.
         if wrss > EXACT_FIT * ss_weighted {
             let nf = n as f64;
-            v.put("aic", nf * wrss.ln() + 2.0 * p as f64);
-            v.put("sbc", nf * wrss.ln() + p as f64 * nf.ln());
+            v.put("aic", nf * libm::log(wrss) + 2.0 * p as f64);
+            v.put("sbc", nf * libm::log(wrss) + p as f64 * libm::log(nf));
         }
     }
 

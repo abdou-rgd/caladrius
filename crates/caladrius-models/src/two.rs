@@ -368,7 +368,7 @@ mod tests {
             let rule: f64 = GL_NODES
                 .iter()
                 .zip(GL_WEIGHTS)
-                .map(|(x, w)| w * (x.powi(k) + (-x).powi(k)))
+                .map(|(x, w)| w * (libm::pow(*x, f64::from(k)) + libm::pow(-x, f64::from(k))))
                 .sum();
             let exact = if k % 2 == 0 {
                 2.0 / f64::from(k + 1)

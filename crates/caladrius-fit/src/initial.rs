@@ -9,6 +9,7 @@ use caladrius_models::ModelId;
 use caladrius_nca::{NcaInput, NcaOptions, Route};
 
 use crate::FitError;
+use crate::arith::sq;
 
 fn unavailable(reason: impl Into<String>) -> FitError {
     FitError::InitialEstimatesUnavailable {
@@ -24,7 +25,7 @@ fn line(points: &[(f64, f64)]) -> Option<(f64, f64)> {
     }
     let mx = points.iter().map(|p| p.0).sum::<f64>() / n;
     let my = points.iter().map(|p| p.1).sum::<f64>() / n;
-    let sxx: f64 = points.iter().map(|p| (p.0 - mx).powi(2)).sum();
+    let sxx: f64 = points.iter().map(|p| sq(p.0 - mx)).sum();
     let sxy: f64 = points.iter().map(|p| (p.0 - mx) * (p.1 - my)).sum();
     if sxx.is_nan() || sxx <= 0.0 {
         return None;
@@ -99,14 +100,14 @@ pub fn initial_estimates(
             let logs: Vec<(f64, f64)> = data
                 .iter()
                 .filter(|p| p.1 > 0.0)
-                .map(|&(t, c)| (t, c.ln()))
+                .map(|&(t, c)| (t, libm::log(c)))
                 .collect();
             let (a, slope) =
                 line(&logs).ok_or_else(|| unavailable("fewer than 2 positive concentrations"))?;
             if slope.is_nan() || slope >= 0.0 {
                 return Err(unavailable("the concentrations do not decline"));
             }
-            out.insert("v".to_string(), dose / a.exp());
+            out.insert("v".to_string(), dose / libm::exp(a));
             out.insert("k".to_string(), -slope);
         }
         ModelId::Oral1 | ModelId::Oral1Lag => {
@@ -115,9 +116,9 @@ pub fn initial_estimates(
             let residuals: Vec<(f64, f64)> = data
                 .iter()
                 .filter(|p| p.0 < window_start)
-                .map(|&(t, c)| (t, (a1 - k * t).exp() - c))
+                .map(|&(t, c)| (t, libm::exp(a1 - k * t) - c))
                 .filter(|p| p.1 > 0.0)
-                .map(|(t, r)| (t, r.ln()))
+                .map(|(t, r)| (t, libm::log(r)))
                 .collect();
             let (a2, slope2) = line(&residuals).ok_or_else(|| {
                 unavailable(
@@ -145,7 +146,7 @@ pub fn initial_estimates(
             };
             // Flip-flop (MOD-AB1-06): the faster constant is taken as ka.
             let (k, ka) = if ka_raw > k { (k, ka_raw) } else { (ka_raw, k) };
-            let amplitude = (a1 - k * tlag).exp();
+            let amplitude = libm::exp(a1 - k * tlag);
             out.insert("v".to_string(), dose * ka / ((ka - k) * amplitude));
             out.insert("k".to_string(), k);
             out.insert("ka".to_string(), ka);
@@ -177,8 +178,8 @@ pub fn initial_estimates(
             let fitted_lag = model == ModelId::Oral0Lag && !fixed.contains_key("tlag");
             let tlag = fixed.get("tlag").copied().unwrap_or(0.0);
             let (a1, k, _) = terminal_line(dose, &data, dur + tlag)?;
-            let c_end = (a1 - k * (dur + tlag)).exp();
-            let cl = dose / dur * -(-k * dur).exp_m1() / c_end;
+            let c_end = libm::exp(a1 - k * (dur + tlag));
+            let cl = dose / dur * -libm::expm1(-k * dur) / c_end;
             out.insert("v".to_string(), cl / k);
             out.insert("k".to_string(), k);
             if fitted_lag {

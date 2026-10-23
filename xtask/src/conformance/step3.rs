@@ -142,7 +142,7 @@ fn unknown_model(case: &ModelCase) -> String {
     )
 }
 
-fn model_input(case: &ModelCase, model: ModelId) -> ModelInput {
+pub(crate) fn model_input(case: &ModelCase, model: ModelId) -> ModelInput {
     ModelInput {
         model,
         dose: case.dose,
@@ -159,7 +159,7 @@ fn evaluate_model(case: &ModelCase) -> CaseReport {
 }
 
 /// The regimen of a multiple-dosing case as the engine's type.
-fn regimen_of(case: &MdCase) -> std::result::Result<Regimen, String> {
+pub(crate) fn regimen_of(case: &MdCase) -> std::result::Result<Regimen, String> {
     let r = &case.regimen;
     let missing = |what: &str| format!("the regimen of the case has no {what}");
     Ok(match r.kind {
@@ -360,7 +360,7 @@ fn group_of(name: &str) -> &'static str {
     }
 }
 
-fn fit_input(case: &FitCase, subject: &str) -> Result<FitInput> {
+pub(crate) fn fit_input(case: &FitCase, subject: &str) -> Result<FitInput> {
     let wrong = |what: &str, value: &str| {
         XtaskError::new(format!(
             "{}: {what} {value:?} is not supported by the conformance run",
@@ -439,8 +439,12 @@ fn information_criterion_ok(
     ) else {
         return false;
     };
-    let penalty = if name == "aic" { 2.0 * p } else { p * n.ln() };
-    let formula = n * wrss.ln() + penalty;
+    let penalty = if name == "aic" {
+        2.0 * p
+    } else {
+        p * libm::log(n)
+    };
+    let formula = n * libm::log(wrss) + penalty;
     let follows_formula = (actual - formula).abs() <= 1e-9 * formula.abs().max(1.0);
     let rel = match Tolerance::FIT_WEIGHTED_SS {
         Tolerance::Relative { rel, .. } => rel,

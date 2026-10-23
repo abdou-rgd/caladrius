@@ -108,7 +108,13 @@ fn out_dir(root: &Path, args: &[OsString]) -> std::result::Result<PathBuf, Strin
     }
 }
 
-fn run_tool(program: &OsString, args: &[OsString], what: &str) -> Result<()> {
+/// Runs `program` and waits; `task` and `what` name the task and the step in the failure message.
+pub(crate) fn run_tool(
+    task: &str,
+    program: &OsString,
+    args: &[OsString],
+    what: &str,
+) -> Result<()> {
     let status = Command::new(program)
         .args(args)
         .status()
@@ -121,7 +127,7 @@ fn run_tool(program: &OsString, args: &[OsString], what: &str) -> Result<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(XtaskError::new(format!("web: {what} failed ({status})")))
+        Err(XtaskError::new(format!("{task}: {what} failed ({status})")))
     }
 }
 
@@ -132,17 +138,14 @@ fn size(path: &Path) -> String {
     }
 }
 
-pub fn run(args: &[OsString]) -> Result<()> {
-    let root = workspace::root()?;
-    let out = out_dir(&root, args).map_err(XtaskError::new)?;
-    if !crate::wasm::target_installed()? {
-        return Err(XtaskError::new(crate::wasm::missing_target_message()));
-    }
+/// The `wasm-bindgen` program (`$WASM_BINDGEN`, else the PATH), checked to be the version of
+/// `Cargo.lock`. `task` names the caller in the messages.
+pub(crate) fn bindgen_cli(root: &Path, task: &str) -> Result<OsString> {
     let lock_path = root.join("Cargo.lock");
     let lock =
         std::fs::read_to_string(&lock_path).map_err(|e| XtaskError::io("read", &lock_path, &e))?;
     let wanted = locked_version(&lock, "wasm-bindgen")
-        .ok_or_else(|| XtaskError::new("web: Cargo.lock names no wasm-bindgen"))?;
+        .ok_or_else(|| XtaskError::new(format!("{task}: Cargo.lock names no wasm-bindgen")))?;
     let bindgen = env::var_os("WASM_BINDGEN").unwrap_or_else(|| OsString::from("wasm-bindgen"));
     let found = Command::new(&bindgen)
         .arg("--version")
@@ -151,35 +154,49 @@ pub fn run(args: &[OsString]) -> Result<()> {
         .filter(|o| o.status.success())
         .and_then(|o| cli_version(&String::from_utf8_lossy(&o.stdout)));
     match found {
-        None => {
-            return Err(XtaskError::new(format!(
-                "web: wasm-bindgen is not on the PATH; {}",
-                install_message(&wanted)
-            )));
-        }
-        Some(v) if v != wanted => {
-            return Err(XtaskError::new(format!(
-                "web: wasm-bindgen {v} does not match the wasm-bindgen {wanted} of Cargo.lock; {}",
-                install_message(&wanted)
-            )));
-        }
-        Some(_) => {}
+        None => Err(XtaskError::new(format!(
+            "{task}: wasm-bindgen is not on the PATH; {}",
+            install_message(&wanted)
+        ))),
+        Some(v) if v != wanted => Err(XtaskError::new(format!(
+            "{task}: wasm-bindgen {v} does not match the wasm-bindgen {wanted} of Cargo.lock; {}",
+            install_message(&wanted)
+        ))),
+        Some(_) => Ok(bindgen),
     }
+}
+
+/// Where cargo writes its output: `$CARGO_TARGET_DIR`, else `target` under the workspace.
+pub(crate) fn target_dir(root: &Path) -> PathBuf {
+    env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| root.join("target"))
+}
+
+pub fn run(args: &[OsString]) -> Result<()> {
+    let root = workspace::root()?;
+    let out = out_dir(&root, args).map_err(XtaskError::new)?;
+    if !crate::wasm::target_installed()? {
+        return Err(XtaskError::new(crate::wasm::missing_target_message()));
+    }
+    let bindgen = bindgen_cli(&root, "web")?;
 
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     let build: Vec<OsString> = build_args().into_iter().map(OsString::from).collect();
     console::out(&format!("web: cargo {}", build_args().join(" ")));
-    run_tool(&cargo, &build, "cargo build")?;
+    run_tool("web", &cargo, &build, "cargo build")?;
 
-    let target_dir = env::var_os("CARGO_TARGET_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| root.join("target"));
-    let module = target_dir
+    let module = target_dir(&root)
         .join(TARGET)
         .join(PROFILE)
         .join(format!("{CRATE}.wasm"));
     std::fs::create_dir_all(&out).map_err(|e| XtaskError::io("create", &out, &e))?;
-    run_tool(&bindgen, &bindgen_args(&module, &out), "wasm-bindgen")?;
+    run_tool(
+        "web",
+        &bindgen,
+        &bindgen_args(&module, &out),
+        "wasm-bindgen",
+    )?;
 
     let wasm = out.join(format!("{OUT_NAME}_bg.wasm"));
     let wasm_opt = env::var_os("WASM_OPT").unwrap_or_else(|| OsString::from("wasm-opt"));
@@ -191,7 +208,7 @@ pub fn run(args: &[OsString]) -> Result<()> {
         let mut opt: Vec<OsString> = vec!["-Os".into()];
         opt.extend(WASM_OPT_FEATURES.iter().map(OsString::from));
         opt.extend([wasm.clone().into(), "-o".into(), wasm.clone().into()]);
-        run_tool(&wasm_opt, &opt, "wasm-opt")?;
+        run_tool("web", &wasm_opt, &opt, "wasm-opt")?;
     } else {
         console::out("web: wasm-opt not found, the module is left as wasm-bindgen wrote it");
     }

@@ -102,7 +102,7 @@ fn nice_ticks(lo: f64, hi: f64) -> (Vec<f64>, f64) {
         return (vec![lo], 1.0);
     }
     let raw = span / 5.0;
-    let power = 10f64.powf(raw.log10().floor());
+    let power = pow10(libm::log10(raw).floor() as i32);
     let step = [1.0, 2.0, 5.0, 10.0]
         .iter()
         .map(|m| m * power)
@@ -129,17 +129,27 @@ fn tick_label(v: f64, step: f64) -> String {
     if v.abs() >= 1e6 || v.abs() < 1e-4 {
         return format!("{v:e}");
     }
-    let decimals = (-step.log10().floor()).clamp(0.0, 8.0) as usize;
+    let decimals = (-libm::log10(step).floor()).clamp(0.0, 8.0) as usize;
     format!("{v:.decimals$}")
 }
 
 /// A tick label for a decade: `0.01`, `1`, `1000`, `1e-6`.
 fn decade_label(k: i32) -> String {
     match k {
-        -4..=-1 => format!("{:.*}", k.unsigned_abs() as usize, 10f64.powi(k)),
-        0..=5 => format!("{}", 10f64.powi(k)),
+        -4..=-1 => format!("{:.*}", k.unsigned_abs() as usize, pow10(k)),
+        0..=5 => format!("{}", pow10(k)),
         _ => format!("1e{k}"),
     }
+}
+
+/// 10^k, the double nearest to it, for any `k` (zero or infinity beyond about 300 decades): the text
+/// `1e{k}` read by the standard library's parser, which rounds correctly and the same on every
+/// machine. A power function does not give that for every `k` (`libm::pow(10, -5)` is one bit away
+/// from 1e-5, and a platform's `powf` may be too), nor does a loop of products beyond 10^22.
+fn pow10(k: i32) -> f64 {
+    format!("1e{}", k.clamp(-400, 400))
+        .parse()
+        .unwrap_or(f64::NAN)
 }
 
 /// One axis on the page: its range in data units (decades on a log axis) and its ticks.
@@ -157,7 +167,7 @@ impl Scale {
     /// The position of a data value, `None` when a log axis cannot show it.
     fn value(&self, v: f64) -> Option<f64> {
         if self.log {
-            (v > 0.0 && v.is_finite()).then(|| v.log10())
+            (v > 0.0 && v.is_finite()).then(|| libm::log10(v))
         } else {
             v.is_finite().then_some(v)
         }
@@ -208,7 +218,7 @@ fn logarithmic(values: &[f64]) -> Option<Scale> {
     let logs: Vec<f64> = values
         .iter()
         .filter(|v| **v > 0.0 && v.is_finite())
-        .map(|v| v.log10())
+        .map(|v| libm::log10(*v))
         .collect();
     let (lo, hi) = range(&logs)?;
     let mut d_lo = lo.floor();
@@ -685,6 +695,38 @@ mod tests {
     }
 
     #[test]
+    fn a_power_of_ten_is_the_nearest_double_whatever_the_exponent() {
+        for (k, expected) in [
+            (0, 1.0_f64),
+            (3, 1e3),
+            (-1, 1e-1),
+            (-5, 1e-5),
+            (22, 1e22),
+            (23, 1e23),
+            (-30, 1e-30),
+            (67, 1e67),
+            (308, 1e308),
+            (-323, 1e-323),
+        ] {
+            assert_eq!(pow10(k).to_bits(), expected.to_bits(), "10^{k}");
+        }
+        assert!(pow10(309).is_infinite() && pow10(i32::MAX).is_infinite());
+        assert_eq!(pow10(-400), 0.0);
+        assert_eq!(pow10(i32::MIN), 0.0);
+    }
+
+    #[test]
+    fn a_span_of_a_few_subnormal_numbers_neither_hangs_nor_draws_nan() {
+        // raw = span / 5 rounds to 0: log10 is -inf, and the step is 0 (no tick, as it always was).
+        let (ticks, step) = nice_ticks(0.0, 5e-324);
+        assert!(ticks.is_empty() && step == 0.0);
+        // raw is subnormal but not 0: the ticks are drawn.
+        let (ticks, step) = nice_ticks(0.0, 1e-307);
+        assert!(step > 0.0 && ticks.len() >= 2, "{ticks:?} {step}");
+        assert!(ticks.iter().all(|t| t.is_finite()), "{ticks:?}");
+    }
+
+    #[test]
     fn a_log_axis_covers_whole_decades_and_leaves_room_for_blq() {
         let s = logarithmic(&[0.0, 0.5, 30.0]).unwrap();
         assert_eq!(
@@ -696,7 +738,7 @@ mod tests {
         assert!(logarithmic(&[0.0, -1.0]).is_none());
         // One value: a decade around it.
         let one = logarithmic(&[5.0]).unwrap();
-        assert!(one.lo < 5f64.log10() && 5f64.log10() < one.hi);
+        assert!(one.lo < libm::log10(5f64) && libm::log10(5f64) < one.hi);
     }
 
     #[test]

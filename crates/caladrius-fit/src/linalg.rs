@@ -3,6 +3,8 @@
 //! the normal equations are never formed for the step), triangular inverse, and the cyclic Jacobi
 //! method for symmetric eigenvalues (FIT-OUT-05).
 
+use crate::arith::sq;
+
 /// Dense row-major matrix. Access outside the matrix reads 0 and ignores writes (never panics).
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Mat {
@@ -59,7 +61,7 @@ impl Mat {
     /// Euclidean norm of column j.
     pub fn column_norm(&self, j: usize) -> f64 {
         (0..self.rows)
-            .map(|i| self.at(i, j).powi(2))
+            .map(|i| sq(self.at(i, j)))
             .sum::<f64>()
             .sqrt()
     }
@@ -76,7 +78,7 @@ pub(crate) fn least_squares(a: &Mat, b: &[f64]) -> Option<(Vec<f64>, Mat)> {
     let mut r = a.clone();
     let mut y: Vec<f64> = b.to_vec();
     for k in 0..n {
-        let norm = (k..m).map(|i| r.at(i, k).powi(2)).sum::<f64>().sqrt();
+        let norm = (k..m).map(|i| sq(r.at(i, k))).sum::<f64>().sqrt();
         if norm == 0.0 {
             continue;
         }
@@ -174,9 +176,9 @@ pub(crate) fn symmetric_eigenvalues(a: &Mat) -> Vec<f64> {
         for i in 0..n {
             for j in 0..n {
                 if i == j {
-                    diag += m.at(i, j).powi(2);
+                    diag += sq(m.at(i, j));
                 } else {
-                    off += m.at(i, j).powi(2);
+                    off += sq(m.at(i, j));
                 }
             }
         }
