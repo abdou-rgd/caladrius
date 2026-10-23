@@ -186,6 +186,32 @@ fn the_document_can_be_given_as_text_or_as_json_and_replays_the_same() {
 }
 
 #[test]
+fn the_bytes_of_a_file_replay_like_its_text_and_bytes_that_are_not_text_are_refused_like_a_load() {
+    let document = saved_session();
+    let bytes = serde_json::to_vec_pretty(&document).unwrap();
+    let mut a = Engine::new();
+    let mut b = Engine::new();
+    let by_bytes = a.replay_bytes(&bytes).unwrap();
+    let by_text = ok(
+        &mut b,
+        "project.replay",
+        json!({ "text": String::from_utf8(bytes.clone()).unwrap() }),
+    );
+    assert_eq!(by_bytes, by_text);
+    assert_eq!(report(&by_bytes).verdict, Verdict::Verified);
+    // Not text: the sentence and the code of a load, and the refusal is in the history.
+    let e = a.replay_bytes(&[0xff, 0xfe, 0x00]).unwrap_err();
+    let loaded = Engine::new().load_bytes(&[0xff, 0xfe, 0x00]).unwrap_err();
+    assert_eq!(
+        (e.code.as_str(), &e.message),
+        (loaded.code.as_str(), &loaded.message)
+    );
+    let last = a.history().entries().last().unwrap();
+    assert_eq!(last.command, "project.replay");
+    assert!(last.error.is_some());
+}
+
+#[test]
 fn the_session_itself_can_be_replayed_without_a_file() {
     let mut engine = Engine::new();
     session(&mut engine);

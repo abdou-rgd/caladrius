@@ -13,7 +13,10 @@ pub const SETTINGS_KEY: &str = "caladrius.settings";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pick {
     Csv,
+    /// A project to open.
     Project,
+    /// A project to verify: replayed, not opened.
+    Verify,
 }
 
 impl Pick {
@@ -21,7 +24,7 @@ impl Pick {
     pub fn accept(self) -> &'static str {
         match self {
             Pick::Csv => ".csv,.txt,.tsv,text/csv,text/plain",
-            Pick::Project => ".json,application/json",
+            Pick::Project | Pick::Verify => ".json,application/json",
         }
     }
 }
@@ -102,13 +105,17 @@ impl<B: Browser> Web<B> {
     }
 
     /// A file the browser read. A CSV goes to the import preview; a project chosen in "Open
-    /// project" opens (the question about unsaved changes came before the picker); a dropped
-    /// project asks that question first.
+    /// project" opens (the question about unsaved changes came before the picker); a project
+    /// chosen in "Verify a project" is replayed and opens nothing; a dropped project asks the
+    /// question first.
     pub fn receive(&mut self, file: Incoming) {
         match file.pick {
             Some(Pick::Csv) => self.ui.load_csv(&file.name, &file.bytes),
             Some(Pick::Project) => {
                 self.ui.open_project(&file.name, &file.bytes);
+            }
+            Some(Pick::Verify) => {
+                self.ui.verify_project(&file.name, &file.bytes);
             }
             None if is_project_file(&file.name) => {
                 self.ui.open_project_guarded(&file.name, file.bytes, None);
@@ -155,6 +162,7 @@ impl<B: Browser> Web<B> {
                 match request {
                     Request::PickCsv => self.browser.pick(Pick::Csv),
                     Request::OpenProject => self.browser.pick(Pick::Project),
+                    Request::VerifyProject => self.browser.pick(Pick::Verify),
                     // A page cannot write over a file on the disk: every save is a download,
                     // and "Save" downloads again under the same name.
                     Request::SaveProject {
@@ -261,6 +269,56 @@ mod tests {
         assert_eq!(web.browser.picks, [Pick::Csv, Pick::Project]);
         assert!(Pick::Csv.accept().contains(".csv"));
         assert!(Pick::Project.accept().contains(".json"));
+    }
+
+    #[test]
+    fn verify_a_project_opens_the_picker_and_the_file_chosen_is_replayed_not_opened() {
+        use caladrius_ui::Selection;
+        use caladrius_ui::verify::Verdict;
+        let bytes = saved_project();
+        let mut web = page();
+        web.receive(csv(Some(Pick::Csv), "other.csv"));
+        web.ui.perform(vec![Action::ImportConfirm]);
+        assert!(web.ui.is_dirty());
+        web.ui.perform(vec![Action::VerifyProject]);
+        web.serve();
+        assert_eq!(web.browser.picks, [Pick::Verify]);
+        assert!(Pick::Verify.accept().contains(".json"));
+        // The file comes back: its report is on the page, and the project of the page is the
+        // same, still unsaved and without a file.
+        let before = web.ui.engine().project().clone();
+        web.browser.inbox.push(Ok(Incoming {
+            pick: Some(Pick::Verify),
+            name: "study.caladrius.json".to_owned(),
+            bytes,
+        }));
+        web.before_frame();
+        let (name, report) = web.ui.verification().unwrap();
+        assert_eq!(name, "study.caladrius.json");
+        assert_eq!(report.verdict, Verdict::Verified);
+        assert_eq!(web.ui.state.selection, Selection::Verification);
+        assert_eq!(web.ui.engine().project(), &before);
+        assert!(web.ui.is_dirty() && web.ui.file_name().is_none());
+        assert!(web.ui.guard().is_none());
+        assert_eq!(
+            web.ui.notice_text(),
+            Some("study.caladrius.json: verified.")
+        );
+        // A file that is not a project says so and leaves the report where it was.
+        web.receive(Incoming {
+            pick: Some(Pick::Verify),
+            name: "notes.json".to_owned(),
+            bytes: b"{ not a project".to_vec(),
+        });
+        assert!(
+            web.ui
+                .notice_text()
+                .unwrap()
+                .starts_with("notes.json cannot be verified"),
+            "{:?}",
+            web.ui.notice_text()
+        );
+        assert_eq!(web.ui.verification().unwrap().0, "study.caladrius.json");
     }
 
     #[test]

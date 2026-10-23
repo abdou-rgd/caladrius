@@ -289,4 +289,20 @@ impl Engine {
             }
         }
     }
+
+    /// `project.replay` from the bytes of a saved file: the same file, and the same refusal when
+    /// it is not text, as [`Engine::load_bytes`] gives.
+    pub fn replay_bytes(&mut self, bytes: &[u8]) -> Result<Value, CommandError> {
+        match std::str::from_utf8(bytes) {
+            Ok(text) => self.execute("project.replay", json!({ "text": text })),
+            Err(_) => {
+                let outcome = Err(CommandError::new(
+                    "load_failed",
+                    "this is not a Caladrius project: the file is not UTF-8 text",
+                ));
+                self.record_refusal("project.replay", Value::Null, &outcome);
+                outcome
+            }
+        }
+    }
 }

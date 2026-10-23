@@ -117,14 +117,14 @@ impl UiApp {
         false
     }
 
-    fn info(&mut self, text: String) {
+    pub(crate) fn info(&mut self, text: String) {
         self.notice = Some(Notice {
             kind: NoticeKind::Info,
             text,
         });
     }
 
-    fn failure(&mut self, text: String) {
+    pub(crate) fn failure(&mut self, text: String) {
         self.notice = Some(Notice {
             kind: NoticeKind::Error,
             text,

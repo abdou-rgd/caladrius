@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use caladrius_ui::entry::EntryRow;
 use caladrius_ui::modelinfo::{Compartments, Input, ParameterSet};
-use caladrius_ui::{Action, Selection, ThemeMode, UiApp};
+use caladrius_ui::{Action, Request, Selection, ThemeMode, UiApp};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
@@ -42,6 +42,10 @@ fn out_dir() -> PathBuf {
 
 /// The scenes whose page is longer than one screen are drawn on a taller canvas.
 fn size_of(name: &str) -> (f32, f32) {
+    // A narrow window: the lines of a page wrap instead of running off the edge.
+    if name.contains("narrow") {
+        return (800.0, 1600.0);
+    }
     if name.starts_with("35-")
         || name.starts_with("36-")
         || name.contains("more-options")
@@ -144,6 +148,41 @@ fn pk2_fit(start: Option<[(&str, f64); 4]>) -> UiApp {
         }
         app.perform(vec![Action::FitChanged { regenerate: false }]);
     }
+    app
+}
+
+/// The saved file of a short session: an import, an analysis, a fit, a simulation, an edit of the
+/// data and the analysis run again, as the application writes it.
+fn saved_project() -> serde_json::Value {
+    let mut app = nca(with_oral());
+    app.perform(vec![
+        Action::NewFit,
+        Action::RunFit,
+        Action::NewSimulation,
+        Action::SimSave,
+        Action::SetCell {
+            worksheet: 1,
+            row: 3,
+            column: "Conc".to_owned(),
+            text: "3,4".to_owned(),
+        },
+        Action::RunAgain(2),
+        Action::SaveProject,
+    ]);
+    let bytes = app.take_requests().into_iter().find_map(|r| match r {
+        Request::SaveProject { bytes, .. } => Some(bytes),
+        _ => None,
+    });
+    bytes
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
+}
+
+/// An application that has just verified `document` as a file called `name`.
+fn verifying(name: &str, document: &serde_json::Value, mode: ThemeMode) -> UiApp {
+    let mut app = UiApp::new();
+    app.verify_project(name, document.to_string().as_bytes());
+    app.state.mode = mode;
     app
 }
 
@@ -627,6 +666,53 @@ fn scenes() -> Vec<(&'static str, UiApp)> {
         app.state.mode = mode;
         scenes.push((name, app));
     }
+
+    // Verify a project (T-112): a file whose steps all reproduce their seals; one whose history
+    // holds a changed number (the first difference, with both seals); one saved before seals.
+    let document = saved_project();
+    scenes.push((
+        "59-verify-project-verified-light",
+        verifying("study.caladrius.json", &document, ThemeMode::Light),
+    ));
+    let mut edited = document.clone();
+    if let Some(entry) = edited["history"]
+        .as_array_mut()
+        .and_then(|h| h.iter_mut().find(|e| e["command"] == "data.import"))
+    {
+        let csv = entry["params"]["csv"].as_str().unwrap_or_default();
+        entry["params"]["csv"] = json!(csv.replacen("1,3.293,100", "1,3.294,100", 1));
+    }
+    scenes.push((
+        "60-verify-project-first-difference-dark",
+        verifying("edited.caladrius.json", &edited, ThemeMode::Dark),
+    ));
+    let mut old = document.clone();
+    if let Some(history) = old["history"].as_array_mut() {
+        for entry in history {
+            if let Some(map) = entry.as_object_mut() {
+                map.remove("seal");
+                map.remove("at");
+            }
+        }
+    }
+    scenes.push((
+        "61-verify-project-saved-before-seals-light",
+        verifying("2026-spring.caladrius.json", &old, ThemeMode::Light),
+    ));
+    scenes.push((
+        "63-verify-project-first-difference-narrow-light",
+        verifying("edited.caladrius.json", &edited, ThemeMode::Light),
+    ));
+    let mut changed_result = document.clone();
+    changed_result["worksheets"][0]["columns"][2]["data"]["number"][2] = json!(7.5);
+    scenes.push((
+        "62-verify-project-stored-project-differs-light",
+        verifying(
+            "changed-result.caladrius.json",
+            &changed_result,
+            ThemeMode::Light,
+        ),
+    ));
 
     scenes
 }
