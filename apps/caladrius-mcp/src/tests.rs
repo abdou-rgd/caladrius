@@ -731,3 +731,91 @@ fn two_analyses_are_compared_over_the_session() {
     // Nothing was stored by comparing.
     assert_eq!(s.engine().project().analyses().len(), 2);
 }
+
+/// The seal is for programs that verify. What the model reads, and what a number gate checks a
+/// quotation against, is the text and the structured content: they must not change.
+#[test]
+fn the_seal_of_a_result_is_in_its_meta_and_nowhere_else() {
+    let mut s = Server::new();
+    let r = call(
+        &mut s,
+        1,
+        "data_import",
+        json!({ "name": "w", "csv": "time,conc,dose\n0,0,10\n1,5,10\n2,3,10\n4,1,10\n8,0.2,10\n" }),
+    );
+    let result = &r["result"];
+    let mut members: Vec<&str> = result
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    members.sort_unstable();
+    assert_eq!(
+        members,
+        ["_meta", "content", "isError", "structuredContent"]
+    );
+
+    let seal = &result["_meta"][SEAL_KEY];
+    assert_eq!(seal["format"], 1);
+    assert_eq!(seal["engine"], env!("CARGO_PKG_VERSION"));
+    let hash = seal["sha256"].as_str().unwrap();
+    assert!(hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_hexdigit()));
+    assert_eq!(seal["input"].as_str().map(str::len), Some(64));
+    assert!(
+        result["_meta"][AT_KEY]
+            .as_str()
+            .is_some_and(|t| t.len() == 20 && t.ends_with('Z')),
+        "{}",
+        result["_meta"]
+    );
+    // The same seal as the engine's history holds.
+    let entry = s.engine().history().entries().last().unwrap();
+    assert_eq!(entry.seal.as_ref().map(|x| x.sha256.as_str()), Some(hash));
+
+    // Neither the hash nor any member of the seal is in what the model reads.
+    let read = format!("{} {}", result["content"], result["structuredContent"]);
+    for word in [hash, "sha256", "caladrius/", "\"engine\"", "\"commit\""] {
+        assert!(!read.contains(word), "`{word}` is in {read}");
+    }
+    let input = seal["input"].as_str().unwrap();
+    assert!(!read.contains(input));
+
+    // A failure carries its seal in the same place and says nothing of it in its text.
+    let r = call(&mut s, 2, "nca_run", json!({ "worksheet": 99 }));
+    assert_eq!(r["result"]["isError"], true);
+    let failed = r["result"]["_meta"][SEAL_KEY]["sha256"].as_str().unwrap();
+    assert!(!r["result"]["content"].to_string().contains(failed));
+    assert_ne!(failed, hash);
+}
+
+#[test]
+fn the_same_session_gives_the_same_seals_over_mcp_and_every_tool_keeps_its_answer_clean() {
+    let session = |server: &mut Server| -> Vec<(String, Value)> {
+        let mut seen = Vec::new();
+        for (n, command) in caladrius_engine::describe().into_iter().enumerate() {
+            let r = call(server, n as u64, &command.id, command.example.clone());
+            let result = r["result"].clone();
+            let read = format!("{} {}", result["content"], result["structuredContent"]);
+            match result["_meta"][SEAL_KEY]["sha256"].as_str() {
+                Some(hash) => {
+                    assert!(
+                        !read.contains(hash),
+                        "{}: the seal is in the answer",
+                        command.id
+                    );
+                    seen.push((
+                        command.id.clone(),
+                        result["_meta"][SEAL_KEY]["sha256"].clone(),
+                    ));
+                }
+                None => assert_eq!(command.id, "project.load", "{}: no seal", command.id),
+            }
+        }
+        seen
+    };
+    let first = session(&mut Server::new());
+    let second = session(&mut Server::new());
+    assert!(first.len() >= 20, "{}", first.len());
+    assert_eq!(first, second);
+}

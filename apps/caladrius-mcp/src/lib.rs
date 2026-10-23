@@ -19,6 +19,11 @@
 //! result is JSON text content plus `structuredContent`; a command that fails is a tool error
 //! (`isError: true`) whose text is `<code>: <message>`. The server holds one [`Engine`]: the
 //! worksheets and analyses of a session persist between calls, as in the UI.
+//!
+//! Every result also carries the seal of the command in its `_meta` (`caladrius/seal`: the
+//! SHA-256 of the command, its parameters and its answer, and where it was made; `caladrius/at`:
+//! the time). It is never in `content` or in `structuredContent`: what the model reads, and what
+//! a number gate checks against, is exactly what it was before seals existed.
 
 use std::io::{BufRead, Read, Write};
 
@@ -49,6 +54,19 @@ or fit_run for a model fit (the answer holds the result and its status), export_
 Worksheets and analyses persist during the session; after data_set_cell or data_set_column an analysis is \
 `stale` until analysis_run. project_save returns the whole project to keep. To compare two analyses of one subject call analysis_compare: per shared parameter it gives both values with units, b-a, the relative difference in percent and the ratio, or `not_comparable` with the reason; quote those numbers, never compute them. Errors say what to fix.";
 
+/// The keys of the `_meta` of a result (the prefix keeps them apart from other servers' keys).
+pub const SEAL_KEY: &str = "caladrius/seal";
+/// See [`SEAL_KEY`].
+pub const AT_KEY: &str = "caladrius/at";
+
+/// The time of the system, in seconds since 1970 (the engine reads no clock itself).
+fn system_clock() -> Option<i64> {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?;
+    i64::try_from(elapsed.as_secs()).ok()
+}
+
 /// The tool name of a command id.
 pub fn tool_name(command: &str) -> String {
     command.replace('.', "_")
@@ -75,9 +93,11 @@ fn result_response(id: Value, result: Value) -> Value {
 }
 
 impl Server {
-    /// A server with an empty project.
+    /// A server with an empty project. Its engine dates the history with the clock of the system.
     pub fn new() -> Self {
-        Self::with_engine(Engine::new())
+        let mut engine = Engine::new();
+        engine.set_clock(system_clock);
+        Self::with_engine(engine)
     }
 
     /// A server over an existing engine.
@@ -135,7 +155,7 @@ impl Server {
             ));
         };
         let arguments = map.get("arguments").cloned().unwrap_or(Value::Null);
-        Ok(match self.engine.execute(&command, arguments) {
+        let mut result = match self.engine.execute(&command, arguments) {
             Ok(value) => {
                 let text =
                     serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string());
@@ -152,7 +172,23 @@ impl Server {
                 "content": [{ "type": "text", "text": format!("{}: {}", e.code, e.message) }],
                 "isError": true,
             }),
-        })
+        };
+        if let Some(meta) = self.seal_meta() {
+            result["_meta"] = meta;
+        }
+        Ok(result)
+    }
+
+    /// The `_meta` of the result of the command the engine has just executed: its seal and the time
+    /// it ran. `None` for a command that carries no seal.
+    fn seal_meta(&self) -> Option<Value> {
+        let entry = self.engine.history().entries().last()?;
+        let seal = serde_json::to_value(entry.seal.as_ref()?).ok()?;
+        let mut meta = json!({ SEAL_KEY: seal });
+        if let Some(at) = &entry.at {
+            meta[AT_KEY] = json!(at);
+        }
+        Some(meta)
     }
 
     /// Handles one decoded message. `None` for a notification or a response (no answer owed).
