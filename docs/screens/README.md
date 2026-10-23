@@ -135,6 +135,25 @@ same commands are what the CLI and the MCP server expose, so the interface canno
 </tr>
 </table>
 
+## Verifying a project
+
+<table>
+<tr>
+<td width="50%"><img src="verify-project.png" alt="Verify a project: every step of a saved history reproduces its seal"></td>
+<td width="50%"><img src="verify-project-does-not-reproduce.png" alt="Verify a project, dark theme: a file in which one number of the history was changed"></td>
+</tr>
+<tr>
+<td><b>A saved project, run again.</b> <code>File</code>, <code>Verify a project…</code> runs the history of a
+file from an empty project and compares every step with the seal stored beside it (the SHA-256 of the
+command, its parameters and its answer). Here all 32 steps reproduce their seal bit for bit and the
+replayed project is the stored one. The project in the window is not read or changed.</td>
+<td><b>One changed number is found, and where.</b> A digit of the data was changed in the history of the
+file: the page says "Does not reproduce", marks the first step that differs (the import) and lists every
+later step whose answer moves with it, with both seals. <code>docs/reproducibility.md</code> says what a
+seal proves and what it does not.</td>
+</tr>
+</table>
+
 ## Reading these shots
 
 - The shots are a moving picture of `main`, not of a release: they are regenerated from the example,
@@ -142,5 +161,5 @@ same commands are what the CLI and the MCP server expose, so the interface canno
 - Colours, spacing and font sizes are the tokens of `crates/caladrius-ui/src/theme.json` (light and
   dark); the snapshots in `target/snapshots/` also cover the dark theme and the error, stale-analysis,
   unsaved-changes and settings pages, which are not repeated here.
-- The images in this folder are quantised to 256 colours to keep the repository small (about 1.5 MB
-  for the fourteen). Regenerate them with the command above and the same map if a page changes.
+- The images in this folder are quantised to 256 colours to keep the repository small (about 2.2 MB
+  for the seventeen). Regenerate them with the command above and the same map if a page changes.
