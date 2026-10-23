@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::arith::{powi, sq};
 use crate::linalg::{Mat, least_squares};
 use crate::model::FitModel;
 use crate::result::{self, FitResult, TraceRow};
@@ -40,7 +41,7 @@ fn generated_lower(name: &str, initial: f64) -> f64 {
 }
 
 pub(crate) fn weight_of(x: f64, power: i32) -> Option<f64> {
-    let w = 1.0 / x.powi(power);
+    let w = 1.0 / powi(x, power);
     (x > 0.0 && w.is_finite()).then_some(w)
 }
 
@@ -360,7 +361,7 @@ impl<'a> Problem<'a> {
             .iter()
             .zip(pred)
             .zip(w)
-            .map(|((y, f), w)| w * (y - f).powi(2))
+            .map(|((y, f), w)| w * sq(y - f))
             .sum()
     }
 
@@ -455,10 +456,9 @@ impl<'a> Problem<'a> {
         };
         let predicted: f64 = (0..a.rows())
             .map(|i| {
-                (0..a.cols())
+                sq((0..a.cols())
                     .map(|j| a.at(i, j) * scaled.get(j).copied().unwrap_or(0.0))
-                    .sum::<f64>()
-                    .powi(2)
+                    .sum::<f64>())
             })
             .sum();
         let mut delta = vec![0.0; columns.len()];
@@ -496,7 +496,7 @@ impl<'a> Problem<'a> {
         // (T-030b). The floor is h² only when it exceeds ε (never with the presets: 1e-6 < 1e-4 for
         // the reference conventions, 1e-10 = ε for the default's forward-difference fallback).
         let gain_floor = match self.options.derivatives {
-            Derivatives::ForwardDifference => eps.max(self.options.increment.powi(2)),
+            Derivatives::ForwardDifference => eps.max(sq(self.options.increment)),
             // `auto` is resolved in `new`; it cannot reach here.
             Derivatives::Analytic | Derivatives::Auto => eps,
         };
@@ -659,7 +659,7 @@ impl<'a> Problem<'a> {
                 relative == 0.0
                     || previous_decrease.is_some_and(|prev| {
                         let rho = (relative / prev).sqrt();
-                        prev > 0.0 && rho < 1.0 && relative <= eps * (1.0 - rho).powi(2)
+                        prev > 0.0 && rho < 1.0 && relative <= eps * sq(1.0 - rho)
                     })
             } else {
                 decrease <= eps * s_new

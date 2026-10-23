@@ -98,7 +98,7 @@ fn w1_pknca_printed_example() {
 #[test]
 fn w2_exact_mono_exponential_iv_bolus() {
     let t = [0.0, 1.0, 2.0, 4.0, 8.0, 12.0];
-    let c: Vec<f64> = t.iter().map(|t: &f64| 10.0 * (-0.2 * t).exp()).collect();
+    let c: Vec<f64> = t.iter().map(|t: &f64| 10.0 * libm::exp(-0.2 * t)).collect();
     let r = run_with(&t, &c, Route::IvBolus, NcaOptions::default());
     assert_close(&r, "lambda.z", 0.2);
     assert_close(&r, "lambda.z.n.points", 5.0);
@@ -282,7 +282,7 @@ fn naive_fit(times: &[f64]) -> (f64, f64) {
         .iter()
         .zip(TH_C)
         .filter(|(t, _)| times.contains(t))
-        .map(|(t, c)| (*t, c.ln()))
+        .map(|(t, c)| (*t, libm::log(c)))
         .unzip();
     let fit = naive::linear_regression(&x, &y).unwrap();
     (-fit.slope, fit.r_squared)
@@ -443,7 +443,7 @@ fn lambda_z_selection_and_candidates_round_trip_through_json() {
 fn w2_derived_parameters_iv_bolus_and_infusion() {
     // W2 (D = 100): MRT 5, CL 2, Vz 10, Vss 10.
     let t = [0.0, 1.0, 2.0, 4.0, 8.0, 12.0];
-    let c: Vec<f64> = t.iter().map(|t: &f64| 10.0 * (-0.2 * t).exp()).collect();
+    let c: Vec<f64> = t.iter().map(|t: &f64| 10.0 * libm::exp(-0.2 * t)).collect();
     let r = run_with(&t, &c, Route::IvBolus, NcaOptions::default());
     assert_close(&r, "mrt.iv.obs", 5.0);
     assert_close(&r, "cl.obs", 2.0);

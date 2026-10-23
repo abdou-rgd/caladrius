@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: helpers panic on purpose
+#![allow(clippy::disallowed_methods)] // independent reference arithmetic, with the platform's maths library
 
 //! Cross-checks the multiple-dosing oracle (task T-047) against independent arithmetic
 //! (`AGENTS.md` section 5, source 3), so that the expected files are tested by something other than

@@ -50,7 +50,11 @@ pub(crate) fn segment(log: bool, a: &ProfilePoint, b: &ProfilePoint) -> (f64, f6
     let dt = t2 - t1;
     // ln C1 - ln C2 rather than ln(C1/C2): the ratio itself may overflow. A difference that
     // rounds to 0 (C1, C2 adjacent floats) falls back to the linear limit.
-    let ln_ratio = if log { c1.ln() - c2.ln() } else { 0.0 };
+    let ln_ratio = if log {
+        libm::log(c1) - libm::log(c2)
+    } else {
+        0.0
+    };
     if ln_ratio != 0.0 && ln_ratio.is_finite() {
         let k = ln_ratio / dt;
         (

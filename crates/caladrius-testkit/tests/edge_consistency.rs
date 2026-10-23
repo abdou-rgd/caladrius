@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: helpers panic on purpose
+#![allow(clippy::disallowed_methods)] // independent reference arithmetic, with the platform's maths library
 
 //! Cross-checks the edge-case oracle (task T-012) against independent, naive arithmetic
 //! (AGENTS.md section 5, source 3): the BLQ and missing-value cleaning is re-implemented from the

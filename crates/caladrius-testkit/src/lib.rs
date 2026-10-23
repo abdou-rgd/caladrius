@@ -5,6 +5,9 @@
     clippy::todo,
     clippy::unreachable
 )]
+// The independent reference code (`naive`, `naive2c`, the tolerances) uses the platform's maths library
+// on purpose: a second implementation that the engine's pure Rust `libm` is checked against.
+#![allow(clippy::disallowed_methods)]
 //! Test layer: oracles, tolerances and table comparison for the conformance tests; never shipped.
 //!
 //! - [`tolerance`]: the tolerances of `AGENTS.md` section 5, defined once.

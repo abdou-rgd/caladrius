@@ -105,7 +105,7 @@ impl FitModel for ModelId {
                     if t < 0.0 {
                         0.0
                     } else {
-                        dose / v * (-k * t).exp()
+                        dose / v * libm::exp(-k * t)
                     }
                 };
                 names

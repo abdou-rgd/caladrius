@@ -87,7 +87,7 @@ fn flags_never_change_a_number() {
 fn a_clean_profile_has_no_flag() {
     // W2: exact mono-exponential, 5 points over 3.2 half-lives, 9 % extrapolated.
     let t = [0.0, 1.0, 2.0, 4.0, 8.0, 12.0];
-    let c: Vec<f64> = t.iter().map(|t: &f64| 10.0 * (-0.2 * t).exp()).collect();
+    let c: Vec<f64> = t.iter().map(|t: &f64| 10.0 * libm::exp(-0.2 * t)).collect();
     let r = run_with(&t, &c, Route::IvBolus, NcaOptions::default());
     assert!(r.flags().is_empty(), "{:?}", r.flags());
 }

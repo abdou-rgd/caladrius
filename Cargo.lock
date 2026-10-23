@@ -598,6 +598,7 @@ dependencies = [
  "caladrius-models",
  "caladrius-nca",
  "caladrius-project",
+ "libm",
  "serde",
  "serde_json",
 ]
@@ -609,6 +610,7 @@ dependencies = [
  "caladrius-models",
  "caladrius-nca",
  "caladrius-testkit",
+ "libm",
  "serde",
  "serde_json",
 ]
@@ -627,6 +629,7 @@ name = "caladrius-models"
 version = "0.3.2"
 dependencies = [
  "caladrius-testkit",
+ "libm",
  "serde",
  "serde_json",
 ]
@@ -636,6 +639,7 @@ name = "caladrius-nca"
 version = "0.3.2"
 dependencies = [
  "caladrius-testkit",
+ "libm",
  "serde",
  "serde_json",
 ]
@@ -4319,6 +4323,7 @@ dependencies = [
  "caladrius-models",
  "caladrius-nca",
  "caladrius-testkit",
+ "libm",
  "serde_json",
  "toml",
 ]

@@ -153,7 +153,7 @@ pub fn run(input: &NcaInput) -> Result<NcaResult, NcaError> {
     // NCA-LZ-01: Clast,pred = exp(a − λz·Tlast), at the observed Tlast.
     let clast_pred = match &terminal.selected {
         Ok(c) => obs.tlast.zip(lambda_z, |t, lz| {
-            ParamValue::of((c.intercept - lz * t).exp())
+            ParamValue::of(libm::exp(c.intercept - lz * t))
         }),
         Err(reason) => ParamValue::nc(*reason),
     };

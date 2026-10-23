@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 
 /// g(z) = (1 − e^−z)/z for z >= 0, with g(0) = 1.
 fn g(z: f64) -> f64 {
-    if z == 0.0 { 1.0 } else { -(-z).exp_m1() / z }
+    if z == 0.0 { 1.0 } else { -libm::expm1(-z) / z }
 }
 
 /// g'(z) = (e^−z − g(z))/z for z >= 0, with g'(0) = −1/2. For z < 0.1 the two terms nearly
@@ -29,7 +29,7 @@ fn dg(z: f64) -> f64 {
         }
         sum
     } else {
-        ((-z).exp() - g(z)) / z
+        (libm::exp(-z) - g(z)) / z
     }
 }
 
@@ -68,13 +68,13 @@ pub(crate) fn zero_order(dose: f64, v: f64, k: f64, dur: f64, s: f64) -> ZeroOrd
             v: -c / v,
             k: base * s * s * dg(z),
             dur: -c / dur,
-            s: base * (-z).exp(),
+            s: base * libm::exp(-z),
         };
     }
     let scale = dose / v;
     let z = k * dur;
     let (g_z, dg_z) = (g(z), dg(z));
-    let decay = (-k * (s - dur)).exp();
+    let decay = libm::exp(-k * (s - dur));
     let c = scale * g_z * decay;
     // Once the exponential has underflowed every term is 0; (s − T)·0 must not become inf·0.
     let k_term = if decay == 0.0 {
@@ -120,7 +120,7 @@ pub(crate) fn first_order(dose: f64, v: f64, k: f64, ka: f64, s: f64) -> FirstOr
     let (a, b) = (k.min(ka), k.max(ka));
     let z = (b - a) * s;
     let (g_z, dg_z) = (g(z), dg(z));
-    let decay = (-a * s).exp();
+    let decay = libm::exp(-a * s);
     // s·e^−as and s²·e^−as are 0 once the exponential has underflowed (never inf·0).
     let (s_decay, s2_decay) = if decay == 0.0 {
         (0.0, 0.0)
@@ -141,7 +141,7 @@ pub(crate) fn first_order(dose: f64, v: f64, k: f64, ka: f64, s: f64) -> FirstOr
         v: -c / v,
         k: scale * ka * df_dk,
         ka: scale * (f + ka * df_dka),
-        s: scale * ka * ((-b * s).exp() - a * s_decay * g_z),
+        s: scale * ka * (libm::exp(-b * s) - a * s_decay * g_z),
     }
 }
 
@@ -245,7 +245,9 @@ mod tests {
     /// out: a difference quotient straddling a kink measures neither side.
     #[test]
     fn closed_forms_match_central_differences_on_a_grid() {
-        let grid: Vec<f64> = (1..=200).map(|i| 0.0125 * f64::from(i).powf(1.5)).collect();
+        let grid: Vec<f64> = (1..=200)
+            .map(|i| 0.0125 * libm::pow(f64::from(i), 1.5))
+            .collect();
         type Case = (ModelId, Vec<(&'static str, f64)>);
         let mut cases: Vec<Case> = Vec::new();
         for (v, k, dur) in [
@@ -359,7 +361,7 @@ mod tests {
     #[test]
     fn the_series_of_g_prime_matches_the_closed_form_where_both_are_accurate() {
         for z in [0.05_f64, 0.099, 0.1, 0.101, 0.3] {
-            let closed = ((-z).exp() - g(z)) / z;
+            let closed = (libm::exp(-z) - g(z)) / z;
             let series = {
                 // dg uses the series below 0.1 only; evaluate it directly here.
                 let (mut sum, mut power, mut factorial) = (0.0, 1.0, 2.0);

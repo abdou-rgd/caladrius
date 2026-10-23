@@ -245,9 +245,9 @@ fn forward_differences_use_a_relative_increment() {
     )
     .unwrap();
     let k_column = &j.columns[j.parameters.iter().position(|n| n == "k").unwrap()];
-    let c = 10.0 * (-0.8f64).exp();
+    let c = 10.0 * libm::exp(-0.8f64);
     let delta = 0.001 * 0.2;
-    let expected = c * ((-delta * 4.0f64).exp() - 1.0) / delta;
+    let expected = c * (libm::exp(-delta * 4.0f64) - 1.0) / delta;
     assert!((k_column[0] - expected).abs() <= 1e-9 * expected.abs());
     // Analytic falls back to forward differences for a model without spec'd derivatives.
     let oral = input(

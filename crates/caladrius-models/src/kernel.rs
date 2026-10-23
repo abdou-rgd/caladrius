@@ -26,7 +26,7 @@ pub(crate) fn dg(z: f64) -> f64 {
         }
         sum
     } else {
-        ((-z).exp() - g(z)) / z
+        (libm::exp(-z) - g(z)) / z
     }
 }
 
@@ -73,7 +73,7 @@ fn moment_of_exponential(rate: f64, s: f64) -> f64 {
 /// backward recurrence ψ_(n−1) = (e^−x + x·ψ_n)/n (positive terms, stable).
 fn psi_n(x: f64) -> [f64; MOMENT_TERMS] {
     let top = (MOMENT_TERMS + 1) as f64; // n of the last entry
-    let decay = (-x).exp();
+    let decay = libm::exp(-x);
     let (mut sum, mut term) = (0.0, 1.0);
     for k in 0..80 {
         sum += term;
@@ -122,12 +122,12 @@ fn first_order_moment(k: f64, ka: f64, s: f64) -> f64 {
 /// The regime x = a·s >= 3 of [`first_order_moment`].
 fn moment_by_tail(a: f64, b: f64, s: f64) -> f64 {
     let (x, z) = (a * s, (b - a) * s);
-    let decay = (-x).exp();
+    let decay = libm::exp(-x);
     let ab = a * b;
     if decay == 0.0 {
         return (a + b) / ab / ab;
     }
-    let numerator = (a + b) * -(-x).exp_m1() - decay * x * b - decay * g(z) * (x * a + x * x * b);
+    let numerator = (a + b) * -libm::expm1(-x) - decay * x * b - decay * g(z) * (x * a + x * x * b);
     numerator / ab / ab
 }
 
@@ -304,7 +304,7 @@ impl Kernel {
         let decay = if rate_is_slower {
             rate.decay(s)
         } else {
-            (-ka * s).exp()
+            libm::exp(-ka * s)
         };
         let (s_decay, s2_decay) = if decay == 0.0 {
             (0.0, 0.0)
@@ -313,7 +313,7 @@ impl Kernel {
         };
         let f = s_decay * g_z;
         let (df_drate, ka_bracket) = if rate_is_slower {
-            (-s2_decay * (g_z + dg_z), (-z).exp() + x * dg_z)
+            (-s2_decay * (g_z + dg_z), libm::exp(-z) + x * dg_z)
         } else {
             (s2_decay * dg_z, g_z - x * (g_z + dg_z))
         };
@@ -321,7 +321,7 @@ impl Kernel {
             value: dose * ka * f,
             rate: dose * ka * df_drate,
             ka: dose * s_decay * ka_bracket,
-            s: dose * ka * decay * ((-z).exp() - x * g_z),
+            s: dose * ka * decay * (libm::exp(-z) - x * g_z),
             dur: 0.0,
         }
     }
@@ -353,11 +353,11 @@ impl Rate {
 
     /// e^(−λ·u).
     fn decay(&self, u: f64) -> f64 {
-        let main = (-self.center * u).exp();
+        let main = libm::exp(-self.center * u);
         if self.offset == 0.0 || main == 0.0 {
             main
         } else {
-            main * (-self.offset * u).exp()
+            main * libm::exp(-self.offset * u)
         }
     }
 }
@@ -457,14 +457,15 @@ mod tests {
         // At ka = k the moment is ∫ u² e^−ku du = (2/k³)[1 − e^−y(1 + y + y²/2)].
         for s in [1.0_f64, 2.9, 3.1, 30.0] {
             let y = 0.2 * s;
-            let exact = 2.0 / 0.008 * (1.0 - (-y).exp() * (1.0 + y + y * y / 2.0));
+            let exact = 2.0 / 0.008 * (1.0 - libm::exp(-y) * (1.0 + y + y * y / 2.0));
             let got = first_order_moment(0.2, 0.2, s);
             assert!((got - exact).abs() <= 1e-12 * exact, "{s}: {got} {exact}");
         }
         // Small s, where that closed form cancels: its series s³/3 − k·s⁴/4 + k²·s⁵/10 − k³·s⁶/36.
         let (k, s) = (0.2_f64, 0.01_f64);
-        let series = s.powi(3) / 3.0 - k * s.powi(4) / 4.0 + k * k * s.powi(5) / 10.0
-            - k.powi(3) * s.powi(6) / 36.0;
+        let series = libm::pow(s, 3.0) / 3.0 - k * libm::pow(s, 4.0) / 4.0
+            + k * k * libm::pow(s, 5.0) / 10.0
+            - libm::pow(k, 3.0) * libm::pow(s, 6.0) / 36.0;
         let got = first_order_moment(k, k, s);
         assert!((got - series).abs() <= 1e-12 * series, "{got} {series}");
     }

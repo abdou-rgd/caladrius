@@ -740,7 +740,7 @@ fn private_engine_profile(
         let included = selected.is_some_and(|c| t >= c.time_first && t <= c.time_last);
         let predicted = selected
             .filter(|_| included)
-            .map(|c| (c.intercept - c.lambda_z * t).exp());
+            .map(|c| libm::exp(c.intercept - c.lambda_z * t));
         rows.push(ProfileEngine {
             auc,
             aumc,

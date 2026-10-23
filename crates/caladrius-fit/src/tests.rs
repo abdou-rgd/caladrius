@@ -152,8 +152,8 @@ fn predicted_value_weights_reach_a_fixed_point() {
         let (v, k) = (r.get("estimate.v").unwrap(), r.get("estimate.k").unwrap());
         let (mut gv, mut gk, mut scale) = (0.0, 0.0, 0.0);
         for (&t, &y) in T.iter().zip(&Y) {
-            let f = 100.0 / v * (-k * t).exp();
-            let w = 1.0 / f.powi(power);
+            let f = 100.0 / v * libm::exp(-k * t);
+            let w = 1.0 / crate::arith::powi(f, power);
             gv += (-f / v) * w * (y - f);
             gk += (-t * f) * w * (y - f);
             scale += w * y * y;
@@ -353,7 +353,7 @@ fn secondary_parameters_come_from_the_model() {
 fn an_exact_fit_has_no_information_criteria_and_a_readable_trace() {
     let mut i = spec(Weighting::Uniform, true);
     // Exact data on V = 10, k = 0.2, more points than parameters.
-    i.conc = T.iter().map(|t| 10.0 * (-0.2 * t).exp()).collect();
+    i.conc = T.iter().map(|t| 10.0 * libm::exp(-0.2 * t)).collect();
     let r = run(&i).unwrap();
     close(&r, "estimate.k", 0.2);
     assert_eq!(r.get("aic"), None);
@@ -370,7 +370,7 @@ fn a_far_start_under_predicted_value_weights_is_not_converged() {
     let conc: Vec<f64> = times
         .iter()
         .zip([1.02, 0.98, 1.01, 0.99, 1.03, 0.97, 1.0])
-        .map(|(t, noise): (&f64, f64)| 10.0 * (-0.4 * t).exp() * noise)
+        .map(|(t, noise): (&f64, f64)| 10.0 * libm::exp(-0.4 * t) * noise)
         .collect();
     let mut options = FitOptions {
         derivatives: Derivatives::Analytic,

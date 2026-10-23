@@ -19,7 +19,7 @@ fn ln_gamma(x: f64) -> f64 {
     if x < 0.5 {
         // Reflection: Γ(x)Γ(1 − x) = π / sin(πx).
         let pi = std::f64::consts::PI;
-        return (pi / (pi * x).sin()).abs().ln() - ln_gamma(1.0 - x);
+        return libm::log((pi / libm::sin(pi * x)).abs()) - ln_gamma(1.0 - x);
     }
     let x = x - 1.0;
     let mut a = 0.0;
@@ -27,7 +27,7 @@ fn ln_gamma(x: f64) -> f64 {
         a += if i == 0 { *c } else { c / (x + i as f64) };
     }
     let t = x + 7.5;
-    0.5 * (2.0 * std::f64::consts::PI).ln() + (x + 0.5) * t.ln() - t + a.ln()
+    0.5 * libm::log(2.0 * std::f64::consts::PI) + (x + 0.5) * libm::log(t) - t + libm::log(a)
 }
 
 /// Continued fraction of the incomplete beta function (modified Lentz).
@@ -82,8 +82,9 @@ pub(crate) fn incomplete_beta(x: f64, a: f64, b: f64) -> f64 {
     if x >= 1.0 {
         return 1.0;
     }
-    let front =
-        (ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b) + a * x.ln() + b * (1.0 - x).ln()).exp();
+    let front = libm::exp(
+        ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b) + a * libm::log(x) + b * libm::log(1.0 - x),
+    );
     if x < (a + 1.0) / (a + b + 2.0) {
         front * beta_continued_fraction(a, b, x) / a
     } else {
@@ -132,11 +133,11 @@ mod tests {
         // (closed form (3/2)(0.05^(−2/3) − 1) for two numerator degrees of freedom).
         assert!((student_t_quantile(0.975, 3.0) - 3.182_446_305_284_263).abs() < 1e-10);
         let f = f_quantile(0.95, 2.0, 3.0);
-        let exact = 1.5 * (0.05f64.powf(-2.0 / 3.0) - 1.0);
+        let exact = 1.5 * (libm::pow(0.05f64, -2.0 / 3.0) - 1.0);
         assert!((f - exact).abs() < 1e-9 * exact, "{f} against {exact}");
         // Normal limit and a textbook value.
         assert!((student_t_quantile(0.975, 1e7) - 1.959_963_984_540_054).abs() < 1e-5);
         assert!((student_t_quantile(0.975, 10.0) - 2.228_138_851_986_274).abs() < 1e-10);
-        assert!((ln_gamma(5.0) - 24f64.ln()).abs() < 1e-13);
+        assert!((ln_gamma(5.0) - libm::log(24f64)).abs() < 1e-13);
     }
 }

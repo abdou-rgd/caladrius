@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: helpers panic on purpose
+#![allow(clippy::disallowed_methods)] // independent reference arithmetic, with the platform's maths library
 
 //! Cross-checks the public oracle against independent, naive arithmetic (AGENTS.md section 5,
 //! source 3): the expected values PKNCA produced must be reproducible from the input profile plus

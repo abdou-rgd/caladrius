@@ -439,8 +439,12 @@ fn information_criterion_ok(
     ) else {
         return false;
     };
-    let penalty = if name == "aic" { 2.0 * p } else { p * n.ln() };
-    let formula = n * wrss.ln() + penalty;
+    let penalty = if name == "aic" {
+        2.0 * p
+    } else {
+        p * libm::log(n)
+    };
+    let formula = n * libm::log(wrss) + penalty;
     let follows_formula = (actual - formula).abs() <= 1e-9 * formula.abs().max(1.0);
     let rel = match Tolerance::FIT_WEIGHTED_SS {
         Tolerance::Relative { rel, .. } => rel,

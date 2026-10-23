@@ -9,6 +9,9 @@ rust-version.workspace = true
 [dependencies]
 # Options, inputs, results and errors are data (golden rule 4): they must serialize.
 serde = { version = "1.0.229", features = ["derive"] }
+# Pure Rust exp, log, pow...: the same bits on every platform (clippy.toml bans the standard library's).
+# Pinned: another version may round another way, and every digest would change.
+libm = "=0.2.16"
 
 [features]
 # Tests against the reference software's exports in `private/` (AGENTS.md section 5.2); they are

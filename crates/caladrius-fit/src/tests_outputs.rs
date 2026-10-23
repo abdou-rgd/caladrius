@@ -12,7 +12,7 @@ const F4_T: [f64; 8] = [0.5, 1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 24.0];
 
 fn f4_conc() -> Vec<f64> {
     F4_T.iter()
-        .map(|t| 12.5 * ((-0.2 * t).exp() - (-t).exp()))
+        .map(|t| 12.5 * (libm::exp(-0.2 * t) - libm::exp(-t)))
         .collect()
 }
 
@@ -92,11 +92,11 @@ fn fits_start_from_generated_estimates() {
     let c: Vec<f64> = t
         .iter()
         .map(|&t: &f64| {
-            let during = 25.0 * (1.0 - (-0.2 * t.min(2.0)).exp());
+            let during = 25.0 * (1.0 - libm::exp(-0.2 * t.min(2.0)));
             if t <= 2.0 {
                 during
             } else {
-                during * (-0.2 * (t - 2.0)).exp()
+                during * libm::exp(-0.2 * (t - 2.0))
             }
         })
         .collect();
@@ -181,7 +181,7 @@ fn a_parameter_held_on_a_bound() {
         i.time
             .iter()
             .zip(&i.conc)
-            .map(|(t, y)| (y - 100.0 / v * (-0.19 * t).exp()).powi(2))
+            .map(|(t, y)| crate::arith::sq(y - 100.0 / v * libm::exp(-0.19 * t)))
             .sum()
     };
     assert!(wrss(v) <= wrss(v * 1.0001) && wrss(v) <= wrss(v * 0.9999));
@@ -308,7 +308,7 @@ fn a_zero_duration_and_a_late_lag_are_handled() {
             if s <= 0.0 {
                 0.0
             } else {
-                12.5 * ((-0.2 * s).exp() - (-s).exp())
+                12.5 * (libm::exp(-0.2 * s) - libm::exp(-s))
             }
         })
         .collect();

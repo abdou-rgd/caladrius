@@ -1,3 +1,76 @@
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
+
+# Same numbers on every machine (T-111). The desktop application, the command line, the MCP server and
+# the page in the browser are one engine, and what it returns must not depend on where it runs. These
+# methods of the standard library call the maths library of the platform (the C runtime of Windows, glibc,
+# the one of macOS, the algorithms of wasm32), or an intrinsic that the compiler lowers in another way
+# for each target and each optimization level, and those do not round alike: the digest of
+# `cargo xtask digest` told 31 % of the numbers of one workload apart between Windows and WebAssembly.
+# The crates that compute a result call the pure Rust `libm` instead, `libm::exp(x)` for `x.exp()`, the
+# same code everywhere. Square roots, sums, products, quotients, `abs`, `floor` and `round` are rounded
+# the same way everywhere and stay as they are. (`min`, `max` and `clamp` may return either zero when
+# they meet +0 and -0, so only the sign of a zero can differ: AGENTS.md, golden rule 10.)
+#
+# `caladrius-ui` (axes, labels, colours) and the independent reference code of `caladrius-testkit` opt
+# out with `#![allow(clippy::disallowed_methods)]` in their crate root and say why. Nothing else does:
+# the tests of the numerical crates call `libm` too.
+disallowed-methods = [
+    { path = "f64::exp", reason = "the rounding depends on the platform: use libm::exp" },
+    { path = "f64::exp2", reason = "the rounding depends on the platform: use libm::exp2" },
+    { path = "f64::exp_m1", reason = "the rounding depends on the platform: use libm::expm1" },
+    { path = "f64::ln", reason = "the rounding depends on the platform: use libm::log" },
+    { path = "f64::ln_1p", reason = "the rounding depends on the platform: use libm::log1p" },
+    { path = "f64::log", reason = "the rounding depends on the platform: libm::log(x) / libm::log(base)" },
+    { path = "f64::log2", reason = "the rounding depends on the platform: use libm::log2" },
+    { path = "f64::log10", reason = "the rounding depends on the platform: use libm::log10" },
+    { path = "f64::powf", reason = "the rounding depends on the platform: use libm::pow" },
+    { path = "f64::powi", reason = "the rounding depends on the platform and the optimization level: multiply (x * x), or a loop of multiplications" },
+    { path = "f64::sin", reason = "the rounding depends on the platform: use libm::sin" },
+    { path = "f64::cos", reason = "the rounding depends on the platform: use libm::cos" },
+    { path = "f64::tan", reason = "the rounding depends on the platform: use libm::tan" },
+    { path = "f64::sin_cos", reason = "the rounding depends on the platform: use libm::sincos" },
+    { path = "f64::asin", reason = "the rounding depends on the platform: use libm::asin" },
+    { path = "f64::acos", reason = "the rounding depends on the platform: use libm::acos" },
+    { path = "f64::atan", reason = "the rounding depends on the platform: use libm::atan" },
+    { path = "f64::atan2", reason = "the rounding depends on the platform: use libm::atan2" },
+    { path = "f64::sinh", reason = "the rounding depends on the platform: use libm::sinh" },
+    { path = "f64::cosh", reason = "the rounding depends on the platform: use libm::cosh" },
+    { path = "f64::tanh", reason = "the rounding depends on the platform: use libm::tanh" },
+    { path = "f64::asinh", reason = "the rounding depends on the platform: use libm::asinh" },
+    { path = "f64::acosh", reason = "the rounding depends on the platform: use libm::acosh" },
+    { path = "f64::atanh", reason = "the rounding depends on the platform: use libm::atanh" },
+    { path = "f64::cbrt", reason = "the rounding depends on the platform: use libm::cbrt" },
+    { path = "f64::hypot", reason = "the rounding depends on the platform: use libm::hypot" },
+    { path = "f64::to_degrees", reason = "the rounding is not specified and may depend on the platform: multiply by a constant" },
+    { path = "f64::to_radians", reason = "the rounding is not specified and may depend on the platform: multiply by a constant" },
+    { path = "f32::exp", reason = "the rounding depends on the platform: use libm::expf" },
+    { path = "f32::exp2", reason = "the rounding depends on the platform: use libm::exp2f" },
+    { path = "f32::exp_m1", reason = "the rounding depends on the platform: use libm::expm1f" },
+    { path = "f32::ln", reason = "the rounding depends on the platform: use libm::logf" },
+    { path = "f32::ln_1p", reason = "the rounding depends on the platform: use libm::log1pf" },
+    { path = "f32::log", reason = "the rounding depends on the platform: libm::logf(x) / libm::logf(base)" },
+    { path = "f32::log2", reason = "the rounding depends on the platform: use libm::log2f" },
+    { path = "f32::log10", reason = "the rounding depends on the platform: use libm::log10f" },
+    { path = "f32::powf", reason = "the rounding depends on the platform: use libm::powf" },
+    { path = "f32::powi", reason = "the rounding depends on the platform and the optimization level: multiply (x * x), or a loop of multiplications" },
+    { path = "f32::sin", reason = "the rounding depends on the platform: use libm::sinf" },
+    { path = "f32::cos", reason = "the rounding depends on the platform: use libm::cosf" },
+    { path = "f32::tan", reason = "the rounding depends on the platform: use libm::tanf" },
+    { path = "f32::sin_cos", reason = "the rounding depends on the platform: use libm::sincosf" },
+    { path = "f32::asin", reason = "the rounding depends on the platform: use libm::asinf" },
+    { path = "f32::acos", reason = "the rounding depends on the platform: use libm::acosf" },
+    { path = "f32::atan", reason = "the rounding depends on the platform: use libm::atanf" },
+    { path = "f32::atan2", reason = "the rounding depends on the platform: use libm::atan2f" },
+    { path = "f32::sinh", reason = "the rounding depends on the platform: use libm::sinhf" },
+    { path = "f32::cosh", reason = "the rounding depends on the platform: use libm::coshf" },
+    { path = "f32::tanh", reason = "the rounding depends on the platform: use libm::tanhf" },
+    { path = "f32::asinh", reason = "the rounding depends on the platform: use libm::asinhf" },
+    { path = "f32::acosh", reason = "the rounding depends on the platform: use libm::acoshf" },
+    { path = "f32::atanh", reason = "the rounding depends on the platform: use libm::atanhf" },
+    { path = "f32::cbrt", reason = "the rounding depends on the platform: use libm::cbrtf" },
+    { path = "f32::hypot", reason = "the rounding depends on the platform: use libm::hypotf" },
+    { path = "f32::to_degrees", reason = "the rounding is not specified and may depend on the platform: multiply by a constant" },
+    { path = "f32::to_radians", reason = "the rounding is not specified and may depend on the platform: multiply by a constant" },
+]
