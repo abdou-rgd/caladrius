@@ -10,26 +10,25 @@
 //! The numbers of a result must not depend on the machine: the desktop application, the command
 //! line, the MCP server and the page in the browser are the same engine. This crate is how that is
 //! checked. A [`Workload`] is a list of sessions, each a script of commands for a fresh engine
-//! (`data.import`, `nca.run`, `fit.run`, `model.simulate`...). [`run`] executes it and writes, for
-//! every step, one canonical JSON document (the result, or the error code and message); the SHA-256
-//! of that text is the digest. Two builds that print the same digest returned the same bits.
+//! (`data.import`, `nca.run`, `fit.run`, `model.simulate`, `project.replay`...). [`run`] executes
+//! it and writes, for every step, one canonical JSON document (the result, or the error code and
+//! message, and the seal of the engine: the SHA-256 of the command, its parameters and its
+//! answer); the SHA-256 of that text is the digest. Two builds that print the same digest returned
+//! the same bits, and made the same seals.
 //!
 //! The crate has no file access and no clock, so it compiles to WebAssembly: `cargo xtask digest`
 //! builds the workload from the oracle and the command examples, runs it natively, and with
 //! `--wasm` runs the same bytes of workload in the module of this crate under Node. The wasm
 //! entry points are in `wasm.rs`.
 
-mod canonical;
 mod diff;
-mod sha256;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use canonical::canonical_json;
+pub use caladrius_engine::seal::{Sha256, canonical_json, sha256_hex};
 pub use diff::{Diff, compare};
-pub use sha256::{Sha256, sha256_hex};
 
-use caladrius_engine::{CommandError, Engine};
+use caladrius_engine::{CommandError, Engine, Seal};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
@@ -133,6 +132,9 @@ pub fn run(workload: &Workload) -> Run {
         .iter()
         .map(|session| {
             let mut engine = Engine::new();
+            // The version and the commit of the build are not part of what is compared: a new
+            // commit that computes the same bits must give the same digest.
+            engine.set_provenance(false);
             let mut done = RunSession {
                 name: session.name.clone(),
                 lines: Vec::with_capacity(session.steps.len()),
@@ -142,7 +144,13 @@ pub fn run(workload: &Workload) -> Run {
             for (index, step) in session.steps.iter().enumerate() {
                 let outcome = engine.execute(&step.id, step.params.clone());
                 done.refused += usize::from(outcome.is_err());
-                let (line, numbers) = canonical_json(&document(session, index, step, outcome));
+                let seal = engine
+                    .history()
+                    .entries()
+                    .last()
+                    .and_then(|e| e.seal.clone());
+                let (line, numbers) =
+                    canonical_json(&document(session, index, step, outcome, seal));
                 done.numbers += numbers;
                 done.lines.push(line);
             }
@@ -159,12 +167,14 @@ pub fn run_text(workload: &str) -> Result<Run, String> {
     Ok(run(&workload))
 }
 
-/// The document of one step: where it is, and what the command returned.
+/// The document of one step: where it is, what the command returned and its seal (the commands
+/// that carry none, `project.load` and `project.replay`, have `null`).
 fn document(
     session: &Session,
     index: usize,
     step: &Step,
     outcome: Result<Value, CommandError>,
+    seal: Option<Seal>,
 ) -> Value {
     let mut doc = Map::new();
     doc.insert("at".to_owned(), json!(format!("{}#{index}", session.name)));
@@ -182,6 +192,11 @@ fn document(
             );
         }
     }
+    doc.insert(
+        "seal".to_owned(),
+        seal.and_then(|s| serde_json::to_value(s).ok())
+            .unwrap_or(Value::Null),
+    );
     Value::Object(doc)
 }
 

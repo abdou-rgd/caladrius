@@ -8,7 +8,7 @@ mod plot;
 mod project;
 mod units;
 
-pub(crate) use project::document;
+pub(crate) use project::{document, read_saved};
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -54,6 +54,7 @@ pub(crate) const COMMANDS: &[CommandDef] = &[
     project::DESCRIBE,
     project::SAVE,
     project::HISTORY_LIST,
+    project::REPLAY,
     analysis::ANALYSIS_REMOVE,
     data::REMOVE,
     project::NEW,

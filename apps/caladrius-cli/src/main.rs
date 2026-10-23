@@ -6,7 +6,8 @@
     clippy::unreachable
 )]
 //! The `caladrius-cli` binary: arguments in, answer on standard output, `error: ...` on standard
-//! error and exit code 1 on any failure. See the library for what it does.
+//! error and exit code 1 on any failure (and on a replay that finds a difference). See the
+//! library for what it does.
 
 use std::io::{Write, stderr, stdin, stdout};
 use std::process::ExitCode;
@@ -26,7 +27,7 @@ fn main() -> ExitCode {
             }
             // A closed pipe (`| head`) is not a failure of the command.
             let _ = stdout().write_all(output.stdout.as_bytes());
-            ExitCode::SUCCESS
+            ExitCode::from(output.exit_code)
         }
         Err(e) => {
             let _ = writeln!(stderr(), "error: {e}");

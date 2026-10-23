@@ -139,7 +139,7 @@ margin of caution, not that the fit statistics were verified by hand (`specs/fit
   engine and `xtask` by `clippy.toml`; they call the pure Rust `libm`, pinned to one version, which
   rounds the same on every target (`AGENTS.md`, golden rule 10). `cargo xtask digest` runs a fixed
   workload (the command examples, the NCA and fit oracle cases, Theoph and Indometh under every
-  weighting, model simulations, refusals, plots) through `Engine::execute` and prints the SHA-256 of
+  weighting, model simulations, refusals, plots, the replay of saved projects) through `Engine::execute` and prints the SHA-256 of
   the canonical text of the answers, last bits included. The `digest` jobs of CI run it on Ubuntu,
   Windows, macOS and in WebAssembly under Node, and `digest-compare` fails when the four differ.
   What it covers: the commands of the workload on those four platforms. What it does not: other
@@ -147,6 +147,18 @@ margin of caution, not that the fit statistics were verified by hand (`specs/fit
   reach, the sign of a zero (`min`, `max` and `clamp` return either zero for +0 and -0, so an input
   of -0 can print as 0 on another CPU), and values above 4 294 967 295 for the options held as
   `usize`, which wasm32 refuses with another message.
+- **A seal per result, and replay** (task T-112). Every command except `project.load` and `project.replay`
+  has a seal: the SHA-256 of the command, its parameters and its answer, written as canonical text
+  (`crates/caladrius-engine/src/seal/`). The version of the engine, the git commit and the SHA-256 of the
+  data the command read sit beside the seal, not in it, so a later version that computes the same bits
+  gives the same seal. `project.replay` runs the history of a saved project again from an empty project,
+  checks every step against its seal and the stored project against the replayed one, and ends in one of
+  five verdicts (verified, diverged, incomplete, unsealed, empty). The digest workload includes replays
+  of project files, so the four platforms of CI also check that a seal made on one is the seal another
+  computes. What it does not cover: an import above 64 KiB (the history keeps its size and a short
+  fingerprint, not its text, so the step cannot be run again), who made a file and when (a seal is a
+  fingerprint, not a signature), and what the previous bullet lists. `docs/reproducibility.md` says all of
+  it in plain words.
 - **`cargo xtask lint`** enforces the contract's mechanical rules: forbidden names, `private/`
   leaks, deny-lint headers, tolerances defined once, board hygiene, and the indexing step above (`README.md`, "Build";
   `xtask/src/lint/mod.rs`).

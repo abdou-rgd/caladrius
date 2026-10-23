@@ -12,16 +12,18 @@
 //! ```text
 //! caladrius-cli commands [--format text|json]
 //! caladrius-cli <command-id> [--json FILE|-] [--param KEY=VALUE]... [--csv FILE]
-//!               [--project FILE] [--format json|csv] [--table NAME]
+//!               [--project FILE] [--format json|csv] [--table NAME] [--no-seal]
 //! caladrius-cli compare A B [--param parameters=[...]] --project FILE [--format json|csv]
 //! ```
 //!
-//! Every failure is a one-line message on stderr and exit code 1.
+//! Every failure is a one-line message on stderr and exit code 1. `project.replay --project FILE`
+//! prints its report and exits with code 1 when the replay finds a difference.
 
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use caladrius_engine::seal::{csv_with_stamp, json_with_seal, stamp_line};
 use caladrius_engine::{CommandInfo, Engine, command_ids, describe};
 use serde_json::{Map, Value, json};
 
@@ -54,6 +56,9 @@ pub struct Output {
     pub stdout: String,
     /// Remarks for standard error, one per line: what an import guessed, unit warnings.
     pub notes: Vec<String>,
+    /// The exit code: 0, or 1 when `project.replay` found that the project is not what its
+    /// history produces (the report is printed all the same).
+    pub exit_code: u8,
 }
 
 /// Output format of a command.
@@ -73,6 +78,8 @@ struct RunArgs {
     project: Option<PathBuf>,
     format: Option<Format>,
     table: Option<String>,
+    /// Print the answer as it is, without the seal of the command.
+    no_seal: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -96,10 +103,15 @@ options for a command:
   --csv FILE          import FILE as a worksheet first; commands that take a `worksheet`
                       use it when none is given
   --project FILE      load this project if it exists, and write it back after a command
-                      that changes it
+                      that changes it. For project.replay it is the project to replay:
+                      nothing is loaded or written
   --format json|csv   json (default): the command's result; csv: its table (an analysis
                       prints its main table, see --table)
   --table NAME        the table to print with --format csv (export.table names)
+  --no-seal           print the answer as it is. By default it carries the seal of the command:
+                      a `seal` member in JSON, a first line `# caladrius engine=... seal=...` in
+                      CSV (data.import skips that line; for other programs read with
+                      comment=\"#\" or drop the lines that start with #)
 
 Every command is also listed, with the JSON schema of its parameters and results, by
 `caladrius-cli commands --format json`. Failures print `error: ...` and exit with code 1.
@@ -108,9 +120,14 @@ compare A B         short for `analysis.compare --param a=A --param b=B`: the di
                       percentage and the ratio of the parameters two analyses of the project
                       share (--format csv prints them as a table)
 
+project.replay      runs the history of a saved project again and checks every step against
+                      its seal, then the stored project against the one the steps produce. The
+                      report is printed; the exit code is 1 when something differs
+
 example:
   caladrius-cli nca.run --csv oracle/data/theoph.csv --param route=extravascular --format csv
-  caladrius-cli compare 2 3 --project study.caladrius.json --format csv";
+  caladrius-cli compare 2 3 --project study.caladrius.json --format csv
+  caladrius-cli project.replay --project study.caladrius.json";
 
 fn parse_format(text: &str) -> Result<Format, CliError> {
     match text {
@@ -150,6 +167,7 @@ fn parse_args(args: &[String]) -> Result<Action, CliError> {
         project: None,
         format: None,
         table: None,
+        no_seal: false,
     };
     while let Some(arg) = it.next() {
         let (flag, inline) = match arg.split_once('=') {
@@ -172,6 +190,7 @@ fn parse_args(args: &[String]) -> Result<Action, CliError> {
                 "unexpected argument `{arg}`; options start with `--` (see `caladrius-cli help`)"
             ));
         }
+        let has_value = inline.is_some();
         let value = |it: &mut std::iter::Peekable<std::slice::Iter<String>>| match inline {
             Some(v) => Ok(v),
             None => it
@@ -185,6 +204,12 @@ fn parse_args(args: &[String]) -> Result<Action, CliError> {
             "--csv" if !is_commands => run.csv = Some(PathBuf::from(value(&mut it)?)),
             "--project" if !is_commands => run.project = Some(PathBuf::from(value(&mut it)?)),
             "--table" if !is_commands => run.table = Some(value(&mut it)?),
+            "--no-seal" if !is_commands => {
+                if has_value {
+                    return fail("`--no-seal` takes no value");
+                }
+                run.no_seal = true;
+            }
             "--format" => run.format = Some(parse_format(&value(&mut it)?)?),
             other => {
                 return fail(format!(
@@ -291,6 +316,7 @@ fn list_commands(format: Option<Format>) -> Result<Output, CliError> {
     Ok(Output {
         stdout,
         notes: Vec::new(),
+        exit_code: 0,
     })
 }
 
@@ -558,9 +584,24 @@ fn run_command(args: &RunArgs, stdin: &mut dyn Read) -> Result<Output, CliError>
         set_path(&mut params, &path, value)?;
     }
 
+    // `project.replay` checks a file: it is the text it is given, and nothing is loaded or written.
+    let replaying = args.command == "project.replay";
+    if replaying {
+        if args.csv.is_some() {
+            return fail("`project.replay` replays a project: give it with --project FILE");
+        }
+        if let Some(path) = &args.project {
+            if params.contains_key("text") || params.contains_key("project") {
+                return fail("give the project once: --project FILE, or --param text=@FILE");
+            }
+            params.insert("text".to_owned(), Value::String(read_text(path)?));
+        }
+    }
+
     let mut notes = Vec::new();
     let mut engine = Engine::new();
-    if let Some(path) = &args.project {
+    engine.set_clock(system_clock);
+    if let Some(path) = args.project.as_ref().filter(|_| !replaying) {
         match fs::read(path) {
             Ok(bytes) => {
                 engine.load_bytes(&bytes)?;
@@ -604,17 +645,71 @@ fn run_command(args: &RunArgs, stdin: &mut dyn Read) -> Result<Output, CliError>
     if args.command == "data.import" {
         notes.extend(import_notes(&result));
     }
+    let mut exit_code = 0;
+    if replaying {
+        let verdict = result["verdict"].as_str().unwrap_or("unknown");
+        let mut note = format!("{verdict}: {}", result["summary"].as_str().unwrap_or(""));
+        // The first seal that is not reproduced, as a screen shows it.
+        let first = &result["first_divergence"];
+        if let (Some(stored), Some(now)) = (first["stored"].as_str(), first["recomputed"].as_str())
+        {
+            let short = caladrius_engine::seal::short;
+            note.push_str(&format!(
+                " Stored {}, recomputed {}.",
+                short(stored),
+                short(now)
+            ));
+        }
+        notes.push(note);
+        if verdict == "diverged" {
+            exit_code = 1;
+        }
+    }
 
     let stdout = match args.format.unwrap_or(Format::Json) {
-        Format::Csv => csv_of(&mut engine, &params, &result, args.table.as_deref())?,
-        _ => to_json_text(&result)?,
+        Format::Csv => {
+            let csv = csv_of(&mut engine, &params, &result, args.table.as_deref())?;
+            // The last command executed is the one that produced what is printed (the command
+            // itself, or the export.table that gave its table).
+            match stamp_of(&engine).filter(|_| !args.no_seal) {
+                Some(line) => csv_with_stamp(&csv, &line),
+                None => csv,
+            }
+        }
+        _ => match last_seal(&engine).filter(|_| !args.no_seal) {
+            Some(seal) => to_json_text(&json_with_seal(result, &seal))?,
+            None => to_json_text(&result)?,
+        },
     };
     if let Some(path) = &args.project {
         if info.mutates || imported_id.is_some() {
             write_atomic(path, &engine.save_bytes()?)?;
         }
     }
-    Ok(Output { stdout, notes })
+    Ok(Output {
+        stdout,
+        notes,
+        exit_code,
+    })
+}
+
+/// The seal of the last command the engine executed, if it carries one.
+fn last_seal(engine: &Engine) -> Option<caladrius_engine::Seal> {
+    engine.history().entries().last()?.seal.clone()
+}
+
+/// The stamp line of the last command the engine executed, if it carries a seal.
+fn stamp_of(engine: &Engine) -> Option<String> {
+    let entry = engine.history().entries().last()?;
+    Some(stamp_line(&entry.command, entry.seal.as_ref()?))
+}
+
+/// The time of the system, in seconds since 1970 (the engine reads no clock itself).
+fn system_clock() -> Option<i64> {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?;
+    i64::try_from(elapsed.as_secs()).ok()
 }
 
 /// Runs the command line `args` (without the program name). `stdin` is read only for `--json -`.
@@ -623,6 +718,7 @@ pub fn run(args: &[String], stdin: &mut dyn Read) -> Result<Output, CliError> {
         Action::Help => Ok(Output {
             stdout: format!("{USAGE}\n"),
             notes: Vec::new(),
+            exit_code: 0,
         }),
         Action::Commands(format) => list_commands(format),
         Action::Run(run) => run_command(&run, stdin),

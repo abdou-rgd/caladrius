@@ -39,7 +39,9 @@ fn nca_table(case: &str, extra: &[&str]) -> Table {
     let out = cli(&args);
     assert!(out.status.success(), "{case:?}: {}", stderr(&out));
     let text = stdout(&out);
-    let mut lines = text.lines();
+    // The first line says which command and which engine made the table (`# caladrius ...`).
+    let mut lines = text.lines().skip_while(|line| line.starts_with('#'));
+    assert!(text.starts_with("# caladrius engine="), "{text}");
     assert_eq!(
         lines.next(),
         Some("subject,parameter,value,not_calculated_reason")
@@ -243,7 +245,7 @@ fn compare_prints_the_difference_of_two_auc_methods_of_theoph_against_pknca() {
     ]);
     assert!(out.status.success(), "{}", stderr(&out));
     let text = stdout(&out);
-    let mut lines = text.lines();
+    let mut lines = text.lines().skip_while(|line| line.starts_with('#'));
     assert_eq!(
         lines.next(),
         Some(

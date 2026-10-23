@@ -3,7 +3,8 @@
 //! Objects list their keys in byte order, there is no space, a string is written the way
 //! `serde_json` writes it, and a number is the shortest text that reads back as the same number
 //! (what `serde_json` writes for an `f64`, so two doubles that differ in the last bit give two
-//! different texts, and `-0.0` differs from `0.0`).
+//! different texts, and `-0.0` differs from `0.0`). The seals of the commands and the digest of
+//! `cargo xtask digest` hash this text.
 
 use serde_json::Value;
 
@@ -13,6 +14,17 @@ pub fn canonical_json(value: &Value) -> (String, usize) {
     let mut numbers = 0;
     write(value, &mut out, &mut numbers);
     (out, numbers)
+}
+
+/// Appends the canonical text of `value` to `out`.
+pub(crate) fn write_value(value: &Value, out: &mut String) {
+    let mut numbers = 0;
+    write(value, out, &mut numbers);
+}
+
+/// Appends `s` as a JSON string to `out`.
+pub(crate) fn write_string(s: &str, out: &mut String) {
+    string(s, out);
 }
 
 fn write(value: &Value, out: &mut String, numbers: &mut usize) {

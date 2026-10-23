@@ -585,6 +585,49 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
             vec![("code", string()), ("message", string())],
             &["code", "message"],
         ),
+        "Seal" => described(
+            object(
+                vec![
+                    ("format", json!({ "type": "integer", "minimum": 1 })),
+                    (
+                        "sha256",
+                        json!({ "type": "string", "pattern": "^[0-9a-f]{64}$" }),
+                    ),
+                    ("engine", string()),
+                    ("commit", string()),
+                    (
+                        "input",
+                        json!({ "type": "string", "pattern": "^[0-9a-f]{64}$" }),
+                    ),
+                ],
+                &["format", "sha256"],
+            ),
+            "The seal of a command: the SHA-256 of its canonical text (the command, the parameters as received and the result, or the code of the error), and where it was made. engine, commit and input are provenance and are not in the hash.",
+        ),
+        "ReplayStep" => object(
+            vec![
+                ("seq", json!({ "type": "integer", "minimum": 1 })),
+                ("command", string()),
+                (
+                    "status",
+                    one_of_strings(&["match", "diverged", "no_seal", "not_replayable", "blocked"]),
+                ),
+                (
+                    "stored",
+                    json!({ "type": "string", "pattern": "^[0-9a-f]{64}$" }),
+                ),
+                (
+                    "recomputed",
+                    json!({ "type": "string", "pattern": "^[0-9a-f]{64}$" }),
+                ),
+                ("note", string()),
+            ],
+            &["seq", "command", "status"],
+        ),
+        "EngineId" => described(
+            object(vec![("version", string()), ("commit", string())], &[]),
+            "An engine: its version, and the git commit it was built from when that was known.",
+        ),
         _ => return None,
     })
 }

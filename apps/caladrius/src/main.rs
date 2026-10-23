@@ -28,8 +28,10 @@ usage:
   caladrius --version      show the version
 
 Open a CSV with the button or drop it on the window; the table is shown as it will be read
-before anything is imported. Projects are saved and opened from the File menu (Ctrl+S, Ctrl+O). The same commands are available without a window in
-`caladrius-cli` and to agents in `caladrius-mcp`.";
+before anything is imported. Projects are saved and opened from the File menu (Ctrl+S, Ctrl+O). The
+same menu has Verify a project, which runs the history of a saved project again and checks every
+step against its seal. The same commands are available without a window in `caladrius-cli` and
+to agents in `caladrius-mcp`.";
 
 /// What the command line asks for.
 #[derive(Debug, PartialEq, Eq)]
@@ -50,6 +52,15 @@ fn parse(args: &[String]) -> Result<Launch, String> {
             "unexpected argument `{extra}`: open one file at a time; see `caladrius --help`"
         )),
     }
+}
+
+/// The time of the system, in seconds since 1970: the engine dates the history with it (it reads
+/// no clock itself, so that it compiles to WebAssembly).
+fn system_clock() -> Option<i64> {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?;
+    i64::try_from(elapsed.as_secs()).ok()
 }
 
 /// Reads a file for the interface; the error says which file and why.
@@ -170,6 +181,28 @@ impl Desktop {
         }
     }
 
+    fn pick_verify(&mut self) {
+        let picked = rfd::FileDialog::new()
+            .add_filter("Caladrius project", &["json"])
+            .set_title("Verify a project")
+            .pick_file();
+        if let Some(path) = picked {
+            self.verify_project_file(&path);
+        }
+    }
+
+    /// Verifies the project file the person chose in the dialog: its history is replayed and the
+    /// report is shown. The file is not opened, so it does not become the project's file and the
+    /// project in the window is not touched.
+    fn verify_project_file(&mut self, path: &Path) {
+        match projectio::read(path) {
+            Ok((name, bytes)) => {
+                self.ui.verify_project(&name, &bytes);
+            }
+            Err(message) => self.ui.perform(vec![Action::Notice(message)]),
+        }
+    }
+
     /// Saves an exported file (an SVG plot) where the person chooses.
     fn save_file(&mut self, suggested: &str, bytes: &[u8]) {
         let extension = suggested.rsplit('.').next().unwrap_or("svg").to_owned();
@@ -230,6 +263,7 @@ impl Desktop {
                         }
                     }
                     Request::OpenProject => self.pick_project(),
+                    Request::VerifyProject => self.pick_verify(),
                     Request::SaveProject {
                         suggested,
                         bytes,
@@ -324,7 +358,7 @@ fn main() -> ExitCode {
         "Caladrius",
         options,
         Box::new(move |_cc| {
-            let mut desktop = Desktop::new(UiApp::new());
+            let mut desktop = Desktop::new(UiApp::with_clock(system_clock));
             desktop.start_settings();
             if let Some(path) = &first_file {
                 desktop.open(Path::new(path));
@@ -533,6 +567,47 @@ mod tests {
         std::fs::write(&json, "{}").unwrap();
         desktop.open(&json);
         assert!(desktop.project_path.is_none());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_project_chosen_to_be_verified_is_replayed_and_never_becomes_the_file() {
+        use caladrius_ui::verify::Verdict;
+        let dir = scratch("verify");
+        let theirs = dir.join("theirs.caladrius.json");
+        let mine = dir.join("mine.caladrius.json");
+        std::fs::write(&theirs, project_with(CSV_TWO)).unwrap();
+        std::fs::write(&mine, project_with(CSV_ONE)).unwrap();
+        let mut desktop = Desktop::new(UiApp::new());
+        desktop.open(&mine);
+        make_dirty(&mut desktop);
+        let project = desktop.ui.engine().project().clone();
+        desktop.verify_project_file(&theirs);
+        let (name, report) = desktop.ui.verification().unwrap();
+        assert_eq!(
+            (name, report.verdict),
+            ("theirs.caladrius.json", Verdict::Verified)
+        );
+        // Nothing was opened: same project, same file, still unsaved, no question asked.
+        assert_eq!(desktop.ui.engine().project(), &project);
+        assert_eq!(desktop.project_path.as_deref(), Some(mine.as_path()));
+        assert!(desktop.ui.is_dirty() && desktop.ui.guard().is_none());
+        // A file that is not there, and one that is not a project: a sentence each.
+        desktop.verify_project_file(&dir.join("missing.caladrius.json"));
+        assert!(desktop.ui.notice_text().unwrap().contains("cannot read"));
+        let bad = dir.join("bad.json");
+        std::fs::write(&bad, "{ not a project").unwrap();
+        desktop.verify_project_file(&bad);
+        assert!(
+            desktop
+                .ui
+                .notice_text()
+                .unwrap()
+                .contains("cannot be verified")
+        );
+        // The request of the File menu is the one the dialog answers.
+        desktop.ui.perform(vec![Action::VerifyProject]);
+        assert_eq!(desktop.ui.take_requests(), vec![Request::VerifyProject]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

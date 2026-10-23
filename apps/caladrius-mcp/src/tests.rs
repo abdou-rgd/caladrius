@@ -731,3 +731,258 @@ fn two_analyses_are_compared_over_the_session() {
     // Nothing was stored by comparing.
     assert_eq!(s.engine().project().analyses().len(), 2);
 }
+
+/// The seal is for programs that verify. What the model reads, and what a number gate checks a
+/// quotation against, is the text and the structured content: they must not change.
+#[test]
+fn the_seal_of_a_result_is_in_its_meta_and_nowhere_else() {
+    let mut s = Server::new();
+    let r = call(
+        &mut s,
+        1,
+        "data_import",
+        json!({ "name": "w", "csv": "time,conc,dose\n0,0,10\n1,5,10\n2,3,10\n4,1,10\n8,0.2,10\n" }),
+    );
+    let result = &r["result"];
+    let mut members: Vec<&str> = result
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    members.sort_unstable();
+    assert_eq!(
+        members,
+        ["_meta", "content", "isError", "structuredContent"]
+    );
+
+    let seal = &result["_meta"][SEAL_KEY];
+    assert_eq!(seal["format"], 1);
+    assert_eq!(seal["engine"], env!("CARGO_PKG_VERSION"));
+    let hash = seal["sha256"].as_str().unwrap();
+    assert!(hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_hexdigit()));
+    assert_eq!(seal["input"].as_str().map(str::len), Some(64));
+    assert!(
+        result["_meta"][AT_KEY]
+            .as_str()
+            .is_some_and(|t| t.len() == 20 && t.ends_with('Z')),
+        "{}",
+        result["_meta"]
+    );
+    // The same seal as the engine's history holds.
+    let entry = s.engine().history().entries().last().unwrap();
+    assert_eq!(entry.seal.as_ref().map(|x| x.sha256.as_str()), Some(hash));
+
+    // Neither the hash nor any member of the seal is in what the model reads.
+    let read = format!("{} {}", result["content"], result["structuredContent"]);
+    for word in [hash, "sha256", "caladrius/", "\"engine\"", "\"commit\""] {
+        assert!(!read.contains(word), "`{word}` is in {read}");
+    }
+    let input = seal["input"].as_str().unwrap();
+    assert!(!read.contains(input));
+
+    // A failure carries its seal in the same place and says nothing of it in its text.
+    let r = call(&mut s, 2, "nca_run", json!({ "worksheet": 99 }));
+    assert_eq!(r["result"]["isError"], true);
+    let failed = r["result"]["_meta"][SEAL_KEY]["sha256"].as_str().unwrap();
+    assert!(!r["result"]["content"].to_string().contains(failed));
+    assert_ne!(failed, hash);
+}
+
+#[test]
+fn the_same_session_gives_the_same_seals_over_mcp_and_every_tool_keeps_its_answer_clean() {
+    let session = |server: &mut Server| -> Vec<(String, Value)> {
+        let mut seen = Vec::new();
+        for (n, command) in caladrius_engine::describe().into_iter().enumerate() {
+            let r = call(server, n as u64, &command.id, command.example.clone());
+            let result = r["result"].clone();
+            let read = format!("{} {}", result["content"], result["structuredContent"]);
+            match result["_meta"][SEAL_KEY]["sha256"].as_str() {
+                Some(hash) => {
+                    assert!(
+                        !read.contains(hash),
+                        "{}: the seal is in the answer",
+                        command.id
+                    );
+                    seen.push((
+                        command.id.clone(),
+                        result["_meta"][SEAL_KEY]["sha256"].clone(),
+                    ));
+                }
+                None => assert!(
+                    matches!(command.id.as_str(), "project.load" | "project.replay"),
+                    "{}: no seal",
+                    command.id
+                ),
+            }
+            assert!(
+                !has_digest(&read),
+                "{}: a digest is in the answer",
+                command.id
+            );
+        }
+        seen
+    };
+    let first = session(&mut Server::new());
+    let second = session(&mut Server::new());
+    assert!(first.len() >= 20, "{}", first.len());
+    assert_eq!(first, second);
+}
+
+/// A string of 40 or more lower-case hexadecimal digits: a hash, a commit.
+fn has_digest(text: &str) -> bool {
+    let mut run = 0;
+    for b in text.bytes() {
+        if matches!(b, b'0'..=b'9' | b'a'..=b'f') {
+            run += 1;
+            if run >= 40 {
+                return true;
+            }
+        } else {
+            run = 0;
+        }
+    }
+    false
+}
+
+/// What the model reads of a result: its text and its structured content.
+fn read_by_the_model(result: &Value) -> String {
+    format!("{} {}", result["content"], result["structuredContent"])
+}
+
+const TABLE: &str = "time,conc,dose\n0,0,10\n1,5,10\n2,3,10\n4,1,10\n8,0.2,10\n";
+
+#[test]
+fn a_listing_and_a_save_show_the_model_no_seal_and_keep_the_whole_answer_in_meta() {
+    let mut s = Server::new();
+    call(
+        &mut s,
+        1,
+        "data_import",
+        json!({ "name": "w", "csv": TABLE }),
+    );
+    call(
+        &mut s,
+        2,
+        "nca_run",
+        json!({ "worksheet": 1, "route": "iv_bolus" }),
+    );
+
+    let listed = call(&mut s, 3, "history_list", json!({}))["result"].clone();
+    let shown = &listed["structuredContent"]["entries"];
+    assert_eq!(shown.as_array().map(Vec::len), Some(2));
+    for entry in shown.as_array().unwrap() {
+        assert!(
+            entry.get("seal").is_none() && entry.get("at").is_none(),
+            "{entry}"
+        );
+    }
+    assert!(!has_digest(&read_by_the_model(&listed)));
+    assert!(!read_by_the_model(&listed).contains("sha256"));
+    // The whole answer is in the metadata, and it is the engine's own.
+    let whole = &listed["_meta"][RESULT_KEY];
+    let sealed = &whole["entries"][0]["seal"];
+    let expected = s.engine().history().entries()[0].seal.as_ref().unwrap();
+    assert_eq!(sealed["sha256"].as_str(), Some(expected.sha256.as_str()));
+    assert!(whole["entries"][0]["at"].is_string());
+    assert_eq!(whole["total"], listed["structuredContent"]["total"]);
+
+    // A save: the project to keep is complete in the metadata, and the model reads the project
+    // as it was before seals existed.
+    let saved = call(&mut s, 4, "project_save", json!({}))["result"].clone();
+    assert!(!has_digest(&read_by_the_model(&saved)));
+    let history = saved["structuredContent"]["project"]["history"]
+        .as_array()
+        .unwrap();
+    assert!(
+        history
+            .iter()
+            .all(|e| e.get("seal").is_none() && e.get("at").is_none())
+    );
+    let kept = &saved["_meta"][RESULT_KEY]["project"];
+    assert!(kept["history"][0]["seal"]["sha256"].is_string());
+    // The rest of the project is the same text in both.
+    let mut a = kept.clone();
+    let mut b = saved["structuredContent"]["project"].clone();
+    a.as_object_mut().unwrap().remove("history");
+    b.as_object_mut().unwrap().remove("history");
+    assert_eq!(a, b);
+    // The command's own seal is still where it was.
+    assert!(saved["_meta"][SEAL_KEY]["sha256"].is_string());
+
+    // Another answer is shown as it is, and has nothing but its seal in the metadata.
+    let described = call(&mut s, 5, "project_describe", json!({}))["result"].clone();
+    assert!(described["_meta"].get(RESULT_KEY).is_none());
+}
+
+#[test]
+fn a_replay_tells_the_model_the_verdict_and_keeps_the_digests_for_the_program() {
+    let mut s = Server::new();
+    call(
+        &mut s,
+        1,
+        "data_import",
+        json!({ "name": "w", "csv": TABLE }),
+    );
+    call(
+        &mut s,
+        2,
+        "nca_run",
+        json!({ "worksheet": 1, "route": "iv_bolus" }),
+    );
+    let replayed = call(&mut s, 3, "project_replay", json!({}))["result"].clone();
+    assert_eq!(replayed["isError"], false);
+    let report = &replayed["structuredContent"];
+    assert_eq!(report["verdict"], "verified", "{report}");
+    assert_eq!(report["counts"]["matched"], 2);
+    assert!(report["summary"].as_str().unwrap().contains("bit for bit"));
+    // Words and counts for the model; no digest, no engine, nothing a gate would take for numbers.
+    let read = read_by_the_model(&replayed);
+    assert!(!has_digest(&read), "{read}");
+    assert!(!read.contains("sha256"));
+    assert!(report.get("engine").is_none() && report.get("sealed_by").is_none());
+    assert!(report["state"].get("stored").is_none() && report["state"].get("replayed").is_none());
+    assert!(report["steps"][0].get("stored").is_none());
+    assert!(report["steps"][0].get("recomputed").is_none());
+    assert_eq!(report["steps"][0]["status"], "match");
+    // The program that checks finds them in the metadata; a replay carries no seal of its own.
+    let whole = &replayed["_meta"][RESULT_KEY];
+    let first = s.engine().history().entries()[0].seal.as_ref().unwrap();
+    assert_eq!(
+        whole["steps"][0]["stored"].as_str(),
+        Some(first.sha256.as_str())
+    );
+    assert_eq!(whole["steps"][0]["recomputed"], whole["steps"][0]["stored"]);
+    assert_eq!(whole["engine"]["version"], env!("CARGO_PKG_VERSION"));
+    assert!(replayed["_meta"].get(SEAL_KEY).is_none());
+    assert!(
+        s.engine()
+            .history()
+            .entries()
+            .last()
+            .unwrap()
+            .seal
+            .is_none()
+    );
+
+    // A project given to the tool, with one cell of its data changed in the history.
+    let saved = call(&mut s, 4, "project_save", json!({}))["result"].clone();
+    let mut project = saved["_meta"][RESULT_KEY]["project"].clone();
+    let csv = project["history"][0]["params"]["csv"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    project["history"][0]["params"]["csv"] = json!(csv.replacen("1,5,10", "1,6,10", 1));
+    let bad = call(&mut s, 5, "project_replay", json!({ "project": project }))["result"].clone();
+    let report = &bad["structuredContent"];
+    assert_eq!(report["verdict"], "diverged", "{report}");
+    assert_eq!(report["first_divergence"]["seq"], 1);
+    assert_eq!(report["first_divergence"]["command"], "data.import");
+    assert!(report["first_divergence"].get("stored").is_none());
+    assert!(!has_digest(&read_by_the_model(&bad)));
+    let whole = &bad["_meta"][RESULT_KEY];
+    assert_ne!(
+        whole["first_divergence"]["stored"],
+        whole["first_divergence"]["recomputed"]
+    );
+}

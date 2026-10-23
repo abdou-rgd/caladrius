@@ -49,6 +49,8 @@ pub fn file_menu(ui: &mut Ui, actions: &mut Vec<Action>, quit: bool) {
         ui.separator();
         entry(ui, "Save", Some(&SAVE), Action::SaveProject);
         entry(ui, "Save as…", Some(&SAVE_AS), Action::SaveProjectAs);
+        ui.separator();
+        entry(ui, "Verify a project…", None, Action::VerifyProject);
         if quit {
             ui.separator();
             entry(ui, "Quit", None, Action::Quit);

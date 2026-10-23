@@ -1,7 +1,8 @@
 //! `cargo xtask digest`: do the numbers of a result depend on the machine?
 //!
-//! The task builds a fixed workload (`workload`: the command examples and the NCA, fit and model
-//! cases of `oracle/`), runs it through `Engine::execute` and prints one SHA-256 over the canonical
+//! The task builds a fixed workload (`workload`: the command examples, the NCA, fit and model
+//! cases of `oracle/`, and the replay of a saved project file in every way a replay can end), runs
+//! it through `Engine::execute` and prints one SHA-256 over the canonical
 //! JSON of everything the engine returned. Two machines that print the same line returned the same
 //! bits. The CI job `digest` runs it on Linux, Windows and macOS and, with `--wasm`, in the browser
 //! build under Node, and fails when the lines differ (T-111).

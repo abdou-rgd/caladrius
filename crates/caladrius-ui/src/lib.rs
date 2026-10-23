@@ -53,6 +53,7 @@ pub mod sheet;
 pub mod sim;
 pub mod theme;
 pub mod unitpick;
+pub mod verify;
 pub mod widgets;
 
 pub use app::{Action, Request, Selection, UiApp, UiState};
@@ -77,3 +78,5 @@ mod tests_plotpage;
 mod tests_project;
 #[cfg(test)]
 mod tests_settings;
+#[cfg(test)]
+mod tests_verify;

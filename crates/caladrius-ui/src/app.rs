@@ -25,6 +25,7 @@ use crate::settingspage;
 use crate::sheet::{self, Rejected};
 use crate::sim::{self, SimPage};
 use crate::theme::{ThemeMode, Tokens};
+use crate::verify::{self, Verification};
 
 /// What a screen asks for. Applied after the frame, through engine commands.
 #[derive(Debug, Clone, PartialEq)]
@@ -88,6 +89,11 @@ pub enum Action {
     SaveProject,
     /// Save the project under another file name.
     SaveProjectAs,
+    /// Verify a project file: run its history again and check every step against its seal. The
+    /// project in the window is not touched, so nothing is asked first.
+    VerifyProject,
+    /// Leave the verification page.
+    CloseVerification,
     /// Close the application (asks first when there are unsaved changes).
     Quit,
     /// The answers to "save the changes?".
@@ -155,6 +161,9 @@ pub enum Selection {
     NewSimulation,
     /// The settings page.
     Settings,
+    /// The report of a project file that was verified (`project.replay`); the welcome page when
+    /// there is none.
+    Verification,
 }
 
 /// Which analysis page is on screen.
@@ -175,6 +184,9 @@ pub enum Request {
     PickCsv,
     /// Ask the person for a project file and give it back with [`UiApp::open_project`].
     OpenProject,
+    /// Ask the person for a project file to verify and give it back with
+    /// [`UiApp::verify_project`]. Nothing is opened or changed.
+    VerifyProject,
     /// Write the project document. `suggested` is the file name to offer; `ask`: let the person
     /// choose where (Save as, or a project that has no file yet), else write over the file the
     /// project came from. Answer with [`UiApp::project_saved`], [`UiApp::project_save_failed`] or
@@ -254,6 +266,8 @@ pub struct UiApp {
     pub(crate) notice: Option<Notice>,
     pub(crate) requests: Vec<Request>,
     pub(crate) file: FileState,
+    /// The project file verified last and what its replay found.
+    pub(crate) verification: Option<Verification>,
     /// The registry as the palette lists it (read once).
     pub(crate) commands: Vec<CommandLine>,
     /// The settings of the person.
@@ -282,6 +296,14 @@ impl UiApp {
         UiApp::with_engine(Engine::new())
     }
 
+    /// An application with an empty project whose history is dated by `clock`: seconds since 1970
+    /// (the engine reads no clock itself; the program around gives it the one of its system).
+    pub fn with_clock(clock: caladrius_engine::Clock) -> UiApp {
+        let mut engine = Engine::new();
+        engine.set_clock(clock);
+        UiApp::with_engine(engine)
+    }
+
     /// An application over an existing engine (a loaded project).
     pub fn with_engine(engine: Engine) -> UiApp {
         let state = UiState::default();
@@ -302,6 +324,7 @@ impl UiApp {
             notice: None,
             requests: Vec::new(),
             file: FileState::default(),
+            verification: None,
             commands: palette::registry(),
             settings: Settings::default(),
             saved_settings: Settings::default().to_json(),
@@ -400,6 +423,16 @@ impl UiApp {
         }
     }
 
+    /// The stamp line (`caladrius engine=... seal=...`) of the last command the engine ran, for a
+    /// file that command produced; `None` when it carries no seal.
+    pub(crate) fn stamp_of_last_command(&self) -> Option<String> {
+        let entry = self.engine.history().entries().last()?;
+        Some(caladrius_engine::seal::stamp_line(
+            &entry.command,
+            entry.seal.as_ref()?,
+        ))
+    }
+
     pub(crate) fn refresh_overview(&mut self) {
         if let Ok(v) = self.engine.execute("project.describe", Value::Null) {
             self.overview = read(&v);
@@ -456,7 +489,7 @@ impl UiApp {
 
     // ---- applying actions ------------------------------------------------------------------
 
-    fn select(&mut self, selection: Selection) {
+    pub(crate) fn select(&mut self, selection: Selection) {
         match &selection {
             Selection::Worksheet(id) => self.refresh_sheet(*id),
             Selection::Analysis(id) => self.open_analysis(*id),
@@ -664,6 +697,8 @@ impl UiApp {
                 Action::OpenProject => self.guarded(Guarded::OpenProject),
                 Action::SaveProject => self.save_project(false),
                 Action::SaveProjectAs => self.save_project(true),
+                Action::VerifyProject => self.requests.push(Request::VerifyProject),
+                Action::CloseVerification => self.close_verification(),
                 Action::Quit if self.can_quit => self.guarded(Guarded::Close),
                 Action::Quit => {}
                 Action::GuardSave => self.guard_save(),
@@ -1134,6 +1169,10 @@ impl UiApp {
                 &mut self.state.settings_query,
                 actions,
             ),
+            Selection::Verification => match self.verification.as_ref() {
+                Some(v) => verify::screen(ui, tokens, v, actions),
+                None => self.welcome(ui, tokens, actions),
+            },
             Selection::Analysis(_) | Selection::NewFit | Selection::NewSimulation => {
                 match (self.shown(), self.sheet.as_ref()) {
                     (Shown::Nca, Some(s)) => {

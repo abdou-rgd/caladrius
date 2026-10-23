@@ -249,6 +249,12 @@ impl UiApp {
             "Save the project under another file name".to_owned(),
             Action::SaveProjectAs,
         ));
+        out.push(ui(
+            "verify_project",
+            "Verify a project…".to_owned(),
+            "Run the history of a saved project file again and check every step against its seal; the project in the window is not touched".to_owned(),
+            Action::VerifyProject,
+        ));
         if self.can_quit {
             out.push(ui(
                 "quit",
@@ -323,6 +329,7 @@ impl UiApp {
             "project.save" => Action::SaveProject,
             "project.load" => Action::OpenProject,
             "project.new" => Action::NewProject,
+            "project.replay" => Action::VerifyProject,
             "project.describe" => Action::DescribeProject,
             "analysis.run" => match analysis {
                 Some(a) => Action::RunAgain(a),

@@ -203,6 +203,15 @@ impl eframe::App for Page {
     }
 }
 
+/// The time of the browser, in seconds since 1970 (the engine dates its history with it; it reads
+/// no clock itself).
+fn clock() -> Option<i64> {
+    let milliseconds = js_sys::Date::now();
+    milliseconds
+        .is_finite()
+        .then(|| (milliseconds / 1000.0).floor() as i64)
+}
+
 /// Starts the interface on the page's canvas; if it cannot start (no WebGL), the loading text
 /// says so instead.
 pub fn start() {
@@ -221,7 +230,7 @@ pub fn start() {
                 canvas,
                 eframe::WebOptions::default(),
                 Box::new(|cc| {
-                    let mut web = Web::new(UiApp::new(), Tab::new(cc.egui_ctx.clone()));
+                    let mut web = Web::new(UiApp::with_clock(clock), Tab::new(cc.egui_ctx.clone()));
                     let (locale, stored) = stored_settings();
                     web.start_settings(locale, stored);
                     Ok(Box::new(Page { web }))
