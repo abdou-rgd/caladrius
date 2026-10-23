@@ -76,6 +76,7 @@ pub const LAYER_TABLE: &[(&str, Layer)] = &[
     ("caladrius-engine", Layer::L2),
     ("caladrius-ui", Layer::L3),
     ("caladrius-testkit", Layer::Test),
+    ("caladrius-digest", Layer::Test),
     ("caladrius", Layer::App),
     ("caladrius-cli", Layer::App),
     ("caladrius-mcp", Layer::App),

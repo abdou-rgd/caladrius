@@ -13,6 +13,10 @@ caladrius-nca = { path = "../crates/caladrius-nca" }
 caladrius-testkit = { path = "../crates/caladrius-testkit" }
 caladrius-models = { path = "../crates/caladrius-models" }
 caladrius-fit = { path = "../crates/caladrius-fit" }
+# `digest` runs a fixed workload through the engine and fingerprints what it returns.
+caladrius-engine = { path = "../crates/caladrius-engine" }
+caladrius-digest = { path = "../crates/caladrius-digest" }
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
 toml = { version = "1.1.7", default-features = false, features = ["std", "serde", "parse"] }
 
 [lints]
