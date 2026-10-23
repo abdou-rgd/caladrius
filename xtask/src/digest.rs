@@ -129,7 +129,7 @@ fn run_native(workload: &str, dump: Option<&Path>) -> Result<String> {
     let run = caladrius_digest::run_text(workload).map_err(XtaskError::new)?;
     let seconds = started.elapsed().as_secs_f64();
     console::err(&format!(
-        "digest: native {}/{} ({} build), {} steps ({} answered by an error), {} numbers, {seconds:.2} s",
+        "digest: native {}/{} ({} build), {} steps ({} answered by an error), {} numbers, {seconds:.3} s",
         env::consts::OS,
         env::consts::ARCH,
         if cfg!(debug_assertions) {

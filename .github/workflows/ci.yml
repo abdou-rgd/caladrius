@@ -48,3 +48,85 @@ jobs:
         with:
           name: caladrius-web
           path: target/web-page
+
+  # The same numbers on every machine (T-111). A fixed workload goes through `Engine::execute` on
+  # Linux, Windows and macOS natively and in WebAssembly under Node, and the SHA-256 of what comes back
+  # has to be the same on all four. `digest-compare` fails when it is not, and says by how much.
+  digest:
+    name: digest (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux, os: ubuntu-latest, wasm: false }
+          - { name: windows, os: windows-latest, wasm: false }
+          - { name: macos, os: macos-latest, wasm: false }
+          - { name: wasm32, os: ubuntu-latest, wasm: true }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      # The WebAssembly leg: the module is wrapped by wasm-bindgen (the version of Cargo.lock, which
+      # `cargo xtask digest --wasm` checks) and run by Node.
+      - if: matrix.wasm
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.129
+      - if: matrix.wasm
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - if: matrix.wasm
+        run: cargo clippy --target wasm32-unknown-unknown -p caladrius-digest -- -D warnings
+      - name: Digest of the workload
+        shell: bash
+        run: |
+          mkdir -p target/digest
+          flags=""
+          if [ "${{ matrix.wasm }}" = "true" ]; then flags="--wasm"; fi
+          cargo run --release -p xtask -- digest $flags --dump target/digest/dump.ndjson | tee target/digest/digest.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.name }}
+          path: target/digest
+          retention-days: 14
+
+  digest-compare:
+    needs: digest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: digest-*
+          path: digests
+      - name: The digests are the same
+        shell: bash
+        run: |
+          set -u
+          reference=digests/digest-linux
+          # The last line of digest.txt is the SHA-256 (64 hex digits). Two empty files must not pass
+          # for "the same", so a line that is not a digest is an error of its own.
+          digest_of() { tail -n 1 "$1/digest.txt" | tr -d '\r'; }
+          expected=$(digest_of "$reference")
+          status=0
+          echo '| platform | SHA-256 of the answers |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|---|---|' >> "$GITHUB_STEP_SUMMARY"
+          for dir in digests/digest-*; do
+            name=${dir#digests/digest-}
+            found=$(digest_of "$dir")
+            echo "$name: $found"
+            echo "| $name | \`$found\` |" >> "$GITHUB_STEP_SUMMARY"
+            if ! [[ "$found" =~ ^[0-9a-f]{64}$ ]]; then
+              status=1
+              echo "::error::there is no SHA-256 on $name"
+            elif [ "$found" != "$expected" ]; then
+              status=1
+              echo "::error::the digest on $name is not the one on linux"
+              cargo run --release -q -p xtask -- digest --diff "$reference/dump.ndjson" "$dir/dump.ndjson" || true
+            fi
+          done
+          exit $status

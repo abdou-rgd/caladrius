@@ -30,5 +30,5 @@ if (dumpPath) {
 }
 
 const steps = text.split('\n').length - 1;
-process.stderr.write(`digest: wasm32 under Node ${process.version}, ${steps} steps, ${seconds.toFixed(2)} s\n`);
+process.stderr.write(`digest: wasm32 under Node ${process.version}, ${steps} steps, ${seconds.toFixed(3)} s\n`);
 process.stdout.write(`${digest.sha256_text(text)}\n`);

@@ -134,6 +134,19 @@ margin of caution, not that the fit statistics were verified by hand (`specs/fit
   `cargo xtask layers`, `cargo xtask lint`, `cargo xtask review`, `cargo xtask wasm`, and
   `cargo xtask conformance` followed by `git diff --exit-code docs/conformance.md`, so a stale
   conformance table fails the build.
+- **Same numbers on every machine** (task T-111). The platform-dependent float functions of the
+  standard library (`exp`, `ln`, `powf`, `powi`, `sin`...) are banned in the numerical crates, the
+  engine and `xtask` by `clippy.toml`; they call the pure Rust `libm`, pinned to one version, which
+  rounds the same on every target (`AGENTS.md`, golden rule 10). `cargo xtask digest` runs a fixed
+  workload (the command examples, the NCA and fit oracle cases, Theoph and Indometh under every
+  weighting, model simulations, refusals, plots) through `Engine::execute` and prints the SHA-256 of
+  the canonical text of the answers, last bits included. The `digest` jobs of CI run it on Ubuntu,
+  Windows, macOS and in WebAssembly under Node, and `digest-compare` fails when the four differ.
+  What it covers: the commands of the workload on those four platforms. What it does not: other
+  CPUs of the same families, other Node versions, a command or a function the workload does not
+  reach, the sign of a zero (`min`, `max` and `clamp` return either zero for +0 and -0, so an input
+  of -0 can print as 0 on another CPU), and values above 4 294 967 295 for the options held as
+  `usize`, which wasm32 refuses with another message.
 - **`cargo xtask lint`** enforces the contract's mechanical rules: forbidden names, `private/`
   leaks, deny-lint headers, tolerances defined once, board hygiene, and the indexing step above (`README.md`, "Build";
   `xtask/src/lint/mod.rs`).
