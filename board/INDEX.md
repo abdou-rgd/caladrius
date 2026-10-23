@@ -121,3 +121,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-109 | Plot the raw data of a worksheet, linear and semi-log, before any analysis | interface | done | T-103, T-107 |
 | T-108 | Paste a wide table (one column per subject) into the typed table; recognised units next to the unit cells (`units.check`) | interface | done | T-103 |
 | T-110 | Plots as objects of the workflow: `plot.xy`, `export.plot` (SVG), plot page in the project tree | interface | done | T-109 |
+| T-111 | Same numbers on every machine: `libm` for the platform-dependent float functions, `cargo xtask digest`, a CI digest matrix (Linux, Windows, macOS, wasm32 under Node) | engine | done | T-110 |
