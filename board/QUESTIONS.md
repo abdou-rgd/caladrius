@@ -192,3 +192,9 @@ The defaults (forward differences with increment 0.001, convergence 0.0001, 50 i
 Decision taken meanwhile: option 1 for v0.1.0 (no behaviour change before the tag); the texts say so. Your answer decides v0.2.
 
 Answer (2026-10-09, human): option 2. The default fit uses analytic derivatives and the tight stopping rule; the assumed reference defaults stay available as a named preset. Card T-040.
+
+## Q-015 (2026-10-29, orchestrator): remove the user-level `/onizuka` command?
+
+Since T-115, Onizuka has one place: `.claude/agents/onizuka.md` in this repository, the master copy. The French command `C:\Users\abdou\.claude\commands\onizuka.md` (235 lines, an earlier version) is still offered in every Claude Code session of the PC, other projects included. It lies outside every repository, so section 11 needs written agreement before it is deleted. Options: (1) delete it; (2) keep it as the human's own shortcut, knowing that it is no longer updated.
+
+Decision taken meanwhile: kept, untouched. `~/.claude/commands/plume.md` stays where it is either way (one place already; it holds the owner's biography and personal texts, which stay out of public repositories).
