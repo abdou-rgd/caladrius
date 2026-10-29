@@ -16,7 +16,7 @@ Open-source pharmacokinetic analysis in Rust: non-compartmental analysis, indivi
 - **Individual compartmental models**: one and two compartments, IV bolus, IV infusion, first-order and zero-order absorption with or without a lag time, with multiple dosing and steady state; closed-form curves, secondary parameters and partial derivatives.
 - **Weighted least-squares fitting**: the weightings `uniform`, `1/y`, `1/y²`, `1/ŷ` and `1/ŷ²`; estimates with standard error, CV% and confidence intervals; diagnostics, correlation and covariance matrices, and the minimization trace.
 - **Data, plots and projects**: CSV import with a preview, typed or pasted data, XY plots, export of result tables, and project files whose history can be replayed against the seal of each result.
-- **The same engine everywhere**: every analysis is a command with a stable id, so the desktop application, the command line, the MCP server and the browser page run the same calculations and return the same numbers on every machine.
+- **The same engine everywhere**: every analysis is a command with a stable id, so the desktop application, the command line, the MCP server and the browser page run the same calculations and return the same numbers on Linux, Windows, macOS and in the browser (CI compares one digest of a fixed workload, `docs/reproducibility.md`).
 
 ## Build
 

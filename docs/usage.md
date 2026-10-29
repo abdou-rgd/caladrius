@@ -12,7 +12,7 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask layers   # prints the layer table, fails if a crate depends on a higher layer
 cargo xtask lint     # contract checks: forbidden names, private/ leaks, deny-lints headers, tolerances once, board hygiene, clippy::indexing_slicing denied in the four numerical crates (exceptions in xtask/lint_allow.toml)
-cargo xtask review   # the figures this README and the specs state, confronted with the files that own them (read-only; --strict also fails on a note)
+cargo xtask review   # the figures of the validation report and the specs, confronted with the files that own them; the README states none (read-only; --strict also fails on a note)
 cargo xtask wasm     # checks that layers L0 to L3 compile for wasm32-unknown-unknown
 cargo xtask web      # builds the browser page (apps/caladrius-web) into target/web-page, or into the folder given by --out DIR; needs the wasm-bindgen of the version in Cargo.lock
 cargo xtask digest   # runs a fixed workload through the engine and prints one SHA-256 of the answers: the same on Linux, Windows, macOS and WebAssembly (--wasm runs it under Node, --dump FILE keeps the text, --diff A B compares two dumps)
