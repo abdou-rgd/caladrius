@@ -36,7 +36,8 @@ tasks:
                needs wasm-bindgen-cli at the version of Cargo.lock, uses wasm-opt when present
   conformance  run caladrius-nca on every oracle case and write docs/conformance.md
                (`conformance --private` also writes the counts of the private oracle into it)
-  review       check the figures the README and the specs state against the files that own them
+  review       check the figures of docs/validation.md and the specs against the files that own them,
+               and that the README states no figure of its own
                (`review --strict` also fails on a note); reads only, writes nothing
   digest       run a fixed workload (the command examples, the NCA, fit and model cases of oracle/)
                through the engine and print one SHA-256 over the canonical JSON of the results: the

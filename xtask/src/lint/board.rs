@@ -7,7 +7,8 @@
 //! - `board-iteration`: an iteration is a card with `- **Kind:** iteration` (section 9, "one session = one
 //!   iteration"), and `Kind` has no other value. Its title reads `# T-xxx: Iteration <n>: <name>`; its `## Brief`
 //!   holds the five items of the brief; once it is `done`, its `## Outcome` holds a bolder next step and a link to
-//!   the learning page, and none of its cards is still `todo`, `in progress` or `to review`. A card that says
+//!   the learning page (or `none` and a reason of at least three words, when the human waived the page), and none
+//!   of its cards is still `todo`, `in progress` or `to review`. A card that says
 //!   `- **Iteration:** T-xxx` must name an existing iteration card.
 
 use std::collections::BTreeMap;
@@ -245,13 +246,39 @@ fn check_outcome(card: &Card, state_line: usize) -> Vec<Finding> {
             outcome.line,
             "the Outcome has no line starting with `**Learning page.**`",
         )),
-        Some((line, text)) if !text.contains("](http") => findings.push(card.finding(
-            line,
-            "the learning page line holds no link `[title](https://...)`",
-        )),
+        Some((line, text)) if !text.contains("](http") && !page_waived(text) => {
+            findings.push(card.finding(
+                line,
+                "the learning page line holds no link `[title](https://...)`, nor `none` followed \
+                 by the reason the human waived the page (at least three words)",
+            ));
+        }
         Some(_) => {}
     }
     findings
+}
+
+/// Whether a `**Learning page.**` line says that the human waived the page for this iteration: the
+/// word `none`, then a reason of at least three words (`**Learning page.** none, waived by Abdou for
+/// this iteration`).
+fn page_waived(line: &str) -> bool {
+    let rest = line
+        .trim_start()
+        .strip_prefix("**Learning page.**")
+        .unwrap_or(line)
+        .trim_start();
+    let Some(reason) = rest.strip_prefix("none") else {
+        return false;
+    };
+    // `none` is a word of its own, not the start of `nonetheless`.
+    if reason.starts_with(|c: char| c.is_alphanumeric()) {
+        return false;
+    }
+    reason
+        .split_whitespace()
+        .filter(|word| word.chars().any(char::is_alphanumeric))
+        .count()
+        >= 3
 }
 
 /// One finding for each card of the iteration `id` that is still open.
@@ -609,6 +636,33 @@ mod tests {
         let findings = iteration_findings(&[("T-010", no_link.as_str())]);
         assert_eq!(lines(&findings), [25]);
         assert!(findings[0].message.contains("link"));
+    }
+
+    #[test]
+    fn a_waived_learning_page_needs_none_and_a_reason_of_three_words() {
+        for waived in [
+            "none, waived by the human for this iteration",
+            "none (the human waived the page)",
+            "none: waived by Abdou",
+            "none the human said no",
+        ] {
+            let card = iteration_with("[Sceau](https://claude.ai/artifact/x)", waived);
+            let findings = iteration_findings(&[("T-010", card.as_str())]);
+            assert!(findings.is_empty(), "{waived}: {findings:?}");
+        }
+        for refused in [
+            "none",
+            "none.",
+            "none, waived",
+            "none: no page",
+            "nonetheless the page is waived here",
+            "waived by the human today",
+        ] {
+            let card = iteration_with("[Sceau](https://claude.ai/artifact/x)", refused);
+            let findings = iteration_findings(&[("T-010", card.as_str())]);
+            assert_eq!(lines(&findings), [25], "{refused}");
+            assert!(findings[0].message.contains("three words"), "{refused}");
+        }
     }
 
     #[test]

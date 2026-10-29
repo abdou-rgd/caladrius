@@ -11,11 +11,11 @@ Caladrius computes, in v1:
 
 - **Non-compartmental analysis (NCA)**: AUC by the linear, lin-up/log-down and mixed rules, the
   terminal-phase rate constant λz, half-life, extrapolation to infinity, AUMC, MRT, CL/F, Vz/F and
-  Vss, with units carried as data (`AGENTS.md` section 4; `README.md`, coverage table).
+  Vss, with units carried as data (`AGENTS.md` section 4; the coverage table of section 3.1).
 - **Individual compartmental models**: six one-compartment models (IV bolus, IV infusion,
   first-order oral with and without lag, zero-order oral with and without lag) and six
   two-compartment models in three parameterisations, with their closed-form curves, AUC, AUMC,
-  secondary parameters and partial derivatives (`README.md`, coverage table; `specs/models.md`).
+  secondary parameters and partial derivatives (the coverage table of section 3.1; `specs/models.md`).
 - **Weighted least-squares fitting**: the weightings `uniform`, `1/y`, `1/y²`, `1/ŷ`, `1/ŷ²`, with
   final parameters (estimate, standard error, CV%, univariate and planar confidence intervals),
   diagnostics, correlation and covariance matrices, eigenvalues, condition numbers, partial
@@ -26,8 +26,8 @@ Caladrius computes, in v1:
 
 It deliberately does **not** do, in v1: population modelling (NLME), bioequivalence, IVIVC
 (`AGENTS.md` section 1, "Out of scope"), several subjects in one model, and user-written models
-(two compartments landed after v0.1.0; user-written models are still not implemented — `README.md`,
-the "Not validated" column of the coverage table).
+(two compartments landed after v0.1.0; user-written models are still not implemented — the "Not
+validated" column of the coverage table in section 3.1).
 
 Position: **verified individual PK**. The goal is a teaching-grade, reproducible calculation layer
 whose conformance table an agent (Apothicaire) or a person can re-run, not a claim of equality with
@@ -57,8 +57,9 @@ on counts only; that comparison is not published and is not part of any versione
    in `caladrius-testkit`, never the same function tested against itself (`AGENTS.md` section 5).
    Two instances: every fit statistic is recomputed naively and the optimality condition
    `Jᵀ W r = 0` is re-checked in `crates/caladrius-testkit/tests/step3_consistency.rs`
-   (`README.md`), and the parameter relations of the NCA edge cases are checked in
-   `crates/caladrius-testkit/tests/edge_consistency.rs` (`specs/differences.md`, D-01 cross-check).
+   (`docs/history.md`, "One oracle was wrong once, and was corrected"), and the parameter relations
+   of the NCA edge cases are checked in `crates/caladrius-testkit/tests/edge_consistency.rs`
+   (`specs/differences.md`, D-01 cross-check).
 
 ### 2.2 The R scripts and the versions they record
 
@@ -111,14 +112,10 @@ margin of caution, not that the fit statistics were verified by hand (`specs/fit
 ### 2.4 The gates
 
 - **Conformance.** `cargo xtask conformance` runs the engine on every case of `oracle/expected/` and
-  regenerates `docs/conformance.md`; a value counts as validated only if the engine computes the
-  parameter within the tolerance of its kind (`README.md`, "Conformance"). The file ends with one
-  floor line per parameter per case, of the form
-  `<!-- floor edge_blq_default cmax 6 6 0 -->` (validated, expected, documented; `docs/conformance.md`).
-  The task fails and leaves the file unchanged if a parameter validates fewer values, loses expected
-  rows, gains unvalidated rows or disappears, if a floor line is malformed, or if a non-empty
-  previous file holds no floor; **floors can only go up** (`README.md`, "Conformance";
-  `docs/conformance.md`, header). The file is written to a temporary file and renamed.
+  regenerates `docs/conformance.md`; what it counts, and when it fails, is described in section 2.5.
+  The file ends with one floor line per parameter per case, of the form
+  `<!-- floor edge_blq_default cmax 6 6 0 -->` (validated, expected, documented; `docs/conformance.md`);
+  **floors can only go up** (`docs/conformance.md`, header).
 - **Deny lints.** Every crate root begins with
   `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unreachable)]`;
   `cargo xtask lint` fails a crate root that omits one of the five (`AGENTS.md`, golden rule 6;
@@ -160,18 +157,26 @@ margin of caution, not that the fit statistics were verified by hand (`specs/fit
   fingerprint, not a signature), and what the previous bullet lists. `docs/reproducibility.md` says all of
   it in plain words.
 - **`cargo xtask lint`** enforces the contract's mechanical rules: forbidden names, `private/`
-  leaks, deny-lint headers, tolerances defined once, board hygiene, and the indexing step above (`README.md`, "Build";
-  `xtask/src/lint/mod.rs`).
-- **`cargo xtask review`** (read-only) confronts the figures the README and the specs state with the
-  files that own them: the conformance total and floors, the model ids, the coverage counts, the
-  `- Status:` counts, and the drift since the last tag (`xtask/src/review.rs`, rule list).
+  leaks, deny-lint headers, tolerances defined once, board hygiene, and the indexing step above (`AGENTS.md`
+  section 11; `xtask/src/lint/mod.rs`).
+- **`cargo xtask review`** (read-only) confronts the figures this report and the specs state with the
+  files that own them: the conformance total and floors, the model ids, the coverage counts of
+  section 3.1, the `- Status:` counts of section 5, and the drift since the last tag
+  (`xtask/src/review.rs`, rule list). It also fails when `README.md` states a measured figure (a count,
+  a ratio, a percentage, a thousands-separated number: `review-readme-figures`), so that every figure
+  has one owner file.
+
+### 2.5 The conformance run
+
+`cargo xtask conformance` runs `caladrius-nca` on every case of `oracle/expected/`, `caladrius-models` on every case of `oracle/expected/models/` (relative error 1e-12) and `caladrius-fit` on every case of `oracle/expected/fit/` (1e-4 on estimates and statistics, 1e-6 on the residual sum of squares), and regenerates `docs/conformance.md` (never edit it by hand). A value counts as validated only if the engine computes the parameter and it is within the tolerance of the expected value. The file ends with one floor line per parameter per case (validated and expected rows). The task fails and leaves the file unchanged if a parameter validates fewer values, loses expected rows, gains unvalidated rows or disappears, if a floor line is malformed, or if a non-empty previous file holds no floor. Floors can only go up. The file is written to a temporary file then renamed.
 
 ## 3. Coverage
 
-`docs/conformance.md` is the file that counts; the table below reproduces the README coverage rows
-with the current counts from it. **Overall: 48955 of 48955 values validated (100.0 %); 16 further
-values are documented differences** (`docs/conformance.md`). The total is the sum of the three
-sections: 3744 + 34711 + 10500 = 48955 (`docs/conformance.md`).
+`docs/conformance.md` is the file that counts; the table below gives its current counts by analysis,
+and section 3.1 holds the coverage table the README carried until 2026-10-29. **Overall: 48955 of
+48955 values validated (100.0 %); 16 further values are documented differences**
+(`docs/conformance.md`). The total is the sum of the three sections: 3744 + 34711 + 10500 = 48955
+(`docs/conformance.md`).
 
 | Analysis | Validated against | Tolerance | Cases and values (`docs/conformance.md`) | Not validated |
 |---|---|---|---|---|
@@ -185,6 +190,21 @@ sections: 3744 + 34711 + 10500 = 48955 (`docs/conformance.md`).
 
 The fit sections total 30 cases and 10500 values (5340 + 5160; `docs/conformance.md`). The
 model sections total 440 cases and 34711 values (886 + 16906 + 16919; `docs/conformance.md`).
+
+### 3.1 Coverage by model family
+
+The README states no figure; this is the coverage table it carried until 2026-10-29, moved here
+unchanged. `cargo xtask review` checks the cases and values of its one- and two-compartment model
+rows against `docs/conformance.md` (`review-claims-checked`).
+
+| What | Checked against | Tolerance (relative) | Cases and values | Not validated |
+|---|---|---|---|---|
+| NCA parameters: extravascular, IV bolus, IV infusion; linear and lin-up/log-down areas | `PKNCA` 0.12.1 on R 4.5.2 (`oracle/scripts/nca_pknca.R`): Theoph and Indometh (the R datasets, two area rules each), 14 edge-case runs on hand-made profiles (values below the limit, missing, negative, lag, infusion, IV C0) and 2 runs on 4 hand-made profiles built to separate the readings of the terminal-phase rule; plus naive second implementations in `caladrius-testkit` | 1e-6 | 20 cases, 3744 values; 16 more values are a documented difference (D-01), counted in neither column | Steady state and multiple doses, partial AUC, urine, sparse sampling, weighted lambda-z (`specs/nca.md` section 12, "not specified"); the combinations of open item O-17; every reference-software convention (last row) |
+| Model curves, AUC and secondary parameters: six one-compartment models (IV bolus, IV infusion, first-order oral with and without lag, zero-order oral with and without lag) | Exact closed forms evaluated in 256-bit arithmetic (`Rmpfr` 1.1.3), cross-checked against a matrix exponential (`expm` 1.0.1) and an ODE solver (`deSolve` 1.42); textbook double-precision forms in `caladrius-testkit` | 1e-12 | 145 cases, 9405 values: 21 single-dose cases (886 values) and, since tasks T-047 and T-049, 124 multiple-dose and steady-state cases (schedules of 1 to 40 doses, regular regimens, steady state for several intervals) with their refusals | Any other program's output; user-written models (not implemented). The closed forms are the project's own derivation from textbooks, checked three ways, not an external reference |
+| Model curves, AUC, AUMC, partial derivatives and refused inputs: six two-compartment models (IV bolus, IV infusion, first-order oral with and without lag, zero-order oral with and without lag), in the macro, micro and clearance/volume parameter sets (added by tasks T-031 to T-034) | Explicit sums of exponentials evaluated in 256-bit arithmetic (`Rmpfr`) and central differences of them, cross-checked on every case against a matrix exponential (`expm`) and an ODE solver (`deSolve` lsoda); `oracle/scripts/models_2c_closed_form.R`, `models_2c_derivatives.R` | 1e-12 | 295 cases, 25306 values: 107 single-dose value cases, 64 derivative cases (conditions above 1e3 omitted), `model_pk2_errors` (80 not-available rows the engine must refuse, with the reason) and, since tasks T-047 and T-049, 124 multiple-dose and steady-state cases with their refusals | Any other program's output; user-written models (not implemented); the two-compartment fit (only one-compartment fits have a reference fit, see the rows below). As for one compartment, the closed forms are the project's own derivation from textbooks, checked four ways rather than against an outside reference |
+| Fit, IV bolus and first-order oral: estimates and every statistic (standard errors, CV%, intervals, correlation, eigenvalues, AIC, SBC, secondary parameters) | `stats::nls` (Gauss-Newton) and `minpack.lm` 1.2.4 `nlsLM` on R 4.5.2 (`oracle/scripts/fit_wls.R`); statistics from an independent R implementation of `specs/fit.md`, standard errors and S checked against `summary.nls` | 1e-4 parameters and statistics, 1e-6 residual sum of squares | 15 cases (Theoph, 12 subjects; Indometh, 6; a five-point example), five weightings each: 95 fits, 5340 values (with the convergence status) | Default settings (closed-form derivatives, relative decrease 1e-10, 50 iterations): 0 of 490 estimates beyond 1e-4 on the 185 reference fits (worst 7.4e-6); the former defaults, kept as the preset `reference_conventions`, give 168 (worst 5.8e-3) (`specs/differences.md` D-03, D-04; Q-014 answered). Bounds, generated initial estimates and quality flags have unit tests only |
+| Fit, IV infusion, zero-order input, first-order with lag (added by task T-029) | `nlsLM` checked against `nls`, same R and package versions, on synthetic profiles written by the same script from the closed forms (fixed seed, 8 % log-normal noise; each options file says how); the infusion or input duration is a fixed parameter | 1e-4 and 1e-6 as above | 15 cases, 90 fits, 5070 values (5160 with status). 1e-4 on parameters and statistics. The engine's own closed-form derivatives for these models (task T-030) reproduce all of them: 125 of 125 oracle tests pass (`crates/caladrius-fit/tests/oracle_fit_models.rs`) and the conformance run validates all 5160 values | Real (non-synthetic) profiles for these models; a published worked example with a page reference for any fit |
+| The reference commercial software | One private coursework exercise, kept out of the repository. Only counts are recorded and nothing from it, numeric or otherwise, is published here (publishing a comparison is the maintainer's decision) | equality at the displayed precision | counts only, in a local run | Everything else. Its fitting defaults (increment, convergence, bounds) and its definitions of the fit statistics are `assumed` from the maintainer's observation and have not been tested against its output |
 
 ## 4. Documented differences
 
@@ -230,11 +250,17 @@ tolerance to widen (`AGENTS.md` section 5).
 
 ## 5. Known limits and open items
 
-- **`assumed` rules.** Every behaviour rule in `specs/` carries a status; the counts of the
-  `- Status:` lines, per file, are in `README.md`, "Which rules are settled": `specs/nca.md` has
-  **13** `assumed` rules (44 confirmed by oracle, 15 documented untested, 5 observed),
-  `specs/models.md` **12** (52 / 2 / 0), `specs/fit.md` **22** (18 / 3 / 0) and `specs/ux.md` **26**
-  (0 / 12 / 0). An `assumed` rule is never presented as settled.
+**Which rules are settled.** Every behaviour rule in `specs/` carries a status. "Confirmed by oracle" means the rule's arithmetic or definition agrees with PKNCA, R or the closed forms above; it says nothing about the reference commercial software. Counts of the `- Status:` lines in each file (made with `grep`):
+
+| Specification | confirmed by oracle | documented, untested | assumed | observed |
+|---|---|---|---|---|
+| `specs/nca.md` | 44 | 15 | 13 | 5 |
+| `specs/models.md` | 52 | 2 | 12 | 0 |
+| `specs/fit.md` | 18 | 3 | 22 | 0 |
+| `specs/ux.md` | 0 | 12 | 26 | 0 |
+
+The `assumed` rules are the ones that a reference comparison or a human decision still has to settle (for example the fit defaults of `AGENTS.md` section 6); none is presented as settled.
+
 - **Pending questions.** `board/QUESTIONS.md` still holds Q-004 to Q-012 without a human answer:
   Q-004 (licence of the public datasets and PKNCA output), Q-005 (terms of the reference
   documentation), Q-006 (vendor name in `specs/sources.md`), Q-007 (published reference numbers),
@@ -292,6 +318,6 @@ rewrite the expected tables and the options files without changing them on the s
 (`docs/conformance.md`). On each run the task compares the new counts with them: a parameter that
 validates fewer values, loses expected rows, gains unvalidated rows or disappears, a malformed floor
 line, or a non-empty previous file with no floor at all, fails the task, which leaves the previous
-file unchanged (`README.md`, "Conformance"). Since the floors are committed, `git diff
+file unchanged (section 2.5). Since the floors are committed, `git diff
 --exit-code docs/conformance.md` in CI turns any silent weakening of the coverage into a red build,
 and the floors can only go up.

@@ -1,8 +1,9 @@
 //! `cargo xtask review`: the numbers the repository states, confronted with the files that own them.
 //!
 //! `lint` checks the mechanical rules of `AGENTS.md`; `conformance` computes the values. This task
-//! answers a third question, the one an outside reader asks: *do the figures written in the README
-//! and in the release notes still agree with the files that produce them?* It changes nothing.
+//! answers a third question, the one an outside reader asks: *do the figures written in the validation
+//! report still agree with the files that produce them, and does the README state none?* It changes
+//! nothing.
 //!
 //! Rules, each with a stable id:
 //!
@@ -14,14 +15,18 @@
 //!   case of the `pk1.`/`pk2.` form names a model of the registry.
 //! - `review-versions`: the version of `Cargo.toml` and the one of `CITATION.cff` agree.
 //! - `review-specs-index`: every `specs/*.md` is named by `specs/README.md`.
-//! - `review-claims-checked`: the case and value counts the README states for its one- and
-//!   two-compartment model rows are checked against `docs/conformance.md`, the file the section
-//!   points at.
-//! - `review-pk2-readme`: when the registry holds `pk2.` models, the README has a two-compartment
-//!   row in its coverage table and no clause that still says they are not implemented.
-//! - `review-specs-counts` (note): the "Which rules are settled" table of the README against the
-//!   `- Status:` lines of each `specs/*.md`. The README counts them by grep and the tagging
+//! - `review-claims-checked`: the case and value counts that the coverage table of
+//!   `docs/validation.md` (section 3.1) states for its one- and two-compartment model rows are
+//!   checked against `docs/conformance.md`, the file that owns them.
+//! - `review-pk2-readme`: when the registry holds `pk2.` models, the coverage table of
+//!   `docs/validation.md` has a two-compartment row, and neither it nor the README has a clause that
+//!   still says they are not implemented.
+//! - `review-specs-counts` (note): the "Which rules are settled" table of `docs/validation.md`
+//!   against the `- Status:` lines of each `specs/*.md`. The table counts them by grep and the tagging
 //!   convention is the reader's, so a difference is worth reading, not a contradiction.
+//! - `review-readme-figures`: the README states no measured figure (a ratio such as `12/25`,
+//!   `12 of 25`, a percentage, a thousands-separated number), outside fenced code blocks. A figure
+//!   is written once, in the file that owns it, and the README points at that file.
 //! - `review-release-drift` (note): what changed under `docs/`, `specs/`, `oracle/scripts/`,
 //!   `oracle/README.md` or `README.md` since the last tag, so that a claim covered by that tag is not
 //!   read as a claim about `main`.
@@ -39,13 +44,16 @@ use crate::error::{Result, XtaskError};
 use crate::lint::Tree;
 use crate::workspace;
 
-/// The file that owns the conformance numbers, and the reference the README coverage table is read
-/// after.
+/// The file that owns the conformance numbers.
 const CONFORMANCE: &str = "docs/conformance.md";
 /// The file that owns the model ids.
 const REGISTRY: &str = "crates/caladrius-models/src/model.rs";
-/// The reference the README points at, and after which its coverage rows are read.
-const REFERENCE: &str = "docs/conformance.md";
+/// The validation report: it holds the coverage table and the status-count table that this review
+/// reads (the README states no figure).
+const VALIDATION: &str = "docs/validation.md";
+/// The heading of the coverage table in the validation report; its rows are read up to the next
+/// heading.
+const COVERAGE_HEADING: &str = "### 3.1 Coverage by model family";
 
 /// Where one check stands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -122,8 +130,9 @@ fn checks(tree: &Tree, root: &Path) -> Result<Vec<Finding>> {
     findings.extend(versions(tree));
     findings.extend(specs_index(tree));
     findings.extend(claims_checked(tree));
-    findings.extend(two_compartment_readme(tree));
+    findings.extend(two_compartment_claims(tree));
     findings.extend(specs_counts(tree));
+    findings.extend(readme_figures(tree));
     findings.extend(release_drift(root));
     findings.sort_by(|a, b| {
         (&a.file, a.line, a.rule, a.message.as_str()).cmp(&(
@@ -509,7 +518,8 @@ enum Family {
     Two,
 }
 
-/// The case and value counts the README states for one model family, and the line of the row.
+/// The case and value counts the coverage table states for one model family, and the line of the
+/// row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Claim {
     family: Family,
@@ -518,12 +528,18 @@ struct Claim {
     line: usize,
 }
 
-/// The case and value counts the README states for each model family in its coverage table.
-fn readme_claims(text: &str) -> Option<Vec<Claim>> {
+/// The case and value counts the validation report states for each model family in its coverage
+/// table (the rows between `COVERAGE_HEADING` and the next heading); `None` without that heading.
+fn coverage_claims(text: &str) -> Option<Vec<Claim>> {
     let lines: Vec<&str> = text.lines().collect();
-    let reference = lines.iter().position(|line| line.contains(REFERENCE))?;
+    let heading = lines
+        .iter()
+        .position(|line| line.starts_with(COVERAGE_HEADING))?;
     let mut claims = Vec::new();
-    for (index, line) in lines.iter().enumerate().skip(reference) {
+    for (index, line) in lines.iter().enumerate().skip(heading + 1) {
+        if line.starts_with('#') {
+            break;
+        }
         let row: Vec<&str> = line.split('|').map(str::trim).collect();
         // A model row: | description | checked against | tolerance | cases and values | not validated |
         // (the first and the last cell of the split are the empty outsides of the row).
@@ -598,29 +614,34 @@ fn coverage(text: &str) -> BTreeMap<String, (usize, usize)> {
     per_model
 }
 
-/// The model counts the README states are checked against `docs/conformance.md`. Agreement is
-/// silent: a confirmation is not something to read, so `--strict` can pass.
+/// The model counts the validation report states are checked against `docs/conformance.md`.
+/// Agreement is silent: a confirmation is not something to read, so `--strict` can pass.
 fn claims_checked(tree: &Tree) -> Vec<Finding> {
-    let Some(readme) = tree.files.get("README.md") else {
-        return Vec::new();
+    let Some(validation) = tree.files.get(VALIDATION) else {
+        return vec![Finding::fail(
+            "review-claims-checked",
+            VALIDATION,
+            0,
+            "the validation report is missing: its coverage table cannot be checked, or the path moved",
+        )];
     };
     let Some(conformance) = tree.files.get(CONFORMANCE) else {
         return Vec::new();
     };
-    let Some(claims) = readme_claims(readme) else {
+    let Some(claims) = coverage_claims(validation) else {
         return vec![Finding::note(
             "review-claims-checked",
-            "README.md",
+            VALIDATION,
             0,
-            format!("the README does not name `{REFERENCE}`: nothing checked"),
+            format!("the validation report has no `{COVERAGE_HEADING}` table: nothing checked"),
         )];
     };
     if claims.is_empty() {
         return vec![Finding::note(
             "review-claims-checked",
-            "README.md",
+            VALIDATION,
             0,
-            "the README names the conformance file but states no model case/value counts",
+            "the coverage table of the validation report states no model case/value counts",
         )];
     }
     let per_model = coverage(conformance);
@@ -633,19 +654,21 @@ fn claims_checked(tree: &Tree) -> Vec<Finding> {
         let Some((actual_cases, actual_values)) = per_model.get(key) else {
             findings.push(Finding::fail(
                 "review-claims-checked",
-                "README.md",
+                VALIDATION,
                 claim.line,
-                format!("the README claims {key} coverage, `{CONFORMANCE}` has no {key} case"),
+                format!(
+                    "the validation report claims {key} coverage, `{CONFORMANCE}` has no {key} case"
+                ),
             ));
             continue;
         };
         if claim.cases != *actual_cases || claim.values != *actual_values {
             findings.push(Finding::fail(
                 "review-claims-checked",
-                "README.md",
+                VALIDATION,
                 claim.line,
                 format!(
-                    "the README claims {} cases and {} values for {key}; \
+                    "the validation report claims {} cases and {} values for {key}; \
                      `{CONFORMANCE}` holds {actual_cases} cases and {actual_values} values",
                     claim.cases, claim.values
                 ),
@@ -655,9 +678,10 @@ fn claims_checked(tree: &Tree) -> Vec<Finding> {
     findings
 }
 
-/// The README speaks about two-compartment models when the registry has them: a coverage row with
-/// counts, and no clause that still says they are not implemented.
-fn two_compartment_readme(tree: &Tree) -> Vec<Finding> {
+/// The published text speaks about two-compartment models when the registry has them: the coverage
+/// table of the validation report has a row with counts, and neither the validation report nor the
+/// README has a clause that still says they are not implemented.
+fn two_compartment_claims(tree: &Tree) -> Vec<Finding> {
     let Some(registry) = tree.files.get(REGISTRY) else {
         return Vec::new();
     };
@@ -667,48 +691,52 @@ fn two_compartment_readme(tree: &Tree) -> Vec<Finding> {
     {
         return Vec::new();
     }
-    let Some(readme) = tree.files.get("README.md") else {
-        return Vec::new();
-    };
     let mut findings = Vec::new();
-    let has_row = readme_claims(readme)
-        .is_some_and(|claims| claims.iter().any(|claim| claim.family == Family::Two));
-    if !has_row {
-        findings.push(Finding::fail(
-            "review-pk2-readme",
-            "README.md",
-            0,
-            "the registry has `pk2.` models but the coverage table has no two-compartment row \
-             with case and value counts",
-        ));
-    }
-    for (index, line) in readme.lines().enumerate() {
-        // A clause is what lies between two separators, so that "user-written models (not
-        // implemented); the two-compartment fit" is not read as one statement.
-        let stale = line
-            .to_ascii_lowercase()
-            .split([';', '|', '.'])
-            .any(|clause| {
-                (clause.contains("two-compartment") || clause.contains("two compartment"))
-                    && clause.contains("not implemented")
-            });
-        if stale {
+    if let Some(validation) = tree.files.get(VALIDATION) {
+        let has_row = coverage_claims(validation)
+            .is_some_and(|claims| claims.iter().any(|claim| claim.family == Family::Two));
+        if !has_row {
             findings.push(Finding::fail(
                 "review-pk2-readme",
-                "README.md",
-                index + 1,
-                "the README still says two-compartment models are not implemented, \
-                 the registry has `pk2.` models",
+                VALIDATION,
+                0,
+                "the registry has `pk2.` models but the coverage table has no two-compartment row \
+                 with case and value counts",
             ));
+        }
+    }
+    for path in ["README.md", VALIDATION] {
+        let Some(text) = tree.files.get(path) else {
+            continue;
+        };
+        for (index, line) in text.lines().enumerate() {
+            // A clause is what lies between two separators, so that "user-written models (not
+            // implemented); the two-compartment fit" is not read as one statement.
+            let stale = line
+                .to_ascii_lowercase()
+                .split([';', '|', '.'])
+                .any(|clause| {
+                    (clause.contains("two-compartment") || clause.contains("two compartment"))
+                        && clause.contains("not implemented")
+                });
+            if stale {
+                findings.push(Finding::fail(
+                    "review-pk2-readme",
+                    path,
+                    index + 1,
+                    "this text still says two-compartment models are not implemented, \
+                     the registry has `pk2.` models",
+                ));
+            }
         }
     }
     findings
 }
 
-/// The counts of the status table of the README, against the `- Status: <tag>` lines of each spec
-/// (`**Status:**` is also accepted, for a rule that spells the tag differently).
+/// The counts of the status table of the validation report, against the `- Status: <tag>` lines of
+/// each spec (`**Status:**` is also accepted, for a rule that spells the tag differently).
 fn specs_counts(tree: &Tree) -> Vec<Finding> {
-    let Some(readme) = tree.files.get("README.md") else {
+    let Some(validation) = tree.files.get(VALIDATION) else {
         return Vec::new();
     };
     let mut actual: BTreeMap<String, Vec<usize>> = BTreeMap::new();
@@ -752,7 +780,7 @@ fn specs_counts(tree: &Tree) -> Vec<Finding> {
         );
     }
     let mut findings = Vec::new();
-    for (index, line) in readme.lines().enumerate() {
+    for (index, line) in validation.lines().enumerate() {
         let row: Vec<&str> = line.split('|').map(str::trim).collect();
         if row.len() < 7 {
             continue;
@@ -770,7 +798,7 @@ fn specs_counts(tree: &Tree) -> Vec<Finding> {
         let Some(counts) = actual.get(&name) else {
             findings.push(Finding::note(
                 "review-specs-counts",
-                "README.md",
+                VALIDATION,
                 index + 1,
                 format!("`{name}` is listed in the table but is not in the tree"),
             ));
@@ -780,15 +808,233 @@ fn specs_counts(tree: &Tree) -> Vec<Finding> {
         if claimed.len() == counts.len() && claimed != *counts {
             findings.push(Finding::note(
                 "review-specs-counts",
-                "README.md",
+                VALIDATION,
                 index + 1,
                 format!(
-                    "{name}: the README table says {claimed:?}, the `Status:` lines count {counts:?}"
+                    "{name}: the validation report table says {claimed:?}, the `Status:` lines count {counts:?}"
                 ),
             ));
         }
     }
     findings
+}
+
+/// The README states no measured figure: a count that a run or a week can change goes stale in a
+/// file that nobody re-reads, so every figure is written once, in the file that owns it
+/// (`docs/validation.md`, `docs/conformance.md`), and the README points at that file.
+///
+/// A figure is a ratio (`12/25`, `12 / 25`, `12 of 25`, `12 out of 25`), a percentage (`48 %`, `48%`)
+/// or a number with a thousands separator (`48,955`, `48 955`). Versions (`v0.3.2`, `1.99.1`), dates,
+/// years, port numbers and `file:line` references are not figures, and neither is anything inside a
+/// fenced code block.
+fn readme_figures(tree: &Tree) -> Vec<Finding> {
+    let Some(readme) = tree.files.get("README.md") else {
+        return vec![Finding::fail(
+            "review-readme-figures",
+            "README.md",
+            0,
+            "the file is missing: the README cannot be read for figures",
+        )];
+    };
+    let mut findings = Vec::new();
+    let mut fenced = false;
+    for (index, line) in readme.lines().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            fenced = !fenced;
+            continue;
+        }
+        if fenced {
+            continue;
+        }
+        for (kind, text) in figures_in(line) {
+            findings.push(Finding::fail(
+                "review-readme-figures",
+                "README.md",
+                index + 1,
+                format!(
+                    "the README states {kind} (`{text}`): a figure is written once, in the file \
+                     that owns it (`{VALIDATION}`, `{CONFORMANCE}`), and the README points at it"
+                ),
+            ));
+        }
+    }
+    findings
+}
+
+/// The figures of one line of prose, at most one of each kind: what kind and the text found.
+fn figures_in(line: &str) -> Vec<(&'static str, String)> {
+    // A link or a bare URL is not prose, and any space (a no-break one too) reads as a plain space.
+    let text = line
+        .split_whitespace()
+        .filter(|word| !word.contains("://"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let chars: Vec<char> = text.chars().collect();
+    let mut found = Vec::new();
+    if let Some(ratio) = ratio_in(&chars).or_else(|| worded_ratio_in(&text)) {
+        found.push(("a ratio", ratio));
+    }
+    if let Some(percentage) = percentage_in(&chars) {
+        found.push(("a percentage", percentage));
+    }
+    if let Some(number) = thousands_in(&chars) {
+        found.push(("a thousands-separated number", number));
+    }
+    found
+}
+
+/// The end (exclusive) of the run of ASCII digits that starts at `start` (`start` when there is none).
+fn digit_run_end(chars: &[char], start: usize) -> usize {
+    let mut end = start;
+    while chars.get(end).is_some_and(char::is_ascii_digit) {
+        end += 1;
+    }
+    end
+}
+
+/// The position of the first character from `from` that is not a space.
+fn skip_spaces(chars: &[char], from: usize) -> usize {
+    let mut at = from;
+    while chars.get(at) == Some(&' ') {
+        at += 1;
+    }
+    at
+}
+
+/// Whether the digits at `start` open a number of their own, and not the tail of a version, a
+/// decimal, an identifier, a path, a range, a date or a `file:line` reference.
+fn opens_number(chars: &[char], start: usize) -> bool {
+    match start.checked_sub(1).and_then(|before| chars.get(before)) {
+        None => true,
+        Some(before) => {
+            !(before.is_alphanumeric() || matches!(before, '.' | ',' | '-' | '_' | '/' | ':'))
+        }
+    }
+}
+
+/// Whether the number that ends just before `end` is not the head of a longer word, path or range.
+fn closes_number(chars: &[char], end: usize) -> bool {
+    match chars.get(end) {
+        None => true,
+        Some(after) => !(after.is_alphanumeric() || matches!(after, '_' | '-' | '/')),
+    }
+}
+
+/// The text of `chars` from `start` to `end` (exclusive).
+fn text_between(chars: &[char], start: usize, end: usize) -> Option<String> {
+    Some(chars.get(start..end)?.iter().collect())
+}
+
+/// A ratio written with a slash: `12/25` or `12 / 25`.
+fn ratio_in(chars: &[char]) -> Option<String> {
+    let mut at = 0;
+    while at < chars.len() {
+        if !(chars.get(at).is_some_and(char::is_ascii_digit) && opens_number(chars, at)) {
+            at += 1;
+            continue;
+        }
+        let end = digit_run_end(chars, at);
+        let slash = skip_spaces(chars, end);
+        if chars.get(slash) == Some(&'/') {
+            let second = skip_spaces(chars, slash + 1);
+            let second_end = digit_run_end(chars, second);
+            if second_end > second && closes_number(chars, second_end) {
+                return text_between(chars, at, second_end);
+            }
+        }
+        at = end;
+    }
+    None
+}
+
+/// Whether a word, stripped of its punctuation, is a plain number.
+fn is_count(word: &str) -> bool {
+    word.starts_with(|c: char| c.is_ascii_digit())
+        && word
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == ',' || c == '.')
+}
+
+/// A ratio written in words: `12 of 25` or `12 out of 25`.
+fn worded_ratio_in(text: &str) -> Option<String> {
+    let words: Vec<String> = text
+        .split(' ')
+        .map(|word| {
+            word.trim_matches(|c: char| !c.is_alphanumeric())
+                .to_ascii_lowercase()
+        })
+        .collect();
+    let word = |at: usize| words.get(at).map_or("", String::as_str);
+    (0..words.len()).find_map(|at| {
+        if !is_count(word(at)) {
+            return None;
+        }
+        if word(at + 1) == "of" && is_count(word(at + 2)) {
+            return Some(format!("{} of {}", word(at), word(at + 2)));
+        }
+        if word(at + 1) == "out" && word(at + 2) == "of" && is_count(word(at + 3)) {
+            return Some(format!("{} out of {}", word(at), word(at + 3)));
+        }
+        None
+    })
+}
+
+/// A percentage: a number, optional spaces, then `%` (`48%`, `48 %`). `CV%` is not one.
+fn percentage_in(chars: &[char]) -> Option<String> {
+    chars.iter().enumerate().find_map(|(at, c)| {
+        if *c != '%' {
+            return None;
+        }
+        let mut end = at;
+        while end > 0 && chars.get(end - 1) == Some(&' ') {
+            end -= 1;
+        }
+        if !end
+            .checked_sub(1)
+            .and_then(|last| chars.get(last))
+            .is_some_and(char::is_ascii_digit)
+        {
+            return None;
+        }
+        let mut start = end;
+        while start > 0
+            && chars
+                .get(start - 1)
+                .is_some_and(|c| c.is_ascii_digit() || matches!(c, '.' | ','))
+        {
+            start -= 1;
+        }
+        text_between(chars, start, at + 1)
+    })
+}
+
+/// A number with a thousands separator: groups of three digits after one to three digits, joined by a
+/// comma or a space (`48,955`, `48 955`, `4 294 967 295`). A leading zero is a decimal, not a group.
+fn thousands_in(chars: &[char]) -> Option<String> {
+    let mut at = 0;
+    while at < chars.len() {
+        if !(chars.get(at).is_some_and(char::is_ascii_digit) && opens_number(chars, at)) {
+            at += 1;
+            continue;
+        }
+        let end = digit_run_end(chars, at);
+        if end - at <= 3 && chars.get(at) != Some(&'0') {
+            let mut next = end;
+            let mut groups = 0_usize;
+            while matches!(chars.get(next), Some(',' | ' '))
+                && digit_run_end(chars, next + 1) == next + 4
+            {
+                groups += 1;
+                next += 4;
+            }
+            if groups > 0 && closes_number(chars, next) {
+                return text_between(chars, at, next);
+            }
+        }
+        at = end;
+    }
+    None
 }
 
 /// What the drift note counts: the files whose change a reader of the tag does not see.
@@ -954,12 +1200,13 @@ pub const MODELS: &[Model] = &[
 ];
 ";
 
-    /// The README fixture of the coverage tests: one model row per family, with the counts given.
-    fn readme_with_rows(one: (usize, usize), two: (usize, usize)) -> String {
+    /// The coverage section of the validation report, as the coverage tests need it: its heading, then
+    /// one model row per family, with the counts given.
+    fn validation_with_rows(one: (usize, usize), two: (usize, usize)) -> String {
         let header = "| What | Checked against | Tolerance | Cases and values | Not validated |";
         let rule = "|---|---|---|---|---|";
         format!(
-            "See `docs/conformance.md` for the table.\n\n{header}\n{rule}\n\
+            "{COVERAGE_HEADING}\n\n{header}\n{rule}\n\
              | Model curves: six one-compartment models | closed forms | 1e-12 | {} case, {} values | none |\n\
              | Model curves: six two-compartment models | closed forms | 1e-12 | {} cases, {} values | none |\n",
             one.0, one.1, two.0, two.1
@@ -1081,9 +1328,9 @@ pub const MODELS: &[Model] = &[
 
     #[test]
     fn both_model_rows_of_the_coverage_table_are_read() {
-        let readme = readme_with_rows((21, 886), (172, 16906));
+        let validation = validation_with_rows((21, 886), (172, 16906));
         assert_eq!(
-            readme_claims(&readme),
+            coverage_claims(&validation),
             Some(vec![
                 Claim {
                     family: Family::One,
@@ -1098,16 +1345,28 @@ pub const MODELS: &[Model] = &[
                     line: 6,
                 },
             ]),
-            "fixture:\n{readme}"
+            "fixture:\n{validation}"
         );
     }
 
     #[test]
-    fn a_readme_coverage_table_is_checked_against_the_conformance_file() {
-        let readme = readme_with_rows((1, 60), (2, 140));
+    fn the_coverage_rows_stop_at_the_next_heading() {
+        let validation = format!(
+            "{}\n## 4. Documented differences\n\n\
+             | Model curves: six two-compartment models | x | y | 9 cases, 99 values | none |\n",
+            validation_with_rows((21, 886), (172, 16906))
+        );
+        let claims = coverage_claims(&validation).unwrap_or_default();
+        assert_eq!(claims.len(), 2, "{claims:?}");
+        assert!(coverage_claims("| a | b | c | d | e |\n").is_none());
+    }
+
+    #[test]
+    fn a_coverage_table_is_checked_against_the_conformance_file() {
+        let validation = validation_with_rows((1, 60), (2, 140));
         let files = vec![
             (CONFORMANCE, CONFORMANCE_OK),
-            ("README.md", readme.as_str()),
+            (VALIDATION, validation.as_str()),
         ];
         let findings = claims_checked(&tree(&files));
         assert!(
@@ -1115,39 +1374,52 @@ pub const MODELS: &[Model] = &[
             "an agreement is not a finding, or --strict could never pass: {findings:?}"
         );
 
-        let wrong = readme.replace("1 case, 60 values", "1 case, 61 values");
-        let files = vec![(CONFORMANCE, CONFORMANCE_OK), ("README.md", wrong.as_str())];
+        let wrong = validation.replace("1 case, 60 values", "1 case, 61 values");
+        let files = vec![(CONFORMANCE, CONFORMANCE_OK), (VALIDATION, wrong.as_str())];
         let findings = claims_checked(&tree(&files));
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert_eq!(findings[0].kind, Kind::Fail);
+        assert_eq!(findings[0].file, VALIDATION);
+        assert!(findings[0].message.contains("validation report"));
         assert_eq!(findings[0].line, 5, "the line of the one-compartment row");
     }
 
     #[test]
-    fn a_readme_without_the_reference_is_reported_as_unchecked() {
+    fn a_validation_report_without_the_coverage_heading_is_reported_as_unchecked() {
         let findings = claims_checked(&tree(&[
-            ("README.md", "# Caladrius\n"),
+            (VALIDATION, "# Validation report\n"),
             (CONFORMANCE, CONFORMANCE_OK),
         ]));
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].kind, Kind::Note);
+        assert!(findings[0].message.contains(COVERAGE_HEADING));
     }
 
     #[test]
-    fn the_spec_status_table_reports_the_counts_the_readme_states() {
-        let readme = "\
+    fn a_missing_validation_report_fails_the_claims() {
+        let findings = claims_checked(&tree(&[(CONFORMANCE, CONFORMANCE_OK)]));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert_eq!(findings[0].kind, Kind::Fail);
+        assert_eq!(findings[0].file, VALIDATION);
+    }
+
+    #[test]
+    fn the_spec_status_table_reports_the_counts_the_validation_report_states() {
+        let validation = "\
 | Specification | confirmed by oracle | documented, untested | assumed | observed |
 |---|---|---|---|---|
 | `specs/nca.md` | 1 | 0 | 1 | 0 |
 ";
         let nca = "- Status: `confirmed by oracle`\n- Status: `assumed`\n";
-        let findings = specs_counts(&tree(&[("README.md", readme), ("specs/nca.md", nca)]));
+        let findings = specs_counts(&tree(&[(VALIDATION, validation), ("specs/nca.md", nca)]));
         assert!(findings.is_empty(), "{findings:?}");
 
         let nca = "- Status: `confirmed by oracle`\n- Status: `confirmed by oracle`\n";
-        let findings = specs_counts(&tree(&[("README.md", readme), ("specs/nca.md", nca)]));
+        let findings = specs_counts(&tree(&[(VALIDATION, validation), ("specs/nca.md", nca)]));
         assert_eq!(findings.len(), 1, "{findings:?}");
+        assert_eq!(findings[0].file, VALIDATION);
         assert!(findings[0].message.contains("nca.md"));
+        assert!(findings[0].message.contains("validation report"));
     }
 
     #[test]
@@ -1230,7 +1502,7 @@ pub const MODELS: &[Model] = &[
     }
 
     #[test]
-    fn a_readme_claiming_pk2_when_the_conformance_file_has_no_pk2_case_fails() {
+    fn a_coverage_table_claiming_pk2_when_the_conformance_file_has_no_pk2_case_fails() {
         let conformance = CONFORMANCE_OK
             .replace(
                 "| model_b | pk2.iv_bolus | 2 / 2 | 100 / 100 | 100.0 | 0 |\n",
@@ -1240,10 +1512,10 @@ pub const MODELS: &[Model] = &[
                 "| model_c | pk2.oral_1 | 2 / 2 | 40 / 40 | 100.0 | 0 |\n",
                 "",
             );
-        let readme = readme_with_rows((1, 60), (2, 140));
+        let validation = validation_with_rows((1, 60), (2, 140));
         let findings = claims_checked(&tree(&[
             (CONFORMANCE, conformance.as_str()),
-            ("README.md", readme.as_str()),
+            (VALIDATION, validation.as_str()),
         ]));
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert_eq!(findings[0].kind, Kind::Fail);
@@ -1252,11 +1524,11 @@ pub const MODELS: &[Model] = &[
     }
 
     #[test]
-    fn a_readme_naming_the_file_but_stating_no_counts_is_a_note() {
-        let readme = "See `docs/conformance.md`.\n\n| What | Checked |\n|---|---|\n";
+    fn a_coverage_section_stating_no_counts_is_a_note() {
+        let validation = format!("{COVERAGE_HEADING}\n\n| What | Checked |\n|---|---|\n");
         let findings = claims_checked(&tree(&[
             (CONFORMANCE, CONFORMANCE_OK),
-            ("README.md", readme),
+            (VALIDATION, validation.as_str()),
         ]));
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert_eq!(findings[0].kind, Kind::Note);
@@ -1265,16 +1537,18 @@ pub const MODELS: &[Model] = &[
 
     #[test]
     fn claims_are_not_checked_without_a_conformance_file() {
-        let readme = readme_with_rows((1, 60), (2, 140));
-        assert!(claims_checked(&tree(&[("README.md", readme.as_str())])).is_empty());
+        let validation = validation_with_rows((1, 60), (2, 140));
+        assert!(claims_checked(&tree(&[(VALIDATION, validation.as_str())])).is_empty());
     }
 
     #[test]
-    fn a_readme_with_no_two_compartment_row_fails_when_the_registry_has_pk2() {
-        let readme = "See `docs/conformance.md`.\n\n\
-                      | Model curves: six one-compartment models | closed forms | 1e-12 | 1 case, 60 values | none |\n";
-        let files = [("README.md", readme), (REGISTRY, REGISTRY_OK)];
-        let findings = two_compartment_readme(&tree(&files));
+    fn a_coverage_table_with_no_two_compartment_row_fails_when_the_registry_has_pk2() {
+        let validation = format!(
+            "{COVERAGE_HEADING}\n\n\
+             | Model curves: six one-compartment models | closed forms | 1e-12 | 1 case, 60 values | none |\n"
+        );
+        let files = [(VALIDATION, validation.as_str()), (REGISTRY, REGISTRY_OK)];
+        let findings = two_compartment_claims(&tree(&files));
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert_eq!(findings[0].kind, Kind::Fail);
         assert_eq!(findings[0].rule, "review-pk2-readme");
@@ -1282,28 +1556,40 @@ pub const MODELS: &[Model] = &[
     }
 
     #[test]
-    fn a_readme_that_still_says_two_compartments_are_not_implemented_fails() {
-        let mut readme = readme_with_rows((1, 60), (2, 140));
-        readme.push_str(
+    fn a_text_that_still_says_two_compartments_are_not_implemented_fails() {
+        let mut validation = validation_with_rows((1, 60), (2, 140));
+        validation.push_str(
             "| Other | x | y | z | user-written models, two-compartment models (not implemented) |\n",
         );
-        let files = [("README.md", readme.as_str()), (REGISTRY, REGISTRY_OK)];
-        let findings = two_compartment_readme(&tree(&files));
+        let files = [(VALIDATION, validation.as_str()), (REGISTRY, REGISTRY_OK)];
+        let findings = two_compartment_claims(&tree(&files));
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(findings[0].message.contains("not implemented"));
         assert_eq!(findings[0].line, 7, "the line of the stale clause");
+
+        // The README is read for the stale clause too.
+        let readme = "Two-compartment models are not implemented.\n";
+        let validation = validation_with_rows((1, 60), (2, 140));
+        let files = [
+            ("README.md", readme),
+            (VALIDATION, validation.as_str()),
+            (REGISTRY, REGISTRY_OK),
+        ];
+        let findings = two_compartment_claims(&tree(&files));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert_eq!(findings[0].file, "README.md");
     }
 
     #[test]
-    fn a_readme_with_the_two_compartment_row_and_no_stale_clause_passes() {
+    fn a_report_with_the_two_compartment_row_and_no_stale_clause_passes() {
         // The not-implemented clause of user-written models sits next to a two-compartment fit
         // in the same cell: separate clauses, so no finding.
-        let mut readme = readme_with_rows((1, 60), (2, 140));
-        readme.push_str(
+        let mut validation = validation_with_rows((1, 60), (2, 140));
+        validation.push_str(
             "| Other | x | y | z | user-written models (not implemented); the two-compartment fit (no reference) |\n",
         );
-        let files = [("README.md", readme.as_str()), (REGISTRY, REGISTRY_OK)];
-        let findings = two_compartment_readme(&tree(&files));
+        let files = [(VALIDATION, validation.as_str()), (REGISTRY, REGISTRY_OK)];
+        let findings = two_compartment_claims(&tree(&files));
         assert!(findings.is_empty(), "{findings:?}");
     }
 
@@ -1312,8 +1598,8 @@ pub const MODELS: &[Model] = &[
         let registry = "Model { id: \"pk1.iv_bolus\" },\n";
         let readme = "See `docs/conformance.md`. Two-compartment models are not implemented.\n";
         let files = [("README.md", readme), (REGISTRY, registry)];
-        assert!(two_compartment_readme(&tree(&files)).is_empty());
-        assert!(two_compartment_readme(&tree(&[("README.md", readme)])).is_empty());
+        assert!(two_compartment_claims(&tree(&files)).is_empty());
+        assert!(two_compartment_claims(&tree(&[("README.md", readme)])).is_empty());
     }
 
     #[test]
@@ -1353,20 +1639,21 @@ pub const MODELS: &[Model] = &[
     }
 
     #[test]
-    fn the_specs_counts_note_names_the_line_of_the_readme_row() {
-        let readme = "intro\n\n\
-                      | `specs/nca.md` | 5 | 0 | 0 | 0 |\n";
+    fn the_specs_counts_note_names_the_line_of_the_table_row() {
+        let validation = "intro\n\n\
+                          | `specs/nca.md` | 5 | 0 | 0 | 0 |\n";
         let nca = "- Status: `confirmed by oracle`\n";
-        let findings = specs_counts(&tree(&[("README.md", readme), ("specs/nca.md", nca)]));
+        let findings = specs_counts(&tree(&[(VALIDATION, validation), ("specs/nca.md", nca)]));
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert_eq!(findings[0].line, 3);
     }
 
     #[test]
     fn a_truncated_table_row_is_skipped_without_a_panic() {
-        let readme = "See `docs/conformance.md`.\n|||||\n| `specs/nca.md` | 1 |\n| a | b | c |\n";
-        assert_eq!(readme_claims(readme), Some(Vec::new()));
-        assert!(specs_counts(&tree(&[("README.md", readme)])).is_empty());
+        let validation =
+            format!("{COVERAGE_HEADING}\n|||||\n| `specs/nca.md` | 1 |\n| a | b | c |\n");
+        assert_eq!(coverage_claims(&validation), Some(Vec::new()));
+        assert!(specs_counts(&tree(&[(VALIDATION, validation.as_str())])).is_empty());
         assert!(
             coverage("## Models against exact closed-form values\n|||||\n| a | pk1.x |\n")
                 .is_empty()
@@ -1411,11 +1698,12 @@ pub const MODELS: &[Model] = &[
 
     #[test]
     fn a_consistent_tree_has_no_finding_but_the_drift_note() {
-        let readme = readme_with_rows((1, 60), (2, 140));
+        let validation = validation_with_rows((1, 60), (2, 140));
         let files = [
             (CONFORMANCE, CONFORMANCE_OK),
             (REGISTRY, REGISTRY_OK),
-            ("README.md", readme.as_str()),
+            (VALIDATION, validation.as_str()),
+            ("README.md", README_CLEAN),
             ("Cargo.toml", "[workspace.package]\nversion = \"0.1.0\"\n"),
             ("CITATION.cff", "version: 0.1.0\n"),
         ];
@@ -1427,12 +1715,139 @@ pub const MODELS: &[Model] = &[
         findings.extend(versions(&tree));
         findings.extend(specs_index(&tree));
         findings.extend(claims_checked(&tree));
-        findings.extend(two_compartment_readme(&tree));
+        findings.extend(two_compartment_claims(&tree));
         findings.extend(specs_counts(&tree));
+        findings.extend(readme_figures(&tree));
         assert!(
             findings.is_empty(),
             "--strict must be able to pass: {findings:?}"
         );
+    }
+
+    /// A README that states no figure: versions, dates, years, ports, `file:line` references, fractions
+    /// of symbols, and figures inside a fenced code block are all allowed.
+    const README_CLEAN: &str = "\
+# Caladrius
+
+Rust 1.99.1 and `v0.3.2` (2026-10-22), first built in 2026. The server listens on port 8080.
+See `xtask/src/review.rs:42` and the weightings `1/y`, `1/y²` and `1/ŷ`; CV% is a column, 1e-6 a tolerance.
+Ten of the twelve models, and 10 of the models: no number follows. <https://example.org/a/12/25/b>
+Step 2 of the guide is at 29/10/2026 or 12 - 25 in a range.
+
+```sh
+cargo xtask review   # 48,955 of 48,955 values, 100.0 %, 12/25 cases
+```
+";
+
+    /// A README that states figures: one line for each kind, and a worded ratio.
+    const README_FIGURES: &str = "\
+# Caladrius
+
+The conformance table holds 48,955 values.
+It checks 12/25 cases, or 12 / 25, or 12 of 25, or 12 out of 25.
+Coverage is 97.5 % on the first run and 100% on the second.
+Also 4 294 967 295 and **48** of **49** appear.
+
+```sh
+cargo xtask review   # 1,000 of 2,000, 50 %
+```
+";
+
+    #[test]
+    fn a_readme_without_a_figure_passes() {
+        let findings = readme_figures(&tree(&[("README.md", README_CLEAN)]));
+        assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    #[test]
+    fn a_readme_that_states_a_ratio_a_percentage_or_a_thousands_number_fails() {
+        let findings = readme_figures(&tree(&[("README.md", README_FIGURES)]));
+        assert!(
+            findings
+                .iter()
+                .all(|f| f.kind == Kind::Fail && f.rule == "review-readme-figures"),
+            "{findings:?}"
+        );
+        let places: Vec<(usize, &str)> = findings
+            .iter()
+            .map(|f| {
+                let kind = ["a ratio", "a percentage", "a thousands-separated number"]
+                    .into_iter()
+                    .find(|kind| f.message.contains(kind))
+                    .unwrap_or("?");
+                (f.line, kind)
+            })
+            .collect();
+        assert_eq!(
+            places,
+            [
+                (3, "a thousands-separated number"),
+                (4, "a ratio"),
+                (5, "a percentage"),
+                (6, "a ratio"),
+                (6, "a thousands-separated number"),
+            ],
+            "{findings:?}"
+        );
+        assert!(findings[1].message.contains("`12/25`"), "{findings:?}");
+        assert!(findings[0].message.contains("`48,955`"), "{findings:?}");
+        // Nothing inside the fenced block (lines 8 to 10) is read.
+        assert!(findings.iter().all(|f| f.line < 8), "{findings:?}");
+    }
+
+    #[test]
+    fn each_kind_of_figure_is_recognised_on_its_own() {
+        for (text, kind) in [
+            ("12/25", "a ratio"),
+            ("12 / 25", "a ratio"),
+            ("(12/25)", "a ratio"),
+            ("12 of 25", "a ratio"),
+            ("12 out of 25", "a ratio"),
+            ("`12` of `25`", "a ratio"),
+            ("48 %", "a percentage"),
+            ("48%", "a percentage"),
+            ("97.5%", "a percentage"),
+            ("48,955", "a thousands-separated number"),
+            ("48 955", "a thousands-separated number"),
+            ("48\u{a0}955", "a thousands-separated number"),
+            ("4,294,967,295.", "a thousands-separated number"),
+        ] {
+            let found: Vec<&str> = figures_in(text).into_iter().map(|(kind, _)| kind).collect();
+            assert_eq!(found, [kind], "{text}");
+        }
+    }
+
+    #[test]
+    fn what_is_not_a_figure_is_not_reported() {
+        for text in [
+            "v0.3.2",
+            "1.99.1, the compiler",
+            "2026-10-29",
+            "in 2026",
+            "port 8080",
+            "src/lib.rs:123",
+            "1/y and 1/y\u{b2}",
+            "CV%",
+            "a CV % column and a % sign",
+            "10 of the 12 models",
+            "0,001 is a decimal comma",
+            "29/10/2026",
+            "https://example.org/12/25",
+            "SHA-256 and JSON-RPC 2.0, one message per line",
+        ] {
+            assert!(
+                figures_in(text).is_empty(),
+                "{text}: {:?}",
+                figures_in(text)
+            );
+        }
+    }
+
+    #[test]
+    fn a_missing_readme_fails_the_figures_rule() {
+        let findings = readme_figures(&tree(&[]));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert_eq!(findings[0].kind, Kind::Fail);
     }
 
     #[test]
