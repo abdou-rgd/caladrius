@@ -10,11 +10,13 @@ Caladrius is also the verified calculation layer of **Apothicaire**, a local DMP
 
 Read this whole file before doing anything. If a task conflicts with this file, this file wins.
 
+**Motto: we should be more ambitious.** Ambitious in what we build and test, never in what we claim. Each role says what this means for it in `.claude/agents/`, and every report ends with one bolder next step, which the human decides on (section 10, rule 7).
+
 ## 1. Scope
 
 In scope (v1): data worksheet (CSV import), NCA, XY plots, one-compartment models (bolus, infusion, zero- and first-order absorption, tlag), weighted fitting, export of result tables, a CLI and an MCP server exposing the command registry.
 
-Only afterwards, in this order: two compartments, user-written models (ODEs), several subjects.
+Only afterwards, in this order: two compartments, user-written models (ODEs), several subjects. Start an item only when `docs/conformance.md` is green for everything before it.
 
 Out of scope: population modelling (NLME), bioequivalence, IVIVC. Do not start them, not even "to prepare".
 
@@ -39,7 +41,7 @@ Agents do everything else. Ask the human only when none of the rules below settl
 6. **Never crash.** Outside tests: no `unwrap()`, `expect()`, `panic!`, `todo!`, `unreachable!`, no `[i]` indexing on input-derived data (denied by `cargo xtask lint` through `clippy::indexing_slicing` in the four numerical crates, library targets; checked in review elsewhere), no `unsafe`. Every crate starts with `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unreachable)]`. NaN, zero or negative concentrations, values below the limit of quantification, duplicated or unsorted times, non-estimable λz, singular matrix, non-convergence: each gives a readable error and a regression test.
 7. **Thin, data-driven UI.** UI state is serializable. Colours, radii and spacing come from a theme token file (light and dark), never hard-coded.
 8. **Look at what you draw.** Every UI change is rendered offscreen to PNG (`cargo run -p caladrius-ui --example snapshot`) and looked at before delivery.
-9. **Never break wasm.** Layers L0 to L3 compile for `wasm32-unknown-unknown`. Platform-only code (files, threads, processes) is gated behind `cfg` and lives in `apps/`. Until step 6 of the marching order, `cargo xtask wasm` is advisory; from step 6 on, it is a gate.
+9. **Never break wasm.** Layers L0 to L3 compile for `wasm32-unknown-unknown`. Platform-only code (files, threads, processes) is gated behind `cfg` and lives in `apps/`. `cargo xtask wasm` is a gate.
 10. **Same numbers on every machine.** The desktop application, the command line, the MCP server and the page in the browser are one engine, and what `Engine::execute` returns must not depend on where it runs. The standard library's `exp`, `ln`, `powf`, `powi`, `sin`... call the platform's maths library and are not rounded alike on Windows, Linux, macOS and WebAssembly. In the numerical crates, the engine and `xtask`, `clippy.toml` bans them (`disallowed-methods`) and the code calls the pure Rust `libm` (`libm::exp(x)`), pinned to one version in the manifests; `sqrt`, `abs`, `floor`, sums, products and quotients are rounded the same everywhere and stay. `caladrius-ui` and `caladrius-testkit` opt out in their crate root, with the reason. `cargo xtask digest` runs a fixed workload through the engine and prints one SHA-256 of the answers; CI runs it on Linux, Windows, macOS and in WebAssembly under Node, and fails on any difference. A new `libm` version changes the digest: upgrade it on purpose, with `docs/conformance.md` regenerated. Known gaps, listed rather than fixed: `min`, `max` and `clamp` may return either zero when they meet +0 and -0 (only the sign of a zero can differ, and the digest tells them apart), and `usize` is 32 bits on wasm32 (an option above 4 294 967 295 is refused with another message there). The answer of every command is sealed (`caladrius-engine`, `seal`: the SHA-256 of the command, its parameters and its answer) and `project.replay` runs a saved history again against its seals (`docs/reproducibility.md`), so an answer is a function of the parameters and of the project alone: no clock, no random number, no path and no fact about the machine in it (a time or a version goes beside the seal, never in it). Changing what is hashed changes every seal: bump `seal::FORMAT` (a seal of another format is not recomputed) and say so in the card.
 
 ## 4. Repository map and layers
@@ -48,11 +50,9 @@ Agents do everything else. Ask the human only when none of the rules below settl
 crates/
   caladrius-nca      L0  AUC (linear, log-linear, mixed), λz, t½, extrapolation, AUMC, MRT, CL/F, Vz/F, Vss
   caladrius-models   L0  closed-form solutions: 1 then 2 compartments, bolus, infusion, zero- and first-order absorption, tlag
-  caladrius-fit      L0  weighted least squares (1, 1/y, 1/y², 1/ŷ, 1/ŷ²); outputs: final parameters (estimate, standard error,
-                         CV%, univariate and planar confidence intervals), secondary parameters, diagnostics (corrected and
-                         weighted sums of squares, residual SS, S, DF, correlation observed/predicted, AIC, SBC), correlation and
-                         variance-covariance matrices, eigenvalues, condition numbers, partial derivatives, predicted data,
-                         minimization trace
+  caladrius-fit      L0  weighted least squares (1, 1/y, 1/y², 1/ŷ, 1/ŷ²): estimates with SE, CV% and intervals, secondary
+                         parameters, diagnostics (sums of squares, S, DF, AIC, SBC), matrices, eigenvalues, condition numbers,
+                         partial derivatives, predicted data, minimization trace
   caladrius-project  L1  project model: worksheets, workflow objects, results (pure data, serde)
   caladrius-engine   L2  command registry, history, seals, replay, export
   caladrius-ui       L3  egui interface
@@ -62,7 +62,8 @@ apps/
   caladrius          desktop application
   caladrius-cli      the same without a window
   caladrius-mcp      MCP server exposing the command registry to agents (Apothicaire)
-xtask/               layers | wasm | conformance | ci
+  caladrius-web      the same interface in a browser page (WebAssembly)
+xtask/               layers | lint | review | wasm | web | conformance | digest
 specs/               behaviour and UX specifications, written by us
 oracle/              public data and expected results (versioned)
 private/             reference exports, coursework data, screenshots (git-ignored)
@@ -123,51 +124,62 @@ Design goal: a user of the reference software finds the same way of working (pro
 
 ## 8. Agent organization
 
-| Role | Model | Does | Does not |
-|---|---|---|---|
-| `orchestrator` | Fable (else Opus) | splits, assigns, reads reports, keeps the board, decides | write code, read large files |
-| `engine` | Opus | `caladrius-nca`, `caladrius-models`, `caladrius-fit`: everything that produces a number | UI |
-| `reader` | Sonnet | `specs/` from the allowed sources and the screenshots | code |
-| `oracle` | Sonnet | `oracle/`, `caladrius-testkit`, R scripts, tests that fail first | fix the engine to make a test pass |
-| `interface` | Sonnet | `caladrius-project`, `caladrius-engine` commands, `caladrius-ui`, `caladrius-cli`, `caladrius-mcp` | numerical code |
-| `reviewer` | Sonnet | reviews a diff it did not see being written; hunts panic paths and bypassed tolerances | modify the reviewed code |
-| `janitor` | Haiku | formatting, renames, file moves, board housekeeping asked by the orchestrator | any decision |
+The main session is the **orchestrator**: it plans the iteration (section 9), writes the cards, delegates, integrates, runs the verification itself and talks to the human in French. Every other role is a file `.claude/agents/<role>.md`, with its model and effort in the front matter; `cargo xtask lint` checks that they agree with this table.
 
-Definitions live in `.claude/agents/<role>.md`, with the model in the front matter. The orchestrator creates them at step 0.
+| Role | Model, effort | Does | Does not | Why this model |
+|---|---|---|---|---|
+| `orchestrator` | Opus, max | plans, writes cards, delegates, integrates, verifies, keeps the board | write code, read large files | it holds the longest context, so not the dearest model |
+| `engine` | Opus, high | `caladrius-nca`, `caladrius-models`, `caladrius-fit`: everything that produces a number | UI | long agentic coding where a wrong digit matters |
+| `reader` | Sonnet, high | `specs/` from the allowed sources and the screenshots | code | careful reading against a clear card |
+| `oracle` | Sonnet, high | `oracle/`, `caladrius-testkit`, R scripts, tests that fail first | fix the engine to make a test pass | a clear card, and another model than the engine it checks |
+| `interface` | Sonnet, high | the workspace, `xtask`, `caladrius-project`, `caladrius-engine` commands, `caladrius-ui`, `caladrius-cli`, `caladrius-mcp` | numerical code | routine coding against a clear card |
+| `reviewer` | Fable, high | reviews a diff it did not see being written; the iteration audit | modify the reviewed code | it reasons hardest and wrote none of the code |
+| `janitor` | Haiku, low | formatting, renames, file moves, board housekeeping asked by the orchestrator | any decision | mechanical work |
+| `onizuka` | Opus, high | explains a part of Officina to the human, in French; the learning page of each iteration | edit a repository | teaching from the real code |
 
 Rules:
 
-- A subagent receives **one** task from the board, with its allowed files and its completion criterion. It returns a report of at most ten lines: what was done, the numbers, what is still open.
+- A subagent receives **one** card, with its allowed files and its completion criterion. It returns a report of at most ten lines: what was done, the numbers, what is still open, and one bolder next step.
+- A subagent's report is a claim, not a proof: the orchestrator runs the card's completion command itself before marking it done.
 - Whoever writes an oracle test does not write the code under test.
-- Every change in `caladrius-nca`, `caladrius-models` or `caladrius-fit` goes through the `reviewer` before being marked done.
+- Every change in `caladrius-nca`, `caladrius-models` or `caladrius-fit` goes through `reviewer` before being marked done. `reviewer` gets a diff and its card, never a whole crate; a card outside the numerical crates may be reviewed with `model: sonnet`.
 - Parallel work: two agents never touch the same crate. Each uses `CARGO_TARGET_DIR=target/agent-<role>`. A new module per feature instead of growing a shared file. If someone else's work breaks the build, wait and retry; do not fix their files.
+- Agent files load when a session starts in this repository. After adding or renaming one, start a new session before delegating to it.
 
 ## 9. The shared board
 
 ```text
 board/
   INDEX.md          overview: one line per task (id, title, role, state). Only the orchestrator writes it.
-  tasks/T-042.md    one card per task. Only the assignee writes it, plus the orchestrator.
+  tasks/T-042.md    one card per task, iterations included. Only the assignee writes it, plus the orchestrator.
   LOG.md            append-only: one entry per finished task.
   QUESTIONS.md      questions for the human, with the decision taken meanwhile.
   messages/         one file per message between agents: <date>-<from>-<to>-<subject>.md
 ```
 
-Task card: goal, allowed files, verifiable completion criterion (a command and its expected result), dependencies, state (`todo`, `in progress`, `to review`, `done`, `blocked`), then a dated thread of notes.
+Task card: goal, allowed files, verifiable completion criterion (a command and its expected result), dependencies, state (`todo`, `in progress`, `to review`, `done`, `blocked`), then a dated thread of notes. A card that belongs to an iteration says so in its header: `- **Iteration:** T-xxx`.
 
 One file per task and per message: this is what stops two agents from editing the same file. Subagents do not talk to each other directly; they write in `messages/` and the orchestrator relays. The board is versioned: it is also the project's memory from one session to the next.
+
+**One session = one iteration.** An iteration is a card titled `Iteration <n>: <name>`, with `- **Kind:** iteration` in its header; no other file holds the plan. It is `done` only when none of its cards is `todo`, `in progress` or `to review`, and `cargo xtask lint` checks its sections.
+1. **Brief**, a `## Brief` section, before any work: `**Goal.**`, `**Deliverables.**`, `**Claims touched.**` (the published figures it may change), `**Done when.**` and `**Plan.**` (wave, card, role). Each card is written before it is assigned, so that a cut session resumes from it.
+2. **Delegate**: the independent cards of a wave run in parallel, within section 10, rule 2.
+3. **Verify**: the orchestrator integrates, then runs section 11 on the whole tree itself.
+4. **Audit**: `reviewer` reads the iteration's whole diff; every finding is fixed or logged on its card.
+5. **Outcome**, a `## Outcome` section: the results with their denominators, the lessons, and `**Bolder next step.**`, proposed to the human and not started.
+6. **Teach**: `onizuka` writes the iteration's learning page in French; the orchestrator checks it, publishes it as an Artifact and links it as `**Learning page.**`.
 
 ## 10. Budget: subscription constraints
 
 The project runs on a Max subscription, with no pay-as-you-go billing. The quota refills in windows; when it runs out, the session stops dead, with no warning. Consequences:
 
 1. **Always resumable.** After each task: tree builds, tests green, commit, entry in `LOG.md`. A session can be cut at any moment; the next one restarts from the board, not from conversation memory.
-2. **Sequential by default.** At most 2 subagents in parallel, and only on independent crates. Never 8.
-3. **The most expensive model reads the least.** The orchestrator reads the board and the reports, not the code. Opus is reserved for the `engine` role. File search, renames, formatting: Sonnet or lighter.
+2. **Two at a time.** At most 2 subagents in parallel, only on independent cards that share no crate and no file, and at most one of them on Fable. Never 8.
+3. **The most expensive model reads the least.** Fable reads a diff and its card. The orchestrator reads the board, the reports and the output of the commands it re-runs, not the code. File search, renames, formatting: Sonnet or lighter.
 4. **Small tasks.** A task fits in one subagent's context: one function and its tests, not a whole crate.
 5. **No loops.** Three failed attempts on the same test: the task becomes `blocked` with the diagnosis, and you switch tasks.
 6. **Do not re-read needlessly.** Read the parts of a file you need, not the whole file; do not rerun the whole test suite when one crate is enough.
-7. **No speculative work.** Nothing outside section 1, no rewrite "while we're at it".
+7. **No speculative work.** Nothing outside section 1, no rewrite "while we're at it". A bolder next step is a proposal to the human, never work started on its own.
 8. **No paid service.** No billed API, no paid CI, no dependency under a commercial license.
 
 ## 11. Before you finish a task
@@ -176,7 +188,8 @@ The project runs on a Max subscription, with no pay-as-you-go billing. The quota
 cargo test -p <crates you touched>
 cargo clippy -p <crates you touched> --all-targets -- -D warnings
 cargo xtask layers
-cargo xtask wasm          # if L0 to L3 changed (advisory until step 6)
+cargo xtask lint && cargo xtask review   # the mechanical rules, the board, the agent files, the README figures
+cargo xtask wasm          # if L0 to L3 changed
 cargo xtask conformance   # if a number changed; commit docs/conformance.md
 cargo xtask digest        # if the arithmetic of a result changed: the digest is the same on every platform (CI compares them)
 ```
@@ -184,16 +197,3 @@ cargo xtask digest        # if the arithmetic of a result changed: the digest is
 Then: task card updated, entry in `LOG.md`, commit whose message starts with the task id.
 
 Forbidden without written agreement in `QUESTIONS.md`: `git push`, changing the repository's visibility, deleting files outside the repository, installing software outside package managers (cargo, rustup, R), touching `private/` other than reading it.
-
-## 12. Marching order
-
-0. Skeleton: workspace, empty crates, `xtask layers`, agent definitions, board, `.gitignore` with `private/`.
-1. `specs/` for NCA, public `oracle/`, tests **that fail**. Nothing else.
-2. `caladrius-nca` up to 100% of the public oracle, then of the private oracle if present.
-3. `caladrius-models` and `caladrius-fit`: one-compartment oral, then zero-order absorption and infusion.
-4. `caladrius-cli` and `caladrius-mcp`: a CSV in, result tables out; the same commands over MCP.
-5. `specs/ux.md`, then the UI: worksheet, NCA with λz point selection on the plot, fitting with the live curve, observed/predicted and residual plots.
-6. WebAssembly demo and README with the conformance table.
-7. Only then: two compartments, user-written models, several subjects.
-
-Move to the next step only when the previous step's criterion is green in `docs/conformance.md`.

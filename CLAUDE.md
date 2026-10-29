@@ -3,6 +3,10 @@
 Read `AGENTS.md` in full before any code change. It is this repository's contract (scope, golden rules,
 tolerances, layers, board) and wins over any task that conflicts with it.
 
+**Motto: we should be more ambitious.** Ambitious in what we build and test, never in what we claim.
+One session is one iteration (`AGENTS.md` section 9): its card holds the brief, the outcome, the bolder
+next step (proposed to Abdou, never started on its own) and the link to the learning page.
+
 - **One agent.** In a cloud session you are the only agent: the roles of `AGENTS.md` section 8 and
   `.claude/agents/*.md` say how work is split, they are not subagents to start. Keep the separations
   that matter: whoever writes an oracle test does not write the code under test, and a change in
