@@ -7,7 +7,7 @@
 
 ## State
 
-- **Iterations.** None has run yet. T-113 to T-118 (merged and pushed on 2026-10-29: 2e3b2b0 here, apothicaire 278929c, umbrella 32b6953) brought in the motto, the roles with their model and effort, the iteration loop and its lint, and one place for Onizuka. Iteration 1, chosen by Abdou: review the interface stack (prompt in `../notes/prompt-iteration-1-interface-2026-10-29.md`); the demo of 2026-11-17 stays on the current interface.
+- **Iterations.** None has run yet. T-113 to T-118 (merged and pushed on 2026-10-29: 2e3b2b0 here, apothicaire 278929c, umbrella 32b6953) brought in the motto, the roles with their model and effort, the iteration loop and its lint, and one place for Onizuka. Iteration 1 (T-124, brief written 2026-10-29, waiting for Abdou's go): READMEs that do not drift. Iteration 2, chosen by Abdou: review the interface stack (prompt in `../notes/prompt-iteration-2-interface-2026-10-29.md`); the demo of 2026-11-17 stays on the current interface. The site redesign (T-123) comes after it.
 - **Last pieces merged** (Sceau, 2026-10-23): T-111 same numbers on every machine (#19, 634ad58), T-112 a seal on every result and `project.replay` (#20, cb327a0); the site serves cb327a0 under `/app/`; apothicaire#19 re-golded the bench after T-111; gate v3 was killed by its pre-registered rule (apothicaire#18, 557/600 turns against 562), so v1 stays the demo gate. Details: the cards, `LOG.md` and git history.
 - **First deadline:** the demo at Sanofi Montpellier on 2026-11-17 (`../notes/insights-audit-2026-10-16.md` section 4).
 
