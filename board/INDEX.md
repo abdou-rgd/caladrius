@@ -133,3 +133,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-120 | Apothicaire README and plan agree with the code and the ledger | orchestrator (apothicaire) | done | |
 | T-121 | OptChat README states the v9 runs and one runtime decision | orchestrator (optchat) | done | |
 | T-122 | Umbrella README, site text, notes, PC README and profile agree with the repositories | orchestrator (officina umbrella) | done | T-119, T-120, T-121 |
+| T-123 | Website redesign from Abdou's workbench mockup | orchestrator (officina umbrella) | todo | iteration 1 |
