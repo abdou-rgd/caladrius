@@ -124,7 +124,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-111 | Same numbers on every machine: `libm` for the platform-dependent float functions, `cargo xtask digest`, a CI digest matrix (Linux, Windows, macOS, wasm32 under Node) | engine | done | T-110 |
 | T-112 | A seal on every result and `project.replay`: the history of a saved project run again and checked bit for bit, in the engine, the CLI, MCP, the desktop application and the browser page | engine | done | T-111 |
 | T-113 | Contract: the motto, the roles with their model and effort, one session = one iteration | orchestrator | done | |
-| T-114 | The six role files in one fixed structure, with their effort | orchestrator | todo | T-113 |
+| T-114 | The six role files in one fixed structure, with their effort | orchestrator | done | T-113 |
 | T-115 | Onizuka in one place, at most 200 lines, writing the learning page of each iteration | orchestrator | todo | T-113 |
 | T-116 | `cargo xtask lint` checks iterations, agent files and the size of the contract | interface | todo | T-113, T-114, T-115 |
 | T-117 | `board/RESUME.md` short, around the iteration loop | orchestrator | todo | T-113 |

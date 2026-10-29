@@ -139,7 +139,7 @@ The main session is the **orchestrator**: it plans the iteration (section 9), wr
 
 Rules:
 
-- A subagent receives **one** card, with its allowed files and its completion criterion. It returns a report of at most ten lines: what was done, the numbers, what is still open, and one bolder next step.
+- A subagent receives **one** card, with its allowed files and its completion criterion. It returns a report of at most ten lines (an audit: one line per finding): what was done, the numbers, what is still open, and one bolder next step.
 - A subagent's report is a claim, not a proof: the orchestrator runs the card's completion command itself before marking it done.
 - Whoever writes an oracle test does not write the code under test.
 - Every change in `caladrius-nca`, `caladrius-models` or `caladrius-fit` goes through `reviewer` before being marked done. `reviewer` gets a diff and its card, never a whole crate; a card outside the numerical crates may be reviewed with `model: sonnet`.
