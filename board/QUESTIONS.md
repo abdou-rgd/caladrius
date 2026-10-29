@@ -198,3 +198,11 @@ Answer (2026-10-09, human): option 2. The default fit uses analytic derivatives 
 Since T-115, Onizuka has one place: `.claude/agents/onizuka.md` in this repository, the master copy. The French command `C:\Users\abdou\.claude\commands\onizuka.md` (235 lines, an earlier version) is still offered in every Claude Code session of the PC, other projects included. It lies outside every repository, so section 11 needs written agreement before it is deleted. Options: (1) delete it; (2) keep it as the human's own shortcut, knowing that it is no longer updated.
 
 Decision taken meanwhile: kept, untouched. `~/.claude/commands/plume.md` stays where it is either way (one place already; it holds the owner's biography and personal texts, which stay out of public repositories).
+
+Answer (2026-10-29, human, in chat): "puis tu supprimes Q-015", read by the orchestrator as option 1: the user-level command is deleted. Done the same day.
+
+## Q-016 (2026-10-29, orchestrator): merge and push the branches of T-113 to T-118
+
+`contract/iterations` (this repository), `onizuka/one-place` (apothicaire) and `method/iterations` (officina umbrella) were committed and not pushed, as asked. Q-013 covers pushes of this repository only.
+
+Answer (2026-10-29, human, in chat): "on fusionne et push d'abord". The three branches are merged into their `main` and pushed. A push of the umbrella's `main` deploys the site only when `site/**` changes; `METHOD.md` does not.
