@@ -86,7 +86,7 @@ Tolerances (defined once in `caladrius-testkit`, never loosened inside a test):
 - Against a reference export: equality at the precision displayed in the export.
 - Fitting: parameters within 1e-4 relative, weighted sum of squares within 1e-6 relative. Two optimizers do not reach the same minimum bit for bit; a gap beyond tolerance is a method difference to document in `specs/differences.md`, not a tolerance to widen.
 
-"100% reproduction" means: 100% of in-scope parameters, within these tolerances, on every oracle case. `cargo xtask conformance` generates `docs/conformance.md` (validated parameters per case); never edit that file by hand.
+"100% reproduction" means: 100% of in-scope parameters, within these tolerances, on every oracle case. `cargo xtask conformance` generates `docs/conformance.md` (validated parameters per case); never edit that file by hand. The README states no measured figure (`review-readme-figures`): each figure lives in its owner file (`docs/conformance.md`, `docs/validation.md`, a release note) and the README links to it.
 
 ## 6. Reference documentation: how to use it
 
@@ -167,7 +167,7 @@ One file per task and per message: this is what stops two agents from editing th
 3. **Verify**: the orchestrator integrates, then runs section 11 on the whole tree itself.
 4. **Audit**: `reviewer` reads the iteration's whole diff; every finding is fixed or logged on its card.
 5. **Outcome**, a `## Outcome` section: the results with their denominators, the lessons, and `**Bolder next step.**`, proposed to the human and not started.
-6. **Teach**: `onizuka` writes the iteration's learning page in French; the orchestrator checks it, publishes it as an Artifact and links it as `**Learning page.**`.
+6. **Teach**: `onizuka` writes the iteration's learning page in French; the orchestrator checks it, publishes it as an Artifact and links it as `**Learning page.**`; when the human waives it for an iteration, the line says `none` and why.
 
 ## 10. Budget: subscription constraints
 
@@ -188,7 +188,7 @@ The project runs on a Max subscription, with no pay-as-you-go billing. The quota
 cargo test -p <crates you touched>
 cargo clippy -p <crates you touched> --all-targets -- -D warnings
 cargo xtask layers
-cargo xtask lint && cargo xtask review   # the mechanical rules, the board, the agent files, the README figures
+cargo xtask lint && cargo xtask review   # the mechanical rules, the board, the agent files, the validation figures, a README without figures
 cargo xtask wasm          # if L0 to L3 changed
 cargo xtask conformance   # if a number changed; commit docs/conformance.md
 cargo xtask digest        # if the arithmetic of a result changed: the digest is the same on every platform (CI compares them)

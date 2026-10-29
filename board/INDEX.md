@@ -134,8 +134,8 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-121 | OptChat README states the v9 runs and one runtime decision | orchestrator (optchat) | done | |
 | T-122 | Umbrella README, site text, notes, PC README and profile agree with the repositories | orchestrator (officina umbrella) | done | T-119, T-120, T-121 |
 | T-123 | Website redesign from Abdou's workbench mockup | orchestrator (officina umbrella) | todo | iteration 1 |
-| T-124 | Iteration 1: READMEs that do not drift | orchestrator | todo | T-119, T-120, T-121, T-122 |
-| T-125 | Caladrius README without figures; review reads the moved tables | interface | todo | |
-| T-126 | Apothicaire README without figures; the details in docs/ | interface (apothicaire) | todo | |
-| T-127 | OptChat README short; the bench history in BENCH.md | interface (optchat) | todo | |
-| T-128 | Umbrella README, profile and the rule written once | orchestrator | todo | T-125, T-126, T-127 |
+| T-124 | Iteration 1: READMEs that do not drift | orchestrator | in progress | T-119, T-120, T-121, T-122 |
+| T-125 | Caladrius README without figures; review reads the moved tables | interface | done | |
+| T-126 | Apothicaire README without figures; the details in docs/ | interface (apothicaire) | done | |
+| T-127 | OptChat README short; the bench history in BENCH.md | interface (optchat) | done | |
+| T-128 | Umbrella README, profile and the rule written once | orchestrator | done | T-125, T-126, T-127 |
