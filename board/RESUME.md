@@ -7,7 +7,7 @@
 
 ## State
 
-- **Iterations.** None has run yet. T-113 to T-118 (branch `contract/iterations`, not pushed) brought in the motto, the roles with their model and effort, the iteration loop and its lint; branch `onizuka/one-place` of `../agent` removes the second copy of Onizuka. Abdou decides the merge and the push.
+- **Iterations.** None has run yet. T-113 to T-118 (merged and pushed on 2026-10-29: 2e3b2b0 here, apothicaire 278929c, umbrella 32b6953) brought in the motto, the roles with their model and effort, the iteration loop and its lint, and one place for Onizuka. Iteration 1, chosen by Abdou: review the interface stack (prompt in `../notes/prompt-iteration-1-interface-2026-10-29.md`); the demo of 2026-11-17 stays on the current interface.
 - **Last pieces merged** (Sceau, 2026-10-23): T-111 same numbers on every machine (#19, 634ad58), T-112 a seal on every result and `project.replay` (#20, cb327a0); the site serves cb327a0 under `/app/`; apothicaire#19 re-golded the bench after T-111; gate v3 was killed by its pre-registered rule (apothicaire#18, 557/600 turns against 562), so v1 stays the demo gate. Details: the cards, `LOG.md` and git history.
 - **First deadline:** the demo at Sanofi Montpellier on 2026-11-17 (`../notes/insights-audit-2026-10-16.md` section 4).
 
@@ -18,12 +18,12 @@
 
 ## Waiting for Abdou
 
-- Q-015: remove the user-level `/onizuka` command, or keep it.
+- Q-015, answered (delete): Abdou deletes `C:\Users\abdou\.claude\commands\onizuka.md` by hand; the session's permission check refused it.
 - The Fisher-information design (it needs an amendment of `AGENTS.md` section 1 and the written agreement of the Sanofi tutor); `qc.nca` (differences between NCA tools as named conventions); the plan-first assistant (after the frozen run); the PAGE 2027 abstract (one per participant).
 - Q-012 (reference mini-campaign on Theoph subject 1), the exports of exercises 2 to 4 into `private/exports/td2..4/`, the Windows decimal symbol of the reference software.
 - Todo cards from the red team (T-054 to T-093, `INDEX.md`): most touch `../agent`, `../optchat` or the umbrella.
 
 ## Places
 
-- Publication: https://github.com/abdou-rgd/caladrius. Q-013 authorises pushes of this repository; push after each closed task. The branch `contract/iterations` stays local until Abdou says otherwise.
+- Publication: https://github.com/abdou-rgd/caladrius. Q-013 authorises pushes of this repository; push after each closed task.
 - Apothicaire is `..\agent\` (github.com/abdou-rgd/apothicaire), OptChat `..\optchat\` (github.com/abdou-rgd/optchat). The umbrella is `..\` (`README.md`, `notes/`); its repository github.com/abdou-rgd/officina is checked out in `C:\Users\abdou\officina-umbrella`.

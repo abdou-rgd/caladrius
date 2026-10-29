@@ -129,3 +129,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-116 | `cargo xtask lint` checks iterations, agent files and the size of the contract | interface | done | T-113, T-114, T-115 |
 | T-117 | `board/RESUME.md` short, around the iteration loop | orchestrator | done | T-113 |
 | T-118 | METHOD.md of the officina umbrella follows the new contract | orchestrator (officina umbrella) | done | T-113, T-114, T-115 |
+| T-119 | Caladrius Markdown agrees with the code, the releases and the contract | orchestrator | done | T-113 |
+| T-120 | Apothicaire README and plan agree with the code and the ledger | orchestrator (apothicaire) | in progress | |
+| T-121 | OptChat README states the v9 runs and one runtime decision | orchestrator (optchat) | in progress | |
+| T-122 | Umbrella README, site text, notes, PC README and profile agree with the repositories | orchestrator (officina umbrella) | in progress | T-119, T-120, T-121 |

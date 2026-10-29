@@ -199,10 +199,18 @@ Since T-115, Onizuka has one place: `.claude/agents/onizuka.md` in this reposito
 
 Decision taken meanwhile: kept, untouched. `~/.claude/commands/plume.md` stays where it is either way (one place already; it holds the owner's biography and personal texts, which stay out of public repositories).
 
-Answer (2026-10-29, human, in chat): "puis tu supprimes Q-015", read by the orchestrator as option 1: the user-level command is deleted. Done the same day.
+Answer (2026-10-29, human, in chat): "puis tu supprimes Q-015", read by the orchestrator as option 1: delete the user-level command. Not done by the orchestrator: the session's permission check refused the deletion of a file outside every repository, and it was not worked around. Abdou deletes it by hand (`rm C:/Users/abdou/.claude/commands/onizuka.md`, or `Remove-Item` in PowerShell); until then it stays, no longer updated.
 
 ## Q-016 (2026-10-29, orchestrator): merge and push the branches of T-113 to T-118
 
 `contract/iterations` (this repository), `onizuka/one-place` (apothicaire) and `method/iterations` (officina umbrella) were committed and not pushed, as asked. Q-013 covers pushes of this repository only.
 
 Answer (2026-10-29, human, in chat): "on fusionne et push d'abord". The three branches are merged into their `main` and pushed. A push of the umbrella's `main` deploys the site only when `site/**` changes; `METHOD.md` does not.
+
+## Q-017 (2026-10-29, orchestrator): hosted-model runs and rule 8 ("No paid service. No billed API")
+
+The audit of T-119 to T-122 found that `../agent/bench/FRONTIER_ARM.md` and `../agent/bench/frozen/LEDGER.md` (2026-10-22) record three runs of the agent on hosted models, in a cloud session: 12.17, 20.96 and 10.30 USD, 43.43 USD in all. `AGENTS.md` section 10 rule 8 forbids any billed API, and no entry of this file authorises them. Options: (1) record that Abdou authorised these runs, as an exception for the frontier arm of the frozen set, with a budget; (2) amend rule 8 so that a billed API is allowed for a measurement Abdou approves in writing, never in the product; (3) stop the frontier arm. Meanwhile the READMEs say "nothing leaves the machine" only of the assistant at run time (T-119, T-122).
+
+## Q-018 (2026-10-29, orchestrator): the family name on the GitHub profile
+
+T-104 (Abdou's request of 2026-10-22) removed the family name from the four repositories, and `.claude/agents/onizuka.md` says it never appears, anywhere. The public profile `abdou-rgd/abdou-rgd` starts with the full name (`### Abdallah ...`), as does its copy `../notes/github-profile-README.md`. Options: (1) keep it on the profile only, which is Abdou's own page, and say so in the rule; (2) replace it with « Abdallah » or « Abdou ». Untouched until the answer.

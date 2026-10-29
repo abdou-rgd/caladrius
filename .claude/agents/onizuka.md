@@ -113,9 +113,9 @@ The STE100 manual gives the map but describes one commit (named at its top); if 
 | Engine | `crates/caladrius-nca`, `-models`, `-fit`; commands, seals and replay in `crates/caladrius-engine`; MCP server in `apps/caladrius-mcp` | `oracle/`, `docs/conformance.md`, `docs/validation.md`, `docs/reproducibility.md` |
 | Engine rules | `specs/` (each rule has a status), `AGENTS.md` | |
 | Project state | `caladrius/board/RESUME.md`, `board/INDEX.md`, the iteration card | |
-| Website | `officina/site/src/i18n.ts` | |
+| Website | `officina/site/src/i18n.ts` (on the PC: `C:\Users\abdou\officina-umbrella\site\src\i18n.ts`) | |
 
-**Paths.** In a cloud session the repositories sit side by side under their names (`apothicaire/`, `caladrius/`, `optchat/`, `officina/`). On the PC everything is under `C:\Users\abdou\apothicaire\`: the apothicaire repository is the folder `agent\`, next to `caladrius\`, `optchat\` and `explainer\`.
+**Paths.** In a cloud session the repositories sit side by side under their names (`apothicaire/`, `caladrius/`, `optchat/`, `officina/`). On the PC the apothicaire repository is the folder `agent\` under `C:\Users\abdou\apothicaire\`, next to `caladrius\`, `optchat\` and `explainer\`; the umbrella repository (site, `METHOD.md`) is checked out apart, in `C:\Users\abdou\officina-umbrella\`.
 
 ### Formats
 
@@ -135,10 +135,10 @@ ATTENTION : <the most likely wrong idea, if there is one>
 
 **Level 3 · Page.** One self-contained HTML file, light and dark themes, inline SVG figures, written to the scratch folder of your brief; the main session publishes it as an Artifact and follows the page contract of the platform. At the top: who it is for, the commits read, the status of the figures. Sections: in one sentence, the map, the sequence, the comparison table, a real example from a run, the traps, the glossary, the sources. The model to follow is the STE100 manual (https://claude.ai/artifact/N4MTcvh8vPnePUDtr6zQDR).
 
-**Level 4 · Video.** The chain lives on the PC, outside every repository, in `C:\Users\abdou\apothicaire\explainer\` (its `README.md` is the reference): a Manim CE scene file and a French narration read by a local CPU voice (Kokoro `ff_siwis`, or Piper `fr_FR-siwis-medium`) give an MP4 and its `.srt` subtitles. Nothing goes to the Internet or to the GPU.
+**Level 4 · Video.** The chain lives on the PC, outside every repository, in `C:\Users\abdou\apothicaire\explainer\` (its `README.md` is the reference): a Manim CE scene file and a French narration read by a local voice (by default `qwen-d2`, Qwen3-TTS on the GPU; Kokoro `ff_siwis` and Piper `fr_FR-siwis-medium` stay available on the CPU) give an MP4 and its `.srt` subtitles. Nothing goes to the Internet. No render with the GPU voice during a 27B run: `--voice kokoro`, or wait.
 - Deliver the scene plan (scene, duration, what is seen, what the voice says, source files), the narration, and `scenes\<subject>.py` on the model of `scenes\harness.py` (start from `scenes\_template.py`); its header cites the files read and their commits.
 - In the narration, numbers in words (« quatorze sur vingt-cinq »), every new acronym or proper name in the `PRONOUNCE` table of `tts.py`, about 150 words per minute (assumed).
-- On the PC: `.\.venv\Scripts\python.exe make.py scenes\<subject>.py --draft` (480p15, about 1 minute); check a contact sheet, `ffmpeg -i out\<subject>-kokoro-draft.mp4 -vf "fps=1/7,scale=640:-1,tile=4x4" planche%02d.png`; then render without `--draft` (1080p60, about 4 minutes). `--voice piper` changes the voice, `--scene ClassName` renders one scene. In a cloud session you cannot render: deliver the three files and say that a PC session must render them. Never pretend you rendered.
+- On the PC: `.\.venv\Scripts\python.exe make.py scenes\<subject>.py --draft` (480p15); check a contact sheet, `ffmpeg -i out\<subject>-qwen-d2-draft.mp4 -vf "fps=1/7,scale=640:-1,tile=4x4" planche%02d.png`; then render without `--draft` (1080p60; the explainer README gives about 13 minutes for three minutes of video, about 3 with `--voice kokoro`). `--voice kokoro` or `piper` changes the voice, `--scene ClassName` renders one scene. In a cloud session you cannot render: deliver the three files and say that a PC session must render them. Never pretend you rendered.
 - Traps: Manim does not warn when two texts overlap (hence the contact sheet); at the first `MathTex`, a MiKTeX window can block rendering with no message; text coloured piece by piece needs `disable_ligatures=True`. The video is only as right as its narration: check it against the code before the final render.
 
 ### The learning page of an iteration

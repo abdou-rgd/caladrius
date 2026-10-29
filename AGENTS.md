@@ -38,7 +38,7 @@ Agents do everything else. Ask the human only when none of the rules below settl
 3. **Engine first.** Everything is drivable without a window, from tests and the CLI. The UI is one client.
 4. **Everything is a command.** Each user-visible action has a stable id (`nca.run`, `fit.run`, `plot.xy`, `data.import`…) and serializable parameters (serde). Menus, shortcuts, CLI, the MCP server and agents call the same command.
 5. **Nothing baked into the core.** Units, route of administration, number of compartments, weighting, number of subjects, AUC rule: these are data, not assumptions, even if v1 exposes only part of them.
-6. **Never crash.** Outside tests: no `unwrap()`, `expect()`, `panic!`, `todo!`, `unreachable!`, no `[i]` indexing on input-derived data (denied by `cargo xtask lint` through `clippy::indexing_slicing` in the four numerical crates, library targets; checked in review elsewhere), no `unsafe`. Every crate starts with `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unreachable)]`. NaN, zero or negative concentrations, values below the limit of quantification, duplicated or unsorted times, non-estimable λz, singular matrix, non-convergence: each gives a readable error and a regression test.
+6. **Never crash.** Outside tests: no `unwrap()`, `expect()`, `panic!`, `todo!`, `unreachable!`, no `[i]` indexing on input-derived data (denied by `cargo xtask lint` through `clippy::indexing_slicing` in the four numerical crates (nca, models, fit, project), library targets; checked in review elsewhere), no `unsafe`. Every crate starts with `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unreachable)]`. NaN, zero or negative concentrations, values below the limit of quantification, duplicated or unsorted times, non-estimable λz, singular matrix, non-convergence: each gives a readable error and a regression test.
 7. **Thin, data-driven UI.** UI state is serializable. Colours, radii and spacing come from a theme token file (light and dark), never hard-coded.
 8. **Look at what you draw.** Every UI change is rendered offscreen to PNG (`cargo run -p caladrius-ui --example snapshot`) and looked at before delivery.
 9. **Never break wasm.** Layers L0 to L3 compile for `wasm32-unknown-unknown`. Platform-only code (files, threads, processes) is gated behind `cfg` and lives in `apps/`. `cargo xtask wasm` is a gate.
@@ -132,7 +132,7 @@ The main session is the **orchestrator**: it plans the iteration (section 9), wr
 | `engine` | Opus, high | `caladrius-nca`, `caladrius-models`, `caladrius-fit`: everything that produces a number | UI | long agentic coding where a wrong digit matters |
 | `reader` | Sonnet, high | `specs/` from the allowed sources and the screenshots | code | careful reading against a clear card |
 | `oracle` | Sonnet, high | `oracle/`, `caladrius-testkit`, R scripts, tests that fail first | fix the engine to make a test pass | a clear card, and another model than the engine it checks |
-| `interface` | Sonnet, high | the workspace, `xtask`, `caladrius-project`, `caladrius-engine` commands, `caladrius-ui`, `caladrius-cli`, `caladrius-mcp` | numerical code | routine coding against a clear card |
+| `interface` | Sonnet, high | the workspace, `xtask`, `caladrius-project`, `caladrius-engine` commands, `caladrius-ui`, `caladrius-cli`, `caladrius-mcp`, `caladrius-web` | numerical code | routine coding against a clear card |
 | `reviewer` | Fable, high | reviews a diff it did not see being written; the iteration audit | modify the reviewed code | it reasons hardest and wrote none of the code |
 | `janitor` | Haiku, low | formatting, renames, file moves, board housekeeping asked by the orchestrator | any decision | mechanical work |
 | `onizuka` | Opus, high | explains a part of Officina to the human, in French; the learning page of each iteration | edit a repository | teaching from the real code |
@@ -142,7 +142,7 @@ Rules:
 - A subagent receives **one** card, with its allowed files and its completion criterion. It returns a report of at most ten lines (an audit: one line per finding): what was done, the numbers, what is still open, and one bolder next step.
 - A subagent's report is a claim, not a proof: the orchestrator runs the card's completion command itself before marking it done.
 - Whoever writes an oracle test does not write the code under test.
-- Every change in `caladrius-nca`, `caladrius-models` or `caladrius-fit` goes through `reviewer` before being marked done. `reviewer` gets a diff and its card, never a whole crate; a card outside the numerical crates may be reviewed with `model: sonnet`.
+- Every change in `caladrius-nca`, `caladrius-models` or `caladrius-fit` goes through `reviewer` before being marked done. `reviewer` gets a diff and its card, never a whole crate; a card outside these three crates may be reviewed with `model: sonnet`.
 - Parallel work: two agents never touch the same crate. Each uses `CARGO_TARGET_DIR=target/agent-<role>`. A new module per feature instead of growing a shared file. If someone else's work breaks the build, wait and retry; do not fix their files.
 - Agent files load when a session starts in this repository. After adding or renaming one, start a new session before delegating to it.
 

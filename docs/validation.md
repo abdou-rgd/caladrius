@@ -27,7 +27,7 @@ Caladrius computes, in v1:
 It deliberately does **not** do, in v1: population modelling (NLME), bioequivalence, IVIVC
 (`AGENTS.md` section 1, "Out of scope"), several subjects in one model, and user-written models
 (two compartments landed after v0.1.0; user-written models are still not implemented — `README.md`,
-status line and the "Not validated" column of the coverage table).
+the "Not validated" column of the coverage table).
 
 Position: **verified individual PK**. The goal is a teaching-grade, reproducible calculation layer
 whose conformance table an agent (Apothicaire) or a person can re-run, not a claim of equality with
@@ -232,8 +232,8 @@ tolerance to widen (`AGENTS.md` section 5).
 
 - **`assumed` rules.** Every behaviour rule in `specs/` carries a status; the counts of the
   `- Status:` lines, per file, are in `README.md`, "Which rules are settled": `specs/nca.md` has
-  **12** `assumed` rules (44 confirmed by oracle, 15 documented untested, 5 observed),
-  `specs/models.md` **12** (52 / 2 / 0), `specs/fit.md` **21** (18 / 3 / 0) and `specs/ux.md` **26**
+  **13** `assumed` rules (44 confirmed by oracle, 15 documented untested, 5 observed),
+  `specs/models.md` **12** (52 / 2 / 0), `specs/fit.md` **22** (18 / 3 / 0) and `specs/ux.md` **26**
   (0 / 12 / 0). An `assumed` rule is never presented as settled.
 - **Pending questions.** `board/QUESTIONS.md` still holds Q-004 to Q-012 without a human answer:
   Q-004 (licence of the public datasets and PKNCA output), Q-005 (terms of the reference
