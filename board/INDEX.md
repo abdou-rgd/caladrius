@@ -88,7 +88,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-075 | OptChat: make long messages fully readable through the memory tools (RT-C2) | optchat | todo | |
 | T-076 | OptChat: the summary cleanup must not cut a leading number (RT-C10) | optchat | todo | |
 | T-077 | Engine: a full output schema for analysis.compare (RT-A8) | interface | todo | |
-| T-078 | Officina README: state the OptChat result as measured (8/8, 7/8, 8/8) (RT-C7) | orchestrator | todo | |
+| T-078 | Officina README: state the OptChat result as measured (8/8, 7/8, 8/8) (RT-C7) | orchestrator | done | |
 | T-079 | NCA: show the area_past_tlast flag in answers and decide O-18 (RT-D7) | reader, apothicaire | todo | |
 | T-080 | CI: test on the demo platform, test before release, pin the Rust toolchain (RT-E9) | interface | todo | |
 | T-081 | docs/validation.md: write the real rule for interval bounds (RT-D6) | oracle | todo | |
@@ -130,6 +130,6 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-117 | `board/RESUME.md` short, around the iteration loop | orchestrator | done | T-113 |
 | T-118 | METHOD.md of the officina umbrella follows the new contract | orchestrator (officina umbrella) | done | T-113, T-114, T-115 |
 | T-119 | Caladrius Markdown agrees with the code, the releases and the contract | orchestrator | done | T-113 |
-| T-120 | Apothicaire README and plan agree with the code and the ledger | orchestrator (apothicaire) | in progress | |
-| T-121 | OptChat README states the v9 runs and one runtime decision | orchestrator (optchat) | in progress | |
-| T-122 | Umbrella README, site text, notes, PC README and profile agree with the repositories | orchestrator (officina umbrella) | in progress | T-119, T-120, T-121 |
+| T-120 | Apothicaire README and plan agree with the code and the ledger | orchestrator (apothicaire) | done | |
+| T-121 | OptChat README states the v9 runs and one runtime decision | orchestrator (optchat) | done | |
+| T-122 | Umbrella README, site text, notes, PC README and profile agree with the repositories | orchestrator (officina umbrella) | done | T-119, T-120, T-121 |
