@@ -267,9 +267,15 @@ fn page_waived(line: &str) -> bool {
         .strip_prefix("**Learning page.**")
         .unwrap_or(line)
         .trim_start();
-    let Some(reason) = rest.strip_prefix("none") else {
+    // The word is accepted in any case (`None, waived by Abdou for this iteration`); the message
+    // keeps saying `none`.
+    let Some(head) = rest.get(..4) else {
         return false;
     };
+    if !head.eq_ignore_ascii_case("none") {
+        return false;
+    }
+    let reason = rest.get(4..).unwrap_or_default();
     // `none` is a word of its own, not the start of `nonetheless`.
     if reason.starts_with(|c: char| c.is_alphanumeric()) {
         return false;
@@ -645,6 +651,8 @@ mod tests {
             "none (the human waived the page)",
             "none: waived by Abdou",
             "none the human said no",
+            "None, waived by Abdou for this iteration",
+            "NONE (the human waived the page)",
         ] {
             let card = iteration_with("[Sceau](https://claude.ai/artifact/x)", waived);
             let findings = iteration_findings(&[("T-010", card.as_str())]);
@@ -656,6 +664,7 @@ mod tests {
             "none, waived",
             "none: no page",
             "nonetheless the page is waived here",
+            "Nonetheless the page is waived here",
             "waived by the human today",
         ] {
             let card = iteration_with("[Sceau](https://claude.ai/artifact/x)", refused);

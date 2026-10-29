@@ -16,8 +16,10 @@
 //! - `review-versions`: the version of `Cargo.toml` and the one of `CITATION.cff` agree.
 //! - `review-specs-index`: every `specs/*.md` is named by `specs/README.md`.
 //! - `review-claims-checked`: the case and value counts that the coverage table of
-//!   `docs/validation.md` (section 3.1) states for its one- and two-compartment model rows are
-//!   checked against `docs/conformance.md`, the file that owns them.
+//!   `docs/validation.md` (the `### <n> Coverage by model family` section) states for its one- and
+//!   two-compartment model rows are checked against `docs/conformance.md`, the file that owns them.
+//!   A missing or renamed heading, or a table with no such row, is a failure: nothing would be
+//!   checked.
 //! - `review-pk2-readme`: when the registry holds `pk2.` models, the coverage table of
 //!   `docs/validation.md` has a two-compartment row, and neither it nor the README has a clause that
 //!   still says they are not implemented.
@@ -25,8 +27,9 @@
 //!   against the `- Status:` lines of each `specs/*.md`. The table counts them by grep and the tagging
 //!   convention is the reader's, so a difference is worth reading, not a contradiction.
 //! - `review-readme-figures`: the README states no measured figure (a ratio such as `12/25`,
-//!   `12 of 25`, a percentage, a thousands-separated number), outside fenced code blocks. A figure
-//!   is written once, in the file that owns it, and the README points at that file.
+//!   `12 of 25`, a percentage, a thousands-separated number, a count such as `172 cases` or
+//!   `16906`), outside fenced code blocks. A figure is written once, in the file that owns it, and
+//!   the README points at that file.
 //! - `review-release-drift` (note): what changed under `docs/`, `specs/`, `oracle/scripts/`,
 //!   `oracle/README.md` or `README.md` since the last tag, so that a claim covered by that tag is not
 //!   read as a claim about `main`.
@@ -51,9 +54,12 @@ const REGISTRY: &str = "crates/caladrius-models/src/model.rs";
 /// The validation report: it holds the coverage table and the status-count table that this review
 /// reads (the README states no figure).
 const VALIDATION: &str = "docs/validation.md";
-/// The heading of the coverage table in the validation report; its rows are read up to the next
-/// heading.
+/// The heading of the coverage table in the validation report, as it is written today; its rows are
+/// read up to the next heading. The heading is found by [`is_coverage_heading`] (a level-3 heading
+/// that contains `COVERAGE_TITLE`), so that a renumbering of the sections does not break the review.
 const COVERAGE_HEADING: &str = "### 3.1 Coverage by model family";
+/// The words that identify the coverage heading, whatever its number.
+const COVERAGE_TITLE: &str = "Coverage by model family";
 
 /// Where one check stands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -528,13 +534,17 @@ struct Claim {
     line: usize,
 }
 
+/// Whether a line is the heading of the coverage table: a level-3 heading (`### `) that contains
+/// `Coverage by model family`, whatever the number in front of it.
+fn is_coverage_heading(line: &str) -> bool {
+    line.starts_with("### ") && line.contains(COVERAGE_TITLE)
+}
+
 /// The case and value counts the validation report states for each model family in its coverage
-/// table (the rows between `COVERAGE_HEADING` and the next heading); `None` without that heading.
+/// table (the rows between the coverage heading and the next heading); `None` without that heading.
 fn coverage_claims(text: &str) -> Option<Vec<Claim>> {
     let lines: Vec<&str> = text.lines().collect();
-    let heading = lines
-        .iter()
-        .position(|line| line.starts_with(COVERAGE_HEADING))?;
+    let heading = lines.iter().position(|line| is_coverage_heading(line))?;
     let mut claims = Vec::new();
     for (index, line) in lines.iter().enumerate().skip(heading + 1) {
         if line.starts_with('#') {
@@ -628,20 +638,29 @@ fn claims_checked(tree: &Tree) -> Vec<Finding> {
     let Some(conformance) = tree.files.get(CONFORMANCE) else {
         return Vec::new();
     };
+    // A heading that went missing or was renamed, or a table with no row to read, means the figures
+    // of the report are no longer checked at all: that is a failure, not a note a CI without
+    // `--strict` would let through.
     let Some(claims) = coverage_claims(validation) else {
-        return vec![Finding::note(
+        return vec![Finding::fail(
             "review-claims-checked",
             VALIDATION,
             0,
-            format!("the validation report has no `{COVERAGE_HEADING}` table: nothing checked"),
+            format!(
+                "the validation report has no `### <n> {COVERAGE_TITLE}` heading (today \
+                 `{COVERAGE_HEADING}`): the case and value counts are not checked"
+            ),
         )];
     };
     if claims.is_empty() {
-        return vec![Finding::note(
+        return vec![Finding::fail(
             "review-claims-checked",
             VALIDATION,
             0,
-            "the coverage table of the validation report states no model case/value counts",
+            format!(
+                "the `{COVERAGE_TITLE}` table of the validation report has no one- or \
+                 two-compartment row stating model case/value counts: nothing is checked"
+            ),
         )];
     }
     let per_model = coverage(conformance);
@@ -823,10 +842,12 @@ fn specs_counts(tree: &Tree) -> Vec<Finding> {
 /// file that nobody re-reads, so every figure is written once, in the file that owns it
 /// (`docs/validation.md`, `docs/conformance.md`), and the README points at that file.
 ///
-/// A figure is a ratio (`12/25`, `12 / 25`, `12 of 25`, `12 out of 25`), a percentage (`48 %`, `48%`)
-/// or a number with a thousands separator (`48,955`, `48 955`). Versions (`v0.3.2`, `1.99.1`), dates,
-/// years, port numbers and `file:line` references are not figures, and neither is anything inside a
-/// fenced code block.
+/// A figure is a ratio (`12/25`, `12 / 25`, `12 of 25`, `12 out of 25`), a percentage (`48 %`, `48%`),
+/// a number with a thousands separator (`48,955`, `48 955`) or a count: an integer followed by a
+/// counted noun (`172 cases`, `48955 validated values`) or any integer of four digits or more
+/// (`16906`). Versions (`v0.3.2`, `1.99.1`), dates, years (1900 to 2099), port numbers, URLs and
+/// `file:line` references are not figures, and neither is anything inside a fenced code block. A
+/// count spelled out (`ten models`) is out of scope.
 fn readme_figures(tree: &Tree) -> Vec<Finding> {
     let Some(readme) = tree.files.get("README.md") else {
         return vec![Finding::fail(
@@ -880,6 +901,9 @@ fn figures_in(line: &str) -> Vec<(&'static str, String)> {
     }
     if let Some(number) = thousands_in(&chars) {
         found.push(("a thousands-separated number", number));
+    }
+    if let Some(count) = count_in(&chars) {
+        found.push(("a count", count));
     }
     found
 }
@@ -1031,6 +1055,180 @@ fn thousands_in(chars: &[char]) -> Option<String> {
             if groups > 0 && closes_number(chars, next) {
                 return text_between(chars, at, next);
             }
+        }
+        at = end;
+    }
+    None
+}
+
+/// What a count counts: the nouns that follow a measured figure of the project (`172 cases`,
+/// `5 tests`), singular here, plural with a trailing `s`.
+const COUNTED_NOUNS: [&str; 17] = [
+    "case",
+    "value",
+    "test",
+    "rule",
+    "command",
+    "fit",
+    "parameter",
+    "turn",
+    "exercise",
+    "model",
+    "subject",
+    "file",
+    "number",
+    "run",
+    "request",
+    "question",
+    "fact",
+];
+
+/// Short function words that can follow a number without being the adjective of a counted noun
+/// (`exit code 1 when files differ`); a word of fewer than three letters is never an adjective.
+const NOT_ADJECTIVES: [&str; 27] = [
+    "and", "the", "then", "when", "where", "while", "with", "for", "from", "that", "which", "this",
+    "but", "not", "nor", "per", "are", "was", "were", "has", "have", "had", "can", "may", "must",
+    "will", "also",
+];
+
+/// The word that starts at `at`, lowercased, and the position just after it: letters and inner
+/// hyphens (`closed-form`). `None` when no letter starts there.
+fn word_at(chars: &[char], at: usize) -> Option<(String, usize)> {
+    if !chars.get(at).is_some_and(|c| c.is_alphabetic()) {
+        return None;
+    }
+    let mut end = at;
+    while chars
+        .get(end)
+        .is_some_and(|c| c.is_alphabetic() || *c == '-')
+    {
+        end += 1;
+    }
+    while end > at + 1 && chars.get(end - 1) == Some(&'-') {
+        end -= 1;
+    }
+    let word: String = chars.get(at..end)?.iter().collect();
+    Some((word.to_lowercase(), end))
+}
+
+/// Whether `word` is a counted noun that agrees with the number: the singular after `1` or after a
+/// hyphen (`a 12-case table`), the plural otherwise (`Step 1 runs the tests` is not a count).
+fn is_counted_noun(word: &str, singular: bool) -> bool {
+    COUNTED_NOUNS.iter().any(|noun| {
+        if singular {
+            word == *noun
+        } else {
+            word.strip_suffix('s') == Some(*noun)
+        }
+    })
+}
+
+/// Whether `word` can stand between a number and its noun (`48955 validated values`): a word of three
+/// letters or more that is neither a plural or a verb in `s` nor one of the function words.
+fn is_adjective(word: &str) -> bool {
+    word.chars().count() >= 3 && !word.ends_with('s') && !NOT_ADJECTIVES.contains(&word)
+}
+
+/// An integer, its optional spaces (or one hyphen), at most one adjective, then a counted noun:
+/// the text from `start` to the end of the noun. `start..end` is the run of digits.
+fn counted_noun_after(chars: &[char], start: usize, end: usize) -> Option<String> {
+    let digits: String = chars.get(start..end)?.iter().collect();
+    let is_one = digits.parse::<u64>().is_ok_and(|n| n == 1);
+    let hyphenated = chars.get(end) == Some(&'-');
+    let first_at = if hyphenated {
+        end + 1
+    } else {
+        skip_spaces(chars, end)
+    };
+    // The noun must stand apart from the number (`5cases` and `1e-12` are not counts).
+    if first_at == end {
+        return None;
+    }
+    let (first, first_end) = word_at(chars, first_at)?;
+    if is_counted_noun(&first, is_one || hyphenated) {
+        return text_between(chars, start, first_end);
+    }
+    if hyphenated || !is_adjective(&first) {
+        return None;
+    }
+    let second_at = skip_spaces(chars, first_end);
+    if second_at == first_end {
+        return None;
+    }
+    let (second, second_end) = word_at(chars, second_at)?;
+    if is_counted_noun(&second, is_one) {
+        return text_between(chars, start, second_end);
+    }
+    None
+}
+
+/// Whether the word just before `start` (past spaces, `:` and `=`) is `port`: `port 8080`,
+/// `--port=8080`.
+fn follows_port(chars: &[char], start: usize) -> bool {
+    let mut at = start;
+    while at > 0 && matches!(chars.get(at - 1), Some(' ' | ':' | '=')) {
+        at -= 1;
+    }
+    let mut from = at;
+    while from > 0 && chars.get(from - 1).is_some_and(|c| c.is_alphabetic()) {
+        from -= 1;
+    }
+    let word: String = chars
+        .get(from..at)
+        .map(|word| word.iter().collect())
+        .unwrap_or_default();
+    matches!(word.to_lowercase().as_str(), "port" | "ports")
+}
+
+/// An integer of four digits or more that is a measured figure and not a year (1900 to 2099), a
+/// number with a leading zero (an identifier, a decimal), the tail or head of a version or a decimal
+/// (`1234.5`), or a port. `start..end` is the run of digits; a date, a `file:line` reference and a
+/// version are already excluded by the characters around the run (see [`opens_number`] and
+/// [`closes_number`]).
+fn large_number(chars: &[char], start: usize, end: usize) -> Option<String> {
+    if end.saturating_sub(start) < 4 || !closes_number(chars, end) {
+        return None;
+    }
+    let digits: String = chars.get(start..end)?.iter().collect();
+    if digits.starts_with('0') {
+        return None;
+    }
+    if digits.len() == 4
+        && digits
+            .parse::<u32>()
+            .is_ok_and(|n| (1900..=2099).contains(&n))
+    {
+        return None;
+    }
+    let decimal_tail = matches!(chars.get(end), Some('.' | ','))
+        && chars.get(end + 1).is_some_and(char::is_ascii_digit);
+    if decimal_tail || follows_port(chars, start) {
+        return None;
+    }
+    Some(digits)
+}
+
+/// A count: an integer followed (after optional spaces, and at most one adjective such as
+/// `validated`) by a counted noun (`172 cases`, `48955 validated values`), or any integer of four
+/// digits or more that is not a year, a version, a date, a port, a URL or a `file:line` reference
+/// (`16906`). Markdown emphasis and code marks are not read (`**48** values`).
+fn count_in(chars: &[char]) -> Option<String> {
+    let plain: Vec<char> = chars
+        .iter()
+        .copied()
+        .filter(|c| !matches!(c, '`' | '*'))
+        .collect();
+    let mut at = 0;
+    while at < plain.len() {
+        if !(plain.get(at).is_some_and(char::is_ascii_digit) && opens_number(&plain, at)) {
+            at += 1;
+            continue;
+        }
+        let end = digit_run_end(&plain, at);
+        if let Some(found) =
+            counted_noun_after(&plain, at, end).or_else(|| large_number(&plain, at, end))
+        {
+            return Some(found);
         }
         at = end;
     }
@@ -1385,14 +1583,59 @@ pub const MODELS: &[Model] = &[
     }
 
     #[test]
-    fn a_validation_report_without_the_coverage_heading_is_reported_as_unchecked() {
+    fn a_validation_report_without_the_coverage_heading_fails() {
         let findings = claims_checked(&tree(&[
             (VALIDATION, "# Validation report\n"),
             (CONFORMANCE, CONFORMANCE_OK),
         ]));
-        assert_eq!(findings.len(), 1);
-        assert_eq!(findings[0].kind, Kind::Note);
-        assert!(findings[0].message.contains(COVERAGE_HEADING));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert_eq!(findings[0].kind, Kind::Fail);
+        assert_eq!(findings[0].rule, "review-claims-checked");
+        assert!(findings[0].message.contains(COVERAGE_TITLE), "{findings:?}");
+        assert!(findings[0].message.contains("not checked"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_renamed_or_demoted_coverage_heading_fails_and_a_renumbered_one_is_found() {
+        let table = validation_with_rows((1, 60), (2, 140));
+        let rows = table.replacen(COVERAGE_HEADING, "", 1);
+        // Renamed, or not a level-3 heading any more: the table is not found.
+        for heading in [
+            "### 3.1 Coverage by family",
+            "## 3.1 Coverage by model family",
+            "#### 3.1 Coverage by model family",
+            "3.1 Coverage by model family",
+        ] {
+            let validation = format!("{heading}\n{rows}");
+            let findings = claims_checked(&tree(&[
+                (CONFORMANCE, CONFORMANCE_OK),
+                (VALIDATION, validation.as_str()),
+            ]));
+            assert_eq!(findings.len(), 1, "{heading}: {findings:?}");
+            assert_eq!(findings[0].kind, Kind::Fail, "{heading}");
+            assert!(findings[0].message.contains(COVERAGE_TITLE), "{heading}");
+        }
+        // Renumbered: still found, so the counts are still checked, right or wrong.
+        for heading in [
+            "### 4.2 Coverage by model family",
+            "### Coverage by model family",
+            "### 3.1 Coverage by model family (counts)",
+        ] {
+            let right = format!("{heading}\n{rows}");
+            let findings = claims_checked(&tree(&[
+                (CONFORMANCE, CONFORMANCE_OK),
+                (VALIDATION, right.as_str()),
+            ]));
+            assert!(findings.is_empty(), "{heading}: {findings:?}");
+            let wrong = right.replace("1 case, 60 values", "1 case, 61 values");
+            let findings = claims_checked(&tree(&[
+                (CONFORMANCE, CONFORMANCE_OK),
+                (VALIDATION, wrong.as_str()),
+            ]));
+            assert_eq!(findings.len(), 1, "{heading}: {findings:?}");
+            assert_eq!(findings[0].kind, Kind::Fail, "{heading}");
+            assert!(findings[0].message.contains("61 values"), "{heading}");
+        }
     }
 
     #[test]
@@ -1524,15 +1767,27 @@ pub const MODELS: &[Model] = &[
     }
 
     #[test]
-    fn a_coverage_section_stating_no_counts_is_a_note() {
+    fn a_coverage_section_stating_no_counts_fails() {
         let validation = format!("{COVERAGE_HEADING}\n\n| What | Checked |\n|---|---|\n");
         let findings = claims_checked(&tree(&[
             (CONFORMANCE, CONFORMANCE_OK),
             (VALIDATION, validation.as_str()),
         ]));
         assert_eq!(findings.len(), 1, "{findings:?}");
-        assert_eq!(findings[0].kind, Kind::Note);
-        assert!(findings[0].message.contains("no model case/value counts"));
+        assert_eq!(findings[0].kind, Kind::Fail);
+        assert!(
+            findings[0].message.contains("case/value counts"),
+            "{findings:?}"
+        );
+
+        // A heading with nothing under it before the next heading is the same failure.
+        let validation = format!("{COVERAGE_HEADING}\n\n## 4. Next section\n");
+        let findings = claims_checked(&tree(&[
+            (CONFORMANCE, CONFORMANCE_OK),
+            (VALIDATION, validation.as_str()),
+        ]));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert_eq!(findings[0].kind, Kind::Fail);
     }
 
     #[test]
@@ -1733,13 +1988,15 @@ Rust 1.99.1 and `v0.3.2` (2026-10-22), first built in 2026. The server listens o
 See `xtask/src/review.rs:42` and the weightings `1/y`, `1/y²` and `1/ŷ`; CV% is a column, 1e-6 a tolerance.
 Ten of the twelve models, and 10 of the models: no number follows. <https://example.org/a/12/25/b>
 Step 2 of the guide is at 29/10/2026 or 12 - 25 in a range.
+Exit code 1 when files differ, `--port=8080`, 256-bit evaluations, built from 1999 to 2099 (v10.2024.1).
 
 ```sh
 cargo xtask review   # 48,955 of 48,955 values, 100.0 %, 12/25 cases
 ```
 ";
 
-    /// A README that states figures: one line for each kind, and a worded ratio.
+    /// A README that states figures: one line for each kind, a worded ratio, and two bare counts (a
+    /// table row and a sentence).
     const README_FIGURES: &str = "\
 # Caladrius
 
@@ -1747,6 +2004,8 @@ The conformance table holds 48,955 values.
 It checks 12/25 cases, or 12 / 25, or 12 of 25, or 12 out of 25.
 Coverage is 97.5 % on the first run and 100% on the second.
 Also 4 294 967 295 and **48** of **49** appear.
+| Model curves | closed forms | 1e-12 | 172 cases, 16906 values | none |
+the conformance table holds 48955 validated values
 
 ```sh
 cargo xtask review   # 1,000 of 2,000, 50 %
@@ -1760,7 +2019,7 @@ cargo xtask review   # 1,000 of 2,000, 50 %
     }
 
     #[test]
-    fn a_readme_that_states_a_ratio_a_percentage_or_a_thousands_number_fails() {
+    fn a_readme_that_states_a_ratio_a_percentage_a_thousands_number_or_a_count_fails() {
         let findings = readme_figures(&tree(&[("README.md", README_FIGURES)]));
         assert!(
             findings
@@ -1771,10 +2030,15 @@ cargo xtask review   # 1,000 of 2,000, 50 %
         let places: Vec<(usize, &str)> = findings
             .iter()
             .map(|f| {
-                let kind = ["a ratio", "a percentage", "a thousands-separated number"]
-                    .into_iter()
-                    .find(|kind| f.message.contains(kind))
-                    .unwrap_or("?");
+                let kind = [
+                    "a ratio",
+                    "a percentage",
+                    "a thousands-separated number",
+                    "a count",
+                ]
+                .into_iter()
+                .find(|kind| f.message.contains(kind))
+                .unwrap_or("?");
                 (f.line, kind)
             })
             .collect();
@@ -1786,13 +2050,21 @@ cargo xtask review   # 1,000 of 2,000, 50 %
                 (5, "a percentage"),
                 (6, "a ratio"),
                 (6, "a thousands-separated number"),
+                (7, "a count"),
+                (8, "a count"),
             ],
             "{findings:?}"
         );
         assert!(findings[1].message.contains("`12/25`"), "{findings:?}");
         assert!(findings[0].message.contains("`48,955`"), "{findings:?}");
-        // Nothing inside the fenced block (lines 8 to 10) is read.
-        assert!(findings.iter().all(|f| f.line < 8), "{findings:?}");
+        // The two bare counts: the table row and the sentence, each named by what it counts.
+        assert!(findings[5].message.contains("`172 cases`"), "{findings:?}");
+        assert!(
+            findings[6].message.contains("`48955 validated values`"),
+            "{findings:?}"
+        );
+        // Nothing inside the fenced block (lines 10 to 12) is read.
+        assert!(findings.iter().all(|f| f.line < 10), "{findings:?}");
     }
 
     #[test]
@@ -1811,6 +2083,32 @@ cargo xtask review   # 1,000 of 2,000, 50 %
             ("48 955", "a thousands-separated number"),
             ("48\u{a0}955", "a thousands-separated number"),
             ("4,294,967,295.", "a thousands-separated number"),
+            (
+                "| Model curves | closed forms | 1e-12 | 172 cases, 16906 values | none |",
+                "a count",
+            ),
+            (
+                "the conformance table holds 48955 validated values",
+                "a count",
+            ),
+            ("172 cases", "a count"),
+            ("1 case", "a count"),
+            ("21 tests and 3 rules", "a count"),
+            ("`172` cases", "a count"),
+            ("**172** validated cases", "a count"),
+            ("a 12-case table", "a count"),
+            ("12 independent fits", "a count"),
+            ("5 Parameters", "a count"),
+            (
+                "covers 9 turns, 4 exercises, 7 subjects, 8 files",
+                "a count",
+            ),
+            ("2 runs, 3 requests, 6 questions, 1 fact", "a count"),
+            ("16906", "a count"),
+            ("about 12345 in total", "a count"),
+            ("(10000)", "a count"),
+            ("1899 and 2100 are no years", "a count"),
+            ("9 numbers and 3 commands", "a count"),
         ] {
             let found: Vec<&str> = figures_in(text).into_iter().map(|(kind, _)| kind).collect();
             assert_eq!(found, [kind], "{text}");
@@ -1829,11 +2127,44 @@ cargo xtask review   # 1,000 of 2,000, 50 %
             "1/y and 1/y\u{b2}",
             "CV%",
             "a CV % column and a % sign",
-            "10 of the 12 models",
+            "10 of the models",
             "0,001 is a decimal comma",
             "29/10/2026",
             "https://example.org/12/25",
             "SHA-256 and JSON-RPC 2.0, one message per line",
+        ] {
+            assert!(
+                figures_in(text).is_empty(),
+                "{text}: {:?}",
+                figures_in(text)
+            );
+        }
+    }
+
+    #[test]
+    fn what_is_not_a_count_is_not_reported() {
+        for text in [
+            // Years (1900 to 2099), versions, dates, ports, URLs, `file:line`.
+            "since 1999 and until 2099",
+            "in 2026 with 3 of them",
+            "Rust 1.85 or newer, pinned to 1.99.1",
+            "v10.2024.1 and 2024.10 and 1234.5",
+            "released 2026-10-29 or 2026/10/29",
+            "the server listens on port 8080",
+            "run it with --port=8080 or --port 8080 or on ports 8080",
+            "http://localhost:8080/health and <https://example.org/10000>",
+            "see src/lib.rs:12345 and `xtask/src/review.rs:1234`",
+            // Words that follow a number without counting anything.
+            "exit code 1 when files differ",
+            "exits with code 1. By default",
+            "exit code 2 and tests are skipped",
+            "256-bit evaluations of closed forms",
+            "x86-64 and 1e-12 and 5cases and 3D",
+            "Step 2 of the guide, step 1 runs the tests",
+            "Step 1 shows the files; 2 of the models",
+            // A leading zero is an identifier or a decimal, a spelled-out count is out of scope.
+            "0042 and 0.0001 and 0,0001",
+            "ten files, twelve models and six cases",
         ] {
             assert!(
                 figures_in(text).is_empty(),
