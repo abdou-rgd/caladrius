@@ -211,6 +211,10 @@ Answer (2026-10-29, human, in chat): "on fusionne et push d'abord". The three br
 
 The audit of T-119 to T-122 found that `../agent/bench/FRONTIER_ARM.md` and `../agent/bench/frozen/LEDGER.md` (2026-10-22) record three runs of the agent on hosted models, in a cloud session: 12.17, 20.96 and 10.30 USD, 43.43 USD in all. `AGENTS.md` section 10 rule 8 forbids any billed API, and no entry of this file authorises them. Options: (1) record that Abdou authorised these runs, as an exception for the frontier arm of the frozen set, with a budget; (2) amend rule 8 so that a billed API is allowed for a measurement Abdou approves in writing, never in the product; (3) stop the frontier arm. Meanwhile the READMEs say "nothing leaves the machine" only of the assistant at run time (T-119, T-122).
 
+Answer (2026-10-29, human, in chat): the runs used free credits offered by Anthropic, so no money was spent; Abdou knew the rule was set aside. Read by the orchestrator as option 1: an exception recorded here for the frontier arm, on free credits only. Rule 8 is unchanged: any later billed run needs the same written agreement in this file first.
+
 ## Q-018 (2026-10-29, orchestrator): the family name on the GitHub profile
 
 T-104 (Abdou's request of 2026-10-22) removed the family name from the four repositories, and `.claude/agents/onizuka.md` says it never appears, anywhere. The public profile `abdou-rgd/abdou-rgd` starts with the full name (`### Abdallah ...`), as does its copy `../notes/github-profile-README.md`. Options: (1) keep it on the profile only, which is Abdou's own page, and say so in the rule; (2) replace it with « Abdallah » or « Abdou ». Untouched until the answer.
+
+Answer (2026-10-29, human, in chat): "il faut retirer mon nom de famille", option 2. The profile now says « Abdallah » (abdou-rgd/abdou-rgd ff2ecf1, pushed), and its copy in `../notes/` too. Still there, outside the text: the author e-mail of past commits in every public repository, which only a history rewrite would remove; future commits can use the GitHub no-reply address if Abdou changes the git setting.
