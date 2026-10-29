@@ -127,5 +127,5 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-114 | The six role files in one fixed structure, with their effort | orchestrator | done | T-113 |
 | T-115 | Onizuka in one place, at most 200 lines, writing the learning page of each iteration | orchestrator | done | T-113 |
 | T-116 | `cargo xtask lint` checks iterations, agent files and the size of the contract | interface | todo | T-113, T-114, T-115 |
-| T-117 | `board/RESUME.md` short, around the iteration loop | orchestrator | todo | T-113 |
+| T-117 | `board/RESUME.md` short, around the iteration loop | orchestrator | done | T-113 |
 | T-118 | METHOD.md of the officina umbrella follows the new contract | orchestrator (officina umbrella) | todo | T-113, T-114, T-115 |
