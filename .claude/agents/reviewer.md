@@ -38,4 +38,4 @@ At most ten lines for a card; for an audit, one line per finding. In English:
 - **Findings, most severe first:** Blocker (a wrong number or a broken gate), Major, Minor; each with `file:line`, the concrete failure scenario and a one-line fix.
 - **Clean:** what you checked and found clean, so that nobody re-checks it blindly.
 - **Verdict:** `approve`, `approve with fixes` or `changes requested`.
-- One bolder check we should add to the gates.
+- One bolder next step: the check we should add to the gates.
