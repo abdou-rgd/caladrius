@@ -63,7 +63,11 @@ mod tests {
             &[],
         );
         let allow = "[[allow]]\nrule = \"forbidden-name\"\nfile = \"README.md\"\ncontains = \"trademarks of\"\nreason = \"notice\"\n";
-        let findings = super::super::check(&tree, allow).unwrap_or_default();
+        let findings: Vec<_> = super::super::check(&tree, allow)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|finding| finding.rule == "forbidden-name")
+            .collect();
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].line, 2);
     }

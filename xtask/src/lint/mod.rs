@@ -5,7 +5,12 @@
 //! Accepted exceptions live in `xtask/lint_allow.toml`, each with a reason; an exception that no
 //! longer matches anything is itself a finding. A last step runs clippy with `indexing_slicing` denied on
 //! the numerical crates ([`indexing`]).
+//!
+//! The contract and the board follow the same gate: [`board`] checks the cards and the iterations
+//! (`AGENTS.md` section 9), [`agents`] checks the agent files, the role table of section 8 and the
+//! size of the contract itself.
 
+mod agents;
 mod allow;
 mod board;
 mod forbidden;
@@ -73,6 +78,39 @@ pub struct Tree {
     pub members: Vec<String>,
 }
 
+/// A Markdown section: the lines under a heading, up to the next `## ` heading or the end of the text.
+struct Section<'a> {
+    /// 1-based line of the heading.
+    line: usize,
+    /// The lines under the heading, each with its 1-based line number.
+    body: Vec<(usize, &'a str)>,
+}
+
+impl<'a> Section<'a> {
+    /// The first line of the body that starts with `prefix`.
+    fn find(&self, prefix: &str) -> Option<(usize, &'a str)> {
+        self.body
+            .iter()
+            .copied()
+            .find(|(_, line)| line.starts_with(prefix))
+    }
+}
+
+/// The first section whose heading line `is_heading` accepts. Both the board and the agent files are
+/// read by their sections, so the cut between two sections is decided once, here.
+fn section<'a>(text: &'a str, is_heading: impl Fn(&str) -> bool) -> Option<Section<'a>> {
+    let mut lines = text.lines().enumerate();
+    let (heading, _) = lines.find(|(_, line)| is_heading(line))?;
+    let body = lines
+        .take_while(|(_, line)| !line.starts_with("## "))
+        .map(|(index, line)| (index + 1, line))
+        .collect();
+    Some(Section {
+        line: heading + 1,
+        body,
+    })
+}
+
 /// Runs every rule, then removes the findings accepted by the allow-list.
 pub fn check(tree: &Tree, allow_text: &str) -> Result<Vec<Finding>> {
     let allow = allow::parse(allow_text)?;
@@ -82,6 +120,7 @@ pub fn check(tree: &Tree, allow_text: &str) -> Result<Vec<Finding>> {
     findings.extend(header::check(tree));
     findings.extend(tolerance::check(tree));
     findings.extend(board::check(tree));
+    findings.extend(agents::check(tree));
     let mut findings = allow::apply(&allow, findings, ALLOW_FILE);
     findings.sort_by(|a, b| (&a.file, a.line, a.rule).cmp(&(&b.file, b.line, b.rule)));
     Ok(findings)
@@ -194,8 +233,10 @@ mod tests {
             &[],
         );
         let findings = check(&tree, "").unwrap_or_default();
+        // The tree has no AGENTS.md, which is a finding of its own, and not the one under test.
         let places: Vec<(String, usize)> = findings
             .iter()
+            .filter(|finding| finding.rule == "forbidden-name")
             .map(|finding| (finding.file.clone(), finding.line))
             .collect();
         assert_eq!(
@@ -206,6 +247,31 @@ mod tests {
                 ("z.md".to_owned(), 2)
             ]
         );
+    }
+
+    #[test]
+    fn the_agent_rules_run_with_the_others() {
+        // No AGENTS.md at all: only `agents::check` can say so.
+        let findings = check(&fixture(&[("a.md", "x\n")], &[]), "").unwrap_or_default();
+        let rules: Vec<&str> = findings.iter().map(|finding| finding.rule).collect();
+        assert_eq!(rules, ["agents-table"]);
+    }
+
+    #[test]
+    fn a_section_runs_from_its_heading_to_the_next_level_two_heading() {
+        let text = "intro\n## One\na\n### Sub\nb\n## Two\nc\n";
+        let one = section(text, |line| line == "## One");
+        assert_eq!(one.as_ref().map(|s| s.line), Some(2));
+        assert_eq!(
+            one.map(|s| s.body),
+            Some(vec![(3, "a"), (4, "### Sub"), (5, "b")])
+        );
+        // The last section runs to the end of the text; an absent heading gives no section.
+        assert_eq!(
+            section(text, |line| line == "## Two").map(|s| s.body),
+            Some(vec![(7, "c")])
+        );
+        assert!(section(text, |line| line == "## Three").is_none());
     }
 
     #[test]
