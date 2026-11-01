@@ -109,9 +109,9 @@ pub enum FitPreset {
     /// iterations. On the 185 reference fits they reach the exact minimum within 1e-4 relative.
     #[default]
     Default,
-    /// The assumed defaults of the reference software (`AGENTS.md` section 6): forward
-    /// differences of relative increment 0.001, relative decrease below 0.0001, 50 iterations.
-    /// Estimates then lie up to about 5e-3 relative from the exact minimum (D-03).
+    /// Optional preset: forward differences of relative increment 0.001, relative decrease
+    /// below 0.0001, 50 iterations. Estimates then lie up to about 5e-3 relative from the
+    /// exact minimum (D-03). Not a claim about another program.
     ReferenceConventions,
 }
 
@@ -127,8 +127,8 @@ pub enum Criterion {
     RelativeOffset,
 }
 
-/// Options of a fit. The defaults are the preset [`FitPreset::Default`]; the assumed defaults of
-/// the reference software are the preset [`FitPreset::ReferenceConventions`]. In JSON, the key
+/// Options of a fit. The defaults are the preset [`FitPreset::Default`]; the optional preset
+/// [`FitPreset::ReferenceConventions`] keeps the other iteration settings. In JSON, the key
 /// `preset` chooses the starting values of the five iteration settings and any of them given
 /// explicitly replaces the preset's value; the options are then stored as plain values.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

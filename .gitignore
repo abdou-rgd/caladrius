@@ -6,3 +6,26 @@ target-*/
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Vendor pharmacokinetic project files, exported tables and screenshots.
+# Extensions: *.phx *.phxproj *.pwo *.pmo *.wnl
+# Directories: private/exports/ private/screenshots/ private/coursework/
+# File names containing phoenix, winnonlin or certara (either case).
+# `cargo xtask lint` rejects the same paths when they are tracked (`vendor-export`).
+*.phx
+*.phxproj
+*.pwo
+*.pmo
+*.wnl
+private/exports/
+private/screenshots/
+private/coursework/
+*phoenix*
+*Phoenix*
+*PHOENIX*
+*winnonlin*
+*WinNonlin*
+*WINNONLIN*
+*certara*
+*Certara*
+*CERTARA*

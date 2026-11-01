@@ -8,7 +8,7 @@
 rule = "forbidden-name"
 file = "AGENTS.md"
 contains = "Project name"
-reason = "The contract states the rule itself: the names are allowed only in a neutral compatibility statement and the README trademark notice."
+reason = "The contract states the rule itself: the names are allowed only in the README trademark notice and the vendor-export guard."
 
 [[allow]]
 rule = "forbidden-name"
@@ -18,26 +18,13 @@ reason = "The trademark notice of the README (AGENTS.md first paragraph): indepe
 
 [[allow]]
 rule = "forbidden-name"
-file = "board/QUESTIONS.md"
-contains = "keeps \"Phoenix\""
-reason = "Q-006 quotes the AGENTS.md rule to ask whether a legal notice may be cited."
-
-[[allow]]
-rule = "forbidden-name"
-file = "specs/sources.md"
-contains = "onlinehelp.certara.com"
-reason = "Legal-notice entries (documentation host and the notice page): the only pages opened on the vendor site, recorded as sources."
-
-[[allow]]
-rule = "forbidden-name"
-file = "specs/sources.md"
-contains = "certara.com/legal"
-reason = "Legal-notice entry: the vendor website's legal notice, recorded as a source."
-
-[[allow]]
-rule = "forbidden-name"
 file = "board/tasks/T-036.md"
 reason = "The card of the lint describes the forbidden-name rule and quotes the names."
+
+[[allow]]
+rule = "forbidden-name"
+file = ".gitignore"
+reason = "The vendor-export guard names the products whose project files, exported tables and screenshots must not be committed."
 
 [[allow]]
 rule = "forbidden-name"
@@ -48,6 +35,11 @@ reason = "This file names the forbidden names in the `contains` filters of the e
 rule = "forbidden-name"
 file = "xtask/src/lint/forbidden.rs"
 reason = "The rule's own list of names and its fixtures."
+
+[[allow]]
+rule = "forbidden-name"
+file = "xtask/src/lint/private.rs"
+reason = "The vendor-export rule names the products and the file-name fragments it rejects."
 
 [[allow]]
 rule = "forbidden-name"

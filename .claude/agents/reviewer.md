@@ -21,7 +21,7 @@ Hunt, in this order:
 3. Behaviour baked into the core against golden rule 5.
 4. Numbers that depend on the machine (golden rule 10): a standard `exp`, `ln`, `powf`, `powi` or `sin`; a clock, a random number or a path inside a sealed answer.
 5. Layer violations: a lower crate depending on a higher one, egui below `caladrius-ui`.
-6. Clean-room violations: copied wording, forbidden names, numbers or names that could come from `private/`.
+6. Clean-room violations: copied wording, forbidden names, or material taken from a vendor export or screenshot.
 7. Missing regression tests for the error cases of golden rule 6.
 8. Claims beyond the evidence: a figure without its denominator, a card or README sentence that the test output does not support.
 

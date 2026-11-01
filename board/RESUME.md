@@ -20,7 +20,7 @@
 
 - Q-015, answered (delete): Abdou deletes `C:\Users\abdou\.claude\commands\onizuka.md` by hand; the session's permission check refused it.
 - The Fisher-information design (it needs an amendment of `AGENTS.md` section 1 and the written agreement of the Sanofi tutor); `qc.nca` (differences between NCA tools as named conventions); the plan-first assistant (after the frozen run); the PAGE 2027 abstract (one per participant).
-- Q-012 (reference mini-campaign on Theoph subject 1), the exports of exercises 2 to 4 into `private/exports/td2..4/`, the Windows decimal symbol of the reference software.
+- Q-002 and Q-005 to Q-012 are closed (T-129): no vendor comparison, documentation, exports or screenshots. Q-004 (public datasets) is still open.
 - Todo cards from the red team (T-054 to T-093, `INDEX.md`): most touch `../agent`, `../optchat` or the umbrella.
 
 ## Places

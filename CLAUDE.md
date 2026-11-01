@@ -17,8 +17,8 @@ next step (proposed to Abdou, never started on its own) and the link to the lear
 - **Paths.** The board and `RESUME.md` use the PC layout: `..\agent` is the apothicaire repository,
   `..\optchat` is optchat, `..\` is the officina umbrella. In a cloud session the repositories sit
   side by side under their own names.
-- **`private/`** is git-ignored and empty outside the PC; tests behind the `private-oracle` feature
-  skip. Nothing from it (number, file name, subject) goes into a versioned file or a commit message.
+- **Vendor exports and screenshots** are git-ignored and rejected by `cargo xtask lint`
+  (`vendor-export`). Nothing from them goes into a versioned file or a commit message.
 - **Toolchain** pinned by `rust-toolchain.toml` (1.99.1, clippy, rustfmt, wasm32); `rustup toolchain
   install` installs it.
 

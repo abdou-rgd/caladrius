@@ -56,7 +56,7 @@ flowchart LR
 - Model Context Protocol (MCP), the open protocol through which Apothicaire calls Caladrius.
 - Apothicaire's model and runtime: Bonsai 2 27B and the PrismML fork of `llama.cpp` (Georgi Gerganov and the ggml contributors); Underdog Saluki 27B (Conway Research) as a candidate for comparison; the OptChat gist by Victor Taelin; the Liquid AI `d1` decision models considered for a small judge on the roadmap.
 - The agents that wrote the code: Claude Code (Anthropic) and the DeepSeek Harness `dsh` (DeepSeek).
-- The commercial reference software named in the trademark notice of the README is used in my coursework only; its results were compared once, privately, on counts, and nothing from it is in this repository.
+- The trademark notice is in the README. This repository does not compare results with a commercial program.
 
 ## One oracle was wrong once, and why the tolerances differ
 

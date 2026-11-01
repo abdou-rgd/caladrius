@@ -28,11 +28,11 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-016 | specs/nca.md: PKNCA facts from T-012/T-013 (replaced values, IV first segments, AUMC tail, Tlag) | reader | done | T-013 |
 | T-017 | specs/models.md and specs/fit.md sync after the oracle (M5 fix, precision note, fit facts, tags) | reader | done | T-009, T-010, T-011 |
 | T-018 | Arbitration of the 1/ŷ fit oracle cases (fixed points) and the F1 trace tolerance | oracle | done | T-009, T-011a |
-| T-019 | Private oracle infrastructure (feature private-oracle, export loader, private conformance counts) and exercise 1 NCA | oracle | done | T-013 |
+| T-019 | Private oracle infrastructure and exercise 1 NCA (withdrawn by T-129) | oracle | done | T-013 |
 | T-020 | caladrius-project (data model) and caladrius-engine (command registry, schemas, history) | interface | done | T-011b |
 | T-021 | caladrius-cli and conformance extended to models and fit | interface | done | T-020 |
 | T-022 | caladrius-mcp (MCP server over stdio) | interface | done | T-020 |
-| T-023 | specs/nca.md: facts observed on the reference screen (default AUC method, λz weighting, empty acceptance criteria) | reader | done | T-016 |
+| T-023 | specs/nca.md screen notes (withdrawn by T-129) | reader | done | T-016 |
 | T-024 | caladrius-ui first slice: theme tokens, worksheet, NCA page with λz point selection, snapshots | interface | done | T-022, T-017 |
 | T-025 | Units in NCA results (time/conc/dose units as data, derived units per parameter) | engine | done | T-015 |
 | T-026 | caladrius-ui second slice: model fit page with live curve, diagnostics plots, simulation page | interface | done | T-024 |
@@ -97,9 +97,9 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-084 | Say 'never computes' in its narrow sense, and check tool-call arguments (RT-D1) | orchestrator, apothicaire | todo | |
 | T-085 | validation.md: say what is internal, tighten the independent cross-checks, require nls convergence (RT-D2) | oracle | todo | |
 | T-086 | Show the validated grid and its gaps under the conformance figure (RT-D3) | orchestrator | todo | |
-| T-087 | Retire 'clean room' as an argument; describe the process and the recorded exposure (RT-D4) | orchestrator | todo | |
+| T-087 | Retire 'clean room' as an argument; describe the process and the recorded exposure (RT-D4, withdrawn by T-129) | orchestrator | done | |
 | T-088 | Show the fit tolerance in the output when the reference_conventions preset is active (RT-D5) | interface | todo | |
-| T-089 | Prepare the answer to 'does it reproduce our reference software?' (RT-E2) | orchestrator | todo | |
+| T-089 | Answer on reproducing a commercial program (withdrawn by T-129) | orchestrator | done | |
 | T-090 | Demo slide: the assistant's scope (RT-E3) | orchestrator | todo | |
 | T-091 | Trademark check for 'Caladrius'; label in-sample figures as such (RT-E7) | orchestrator | todo | |
 | T-092 | Gate v2: remove the false positives (unit after the reference, words, Markdown) (RT-A7) | apothicaire | todo | |
@@ -139,3 +139,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-126 | Apothicaire README without figures; the details in docs/ | interface (apothicaire) | done | |
 | T-127 | OptChat README short; the bench history in BENCH.md | interface (optchat) | done | |
 | T-128 | Umbrella README, profile and the rule written once | orchestrator | done | T-125, T-126, T-127 |
+| T-129 | Remove vendor-derived material (private comparison, screen-only rules, vendor-export guard) | orchestrator | done | |

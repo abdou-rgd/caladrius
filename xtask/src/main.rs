@@ -34,8 +34,7 @@ tasks:
   wasm         cargo check the L0 to L3 crates for wasm32-unknown-unknown
   web          build the browser application into target/web-page (`web --out DIR` elsewhere);
                needs wasm-bindgen-cli at the version of Cargo.lock, uses wasm-opt when present
-  conformance  run caladrius-nca on every oracle case and write docs/conformance.md
-               (`conformance --private` also writes the counts of the private oracle into it)
+  conformance  run the engine on every oracle case and write docs/conformance.md
   review       check the figures of docs/validation.md and the specs against the files that own them,
                and that the README states no figure of its own
                (`review --strict` also fails on a note); reads only, writes nothing
@@ -54,10 +53,7 @@ enum Task {
     Wasm,
     /// The folder arguments (`--out DIR`), checked by the task.
     Web(Vec<OsString>),
-    /// `private`: also write the counts of the private oracle into `docs/conformance.md`.
-    Conformance {
-        private: bool,
-    },
+    Conformance,
     /// `strict`: a note is a failure too.
     Review {
         strict: bool,
@@ -76,17 +72,12 @@ fn parse_task(args: &[OsString]) -> std::result::Result<Task, String> {
             Some("lint") => Ok(Task::Lint),
             Some("wasm") => Ok(Task::Wasm),
             Some("web") => Ok(Task::Web(Vec::new())),
-            Some("conformance") => Ok(Task::Conformance { private: false }),
+            Some("conformance") => Ok(Task::Conformance),
             Some("review") => Ok(Task::Review { strict: false }),
             Some("digest") => Ok(Task::Digest(Vec::new())),
             Some("help" | "-h" | "--help") => Ok(Task::Help),
             _ => Err(format!("unknown task `{}`", task.to_string_lossy())),
         },
-        [task, flag]
-            if task.to_str() == Some("conformance") && flag.to_str() == Some("--private") =>
-        {
-            Ok(Task::Conformance { private: true })
-        }
         [task, flag] if task.to_str() == Some("review") && flag.to_str() == Some("--strict") => {
             Ok(Task::Review { strict: true })
         }
@@ -111,7 +102,7 @@ fn main() -> ExitCode {
         Task::Lint => lint::run(),
         Task::Wasm => wasm::run(),
         Task::Web(args) => web::run(&args),
-        Task::Conformance { private } => conformance::run(private),
+        Task::Conformance => conformance::run(),
         Task::Review { strict } => review::run(strict),
         Task::Digest(args) => digest::run(&args),
         Task::Help => {
@@ -150,13 +141,10 @@ mod tests {
                 OsString::from("dist")
             ]))
         );
-        assert_eq!(
-            parse(&["conformance"]),
-            Ok(Task::Conformance { private: false })
-        );
+        assert_eq!(parse(&["conformance"]), Ok(Task::Conformance));
         assert_eq!(
             parse(&["conformance", "--private"]),
-            Ok(Task::Conformance { private: true })
+            Err("unexpected argument `--private`".to_owned())
         );
         assert_eq!(parse(&["review"]), Ok(Task::Review { strict: false }));
         assert_eq!(

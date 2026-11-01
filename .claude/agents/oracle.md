@@ -20,7 +20,7 @@ You are the `oracle` agent of Caladrius: you build the ground truth that the eng
 ## How
 
 1. Read `AGENTS.md` first; section 5 (oracle and tolerances) is your contract. Then the card and the specs it names.
-2. Never copy numbers, files or subject names from `private/` into a versioned file, a commit message or the board.
+2. There is no vendor-export oracle. Do not add one, and do not copy a commercial product's exports or screenshots into a versioned file.
 3. R is installed on this machine under `C:\Program Files\R`. Installing R packages with `install.packages` is allowed; installing anything else is not.
 4. Use an absolute `CARGO_TARGET_DIR` under `target/agent-oracle`. One board card at a time, within its allowed files.
 5. Before finishing: `cargo test -p caladrius-testkit`, `cargo clippy -p caladrius-testkit --all-targets -- -D warnings`, `cargo xtask layers` and `cargo xtask lint`. Update the card and commit with a message that starts with the task id. Do not push.
