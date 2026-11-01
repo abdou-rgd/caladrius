@@ -1,13 +1,30 @@
-//! Rules about `private/` (`AGENTS.md` sections 3 and 5): nothing from it is versioned, and no file of it is named.
+//! Rules about `private/` and vendor exports (`AGENTS.md`): nothing from `private/` is versioned,
+//! no file of it is named, and a vendor project file or export cannot be tracked.
 //!
 //! - `private-tracked`: `git ls-files` lists a path under `private/` other than its `README.md`.
 //! - `private-reference`: a versioned file names a data file (`.csv`, `.rtf`, `.xls`, `.xlsx`) under
 //!   `private/`. Folders and patterns (`private/exports/<td>/`, `private/*.csv`) are fine; a file name
 //!   from a private folder is not, because the name itself can say what the data are.
+//! - `vendor-export`: a tracked path is a vendor project file or export. Extensions: `.phx`,
+//!   `.phxproj`, `.pwo`, `.pmo`, `.wnl`. Directories: `private/exports/`, `private/screenshots/`,
+//!   `private/coursework/`. File names containing `phoenix`, `winnonlin` or `certara`.
 
 use super::{Finding, Tree};
 
 const DATA_EXTENSIONS: [&str; 4] = [".csv", ".rtf", ".xls", ".xlsx"];
+
+/// Project-file extensions of commercial pharmacokinetic workbooks.
+const VENDOR_EXTENSIONS: [&str; 5] = [".phx", ".phxproj", ".pwo", ".pmo", ".wnl"];
+
+/// Drop folders for vendor tables, coursework exports and screenshots.
+const VENDOR_DIRS: [&str; 3] = [
+    "private/exports/",
+    "private/screenshots/",
+    "private/coursework/",
+];
+
+/// Substrings that mark a file name as a vendor drop. Matched case-insensitively on the last segment.
+const VENDOR_NAME_PARTS: [&str; 3] = ["phoenix", "winnonlin", "certara"];
 
 pub fn check(tree: &Tree) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -38,7 +55,29 @@ pub fn check(tree: &Tree) -> Vec<Finding> {
             }
         }
     }
+    for path in &tree.tracked {
+        if is_vendor_export(path) {
+            findings.push(Finding::new(
+                path,
+                1,
+                "vendor-export",
+                "vendor project file, export or screenshot (extensions .phx .phxproj .pwo .pmo .wnl; directories private/exports, private/screenshots, private/coursework; file names containing phoenix, winnonlin or certara)",
+                path,
+            ));
+        }
+    }
     findings
+}
+
+/// A tracked path that must not hold a vendor workbook, export table or screenshot.
+fn is_vendor_export(path: &str) -> bool {
+    let lower = path.to_ascii_lowercase();
+    if VENDOR_DIRS.iter().any(|dir| lower.starts_with(dir)) {
+        return true;
+    }
+    let name = lower.rsplit('/').next().unwrap_or(&lower);
+    VENDOR_EXTENSIONS.iter().any(|ext| name.ends_with(ext))
+        || VENDOR_NAME_PARTS.iter().any(|part| name.contains(part))
 }
 
 /// The paths of the line that start with `private/` and end with a data file name.
@@ -99,9 +138,35 @@ mod tests {
             "docs/private/a.md".to_owned(),
         ];
         let findings = check(&tree);
-        assert_eq!(findings.len(), 1);
-        assert_eq!(findings[0].file, "private/exports/x.txt");
-        assert_eq!(findings[0].rule, "private-tracked");
+        let tracked: Vec<_> = findings
+            .iter()
+            .filter(|f| f.rule == "private-tracked")
+            .collect();
+        assert_eq!(tracked.len(), 1);
+        assert_eq!(tracked[0].file, "private/exports/x.txt");
+        assert!(findings.iter().any(|f| f.rule == "vendor-export"));
+    }
+
+    #[test]
+    fn a_vendor_project_file_or_named_export_is_a_finding() {
+        let mut tree = fixture(&[], &[]);
+        tree.tracked = vec![
+            "notes/study.phx".to_owned(),
+            "notes/model.PWO".to_owned(),
+            "exports/Phoenix_final.csv".to_owned(),
+            "docs/screens/welcome.png".to_owned(),
+        ];
+        let findings = check(&tree);
+        let files: Vec<_> = findings.iter().map(|f| f.file.as_str()).collect();
+        assert_eq!(
+            files,
+            [
+                "notes/study.phx",
+                "notes/model.PWO",
+                "exports/Phoenix_final.csv",
+            ]
+        );
+        assert!(findings.iter().all(|f| f.rule == "vendor-export"));
     }
 
     #[test]

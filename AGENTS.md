@@ -1,6 +1,6 @@
 # AGENTS.md: contract for agents
 
-Project name: **Caladrius** (crates are prefixed `caladrius-`; the bare `caladrius` name is free on crates.io and PyPI and is reserved for the desktop application). The name, the code, the docs and the UI never contain "Phoenix", "WinNonlin" or "Certara", except in a neutral statement of compatibility and the trademark notice in the README.
+Project name: **Caladrius** (crates are prefixed `caladrius-`; the bare `caladrius` name is free on crates.io and PyPI and is reserved for the desktop application). The name, the code, the docs and the UI never contain "Phoenix", "WinNonlin" or "Certara", except the trademark notice in the README and the vendor-export guard (`.gitignore`, `cargo xtask lint`).
 
 Caladrius is an open-source pharmacokinetic analysis application written in **Rust only**: non-compartmental analysis (NCA), individual compartmental models, least-squares fitting, plots. Native UI in egui (eframe on wgpu); the same code compiles to WebAssembly for the demo. **No Tauri, Electron or webview.** License: MIT OR Apache-2.0.
 
@@ -24,16 +24,14 @@ Out of scope: population modelling (NLME), bioequivalence, IVIVC. Do not start t
 
 The human (Abdou) only:
 
-1. Installs the reference software on the machine, outside the project folder.
-2. Drops once into `private/`: exported result tables (CSV), his coursework data, and about fifteen screenshots of the reference software.
-3. Answers the questions in `board/QUESTIONS.md`.
-4. Decides every publication: pushing to GitHub, making the repository public, publishing any numeric comparison with the reference software.
+1. Answers the questions in `board/QUESTIONS.md`.
+2. Decides every publication: pushing to GitHub and making the repository public.
 
 Agents do everything else. Ask the human only when none of the rules below settles the matter; then write the question in `board/QUESTIONS.md` with the decision you took meanwhile, move to another task, and do not block.
 
 ## 3. Golden rules
 
-1. **Clean room.** We reproduce behaviour, never code. Allowed sources: textbooks (Gabrielsson & Weiner, Gibaldi & Perrier), papers, the `PKNCA` documentation, the public user documentation of the reference software (section 6), observed results. Forbidden: opening the reference software's install folder, decompiling, copying code, icons, help text, wording of dialogs, or screenshots. Every third-party asset has its license and a row in `ATTRIBUTION.md` in the same commit.
+1. **Clean room.** We specify behaviour from public sources, never from a commercial product's code or screens. Allowed sources: textbooks (Gabrielsson & Weiner, Gibaldi & Perrier), papers, the `PKNCA` documentation, and other open tools. Forbidden: a commercial product's documentation, exports or screenshots, its install folder, decompiling, and copying code, icons, help text or wording. Every third-party asset has its license and a row in `ATTRIBUTION.md` in the same commit.
 2. **Tests are the gate.** No change without a test. A number outside tolerance fails the test. Conformance floors only go up.
 3. **Engine first.** Everything is drivable without a window, from tests and the CLI. The UI is one client.
 4. **Everything is a command.** Each user-visible action has a stable id (`nca.run`, `fit.run`, `plot.xy`, `data.import`…) and serializable parameters (serde). Menus, shortcuts, CLI, the MCP server and agents call the same command.
@@ -66,7 +64,7 @@ apps/
 xtask/               layers | lint | review | wasm | web | conformance | digest
 specs/               behaviour and UX specifications, written by us
 oracle/              public data and expected results (versioned)
-private/             reference exports, coursework data, screenshots (git-ignored)
+private/             unused; vendor exports and screenshots are ignored and rejected by lint
 board/               shared board for agents (section 9)
 ```
 
@@ -74,53 +72,35 @@ A crate depends only on lower layers. Nothing below `caladrius-ui` knows egui, e
 
 ## 5. Oracle and tolerances
 
-Three sources, in priority order for versioned tests:
+Two sources, in priority order for versioned tests:
 
 1. **Public, in `oracle/`**: free datasets (theophylline, indomethacin) with `PKNCA` results produced by a versioned R script; worked examples from textbooks, with the page reference; published validation tables of other open or free NCA tools when their license allows it.
-2. **Private, in `private/`**: coursework results and exports from the reference software. The matching tests sit behind the Cargo feature `private-oracle` and are skipped when the folder is empty. No file, number or subject name from `private/` may appear in a versioned file, a commit message or the board.
-3. **Independent computation**: for a case with no reference, a second, naive implementation in `caladrius-testkit` (never the same function tested against itself).
+2. **Independent computation**: for a case with no external result, a second, naive implementation in `caladrius-testkit` (never the same function tested against itself).
 
 Tolerances (defined once in `caladrius-testkit`, never loosened inside a test):
 
 - NCA against PKNCA: relative error ≤ 1e-6.
-- Against a reference export: equality at the precision displayed in the export.
 - Fitting: parameters within 1e-4 relative, weighted sum of squares within 1e-6 relative. Two optimizers do not reach the same minimum bit for bit; a gap beyond tolerance is a method difference to document in `specs/differences.md`, not a tolerance to widen.
 
 "100% reproduction" means: 100% of in-scope parameters, within these tolerances, on every oracle case. `cargo xtask conformance` generates `docs/conformance.md` (validated parameters per case); never edit that file by hand. The README states no measured figure (`review-readme-figures`): each figure lives in its owner file (`docs/conformance.md`, `docs/validation.md`, a release note) and the README links to it.
 
-## 6. Reference documentation: how to use it
+## 6. Sources of a specification
 
-Goal: learn the conventions and defaults that change a number (point selection for λz, trapezoid rule, handling of values below the limit of quantification, of zero times, of extrapolation, definition of the weights, stopping criterion of the fit).
+The conventions that change a number (point selection for λz, the trapezoid rule, values below the limit of quantification, zero times, extrapolation, weights, the fit's stopping rule) come from textbooks, papers, PKNCA and other open tools. The reader writes `specs/` in its own words and formulas and cites each source. Implementers read only `specs/` and the oracle.
 
-Two separate roles, to keep the clean room credible:
+Every rule carries a status: `confirmed by oracle`, `documented, untested` or `assumed`. An `assumed` rule is never presented as settled; it becomes a test task.
 
-- The **reader** agent is the only one who reads the public documentation of the reference software. It writes in `specs/` a description of the behaviour **in its own words and in formulas**, with no copied sentence, citing for each rule its source (page title) and, where possible, a second independent source (textbook, paper, PKNCA).
-- **Implementer** agents read only `specs/` and the oracle. They never open the reference documentation.
+The default fit is the exact minimum (closed-form derivatives, relative decrease 1e-10), D-04 in `specs/differences.md` (Q-014, option 2). The optional preset `reference_conventions` keeps another set of iteration settings defined in `caladrius-fit`; it is not a claim about any other program. Another optimizer may exist as an option, never as a silent replacement.
 
-Every rule in `specs/` carries a status: `confirmed by oracle`, `documented, untested` or `assumed`. An `assumed` rule is never presented as settled; it becomes a test task.
+## 7. UI
 
-Fitting defaults seen on the human's screen (status `assumed` until the reader confirms them and the oracle tests them): Gauss-Newton minimization with the Levenberg and Hartley modification, increment for partial derivatives 0.001, convergence criterion 0.0001, 50 iterations maximum, 1000 predicted values for the curve, uniform weighting on observed values, parameter bounds generated by the software unless the user supplies them. The same method must be available in `caladrius-fit` as the named preset `reference_conventions`; since Q-014 (2026-10-09, option 2) the default is the exact minimum (closed-form derivatives, relative decrease 1e-10), documented as D-04 in `specs/differences.md`. Another optimizer may exist as an option, never as a silent replacement.
+One project, a worksheet, an analysis read from top to bottom, and plots: few clicks, sensible defaults, live preview, readable errors. Standard domain vocabulary (NCA, AUC, λz, Cmax…) is free to use. The interface agent works from `specs/ux.md` and the theme tokens.
 
-If the reference software's license or the documentation site's terms forbid this use, the reader stops and records it in `board/QUESTIONS.md`.
-
-## 7. UI and screenshots
-
-Design goal: a user of the reference software finds the same way of working (project tree, worksheet, analysis object with setup and results, plots) and recognizes nothing else. Caladrius must be visibly more modern, faster and easier: fewer clicks, sensible defaults, live preview, readable errors.
-
-- Screenshots in `private/screenshots/` are seen by the **reader** only. It writes `specs/ux.md`: the workflow step by step, what each screen lets the user decide, and a list of friction points to remove. It describes; it does not transcribe labels or layouts.
-- The **interface** agent works from `specs/ux.md` and the theme tokens. It never opens the screenshots.
-- Do not reproduce the reference software's layout pixel for pixel, its icons, its colours or the wording of its dialogs. Standard domain vocabulary (NCA, AUC, λz, Cmax…) is free to use.
-- Required improvements for v1: click points on the curve to choose the λz range; the predicted curve updates live while initial estimates change; one screen from data to results for NCA; every error says what to fix.
-- Friction observed in the reference workflow, each to be removed:
-  1. Creating a model takes a four-level nested menu from a worksheet. Caladrius: one "New analysis" button and a command palette.
-  2. Settings for one analysis are spread over a left-hand list, five bottom tabs and a separate setup/results switch. Caladrius: one page, read top to bottom (data, model, dose, initial estimates, options), with the plot always visible.
-  3. Results are a flat tree of about twenty tables and six plots opened one at a time. Caladrius: a summary first (parameters with precision, fit plot, residuals, goodness of fit), details on demand.
-  4. A poor fit is not flagged: a CV% in the hundreds or a confidence interval crossing zero looks like any other number. Caladrius: flag them and say what to check.
-  5. Units are free text and inconsistent combinations pass silently into derived units. Caladrius: check dose, concentration and time units together and warn before running.
-  6. Models are picked from a numbered table. Caladrius: pick by route and number of compartments, with the diagram and equation shown.
-  7. The project tree fills with objects named "PK 1", "ASCII 2". Caladrius: name objects from their content and show stale results clearly after an input change.
-  8. User models need a fixed-format block language. Caladrius (later step): readable equations with named parameters and immediate error messages.
-- No screenshot of the reference software ever enters the repository, the README or an issue.
+- Click points on the curve to choose the λz range. The predicted curve updates live while initial estimates change. One screen from data to results for NCA. Every error says what to fix.
+- One "New analysis" button and a command palette. One page, top to bottom (data, model, dose, initial estimates, options), with the plot always visible.
+- A summary first (parameters with precision, fit plot, residuals, goodness of fit), details on demand. Flag a poor fit (a large CV%, an interval crossing zero) and say what to check.
+- Check dose, concentration and time units together and warn before running. Pick a model by route and number of compartments, with the diagram and equation shown.
+- Name objects from their content and show stale results after an input change. Later: readable equations with named parameters and immediate error messages.
 
 ## 8. Agent organization
 
@@ -130,7 +110,7 @@ The main session is the **orchestrator**: it plans the iteration (section 9), wr
 |---|---|---|---|---|
 | `orchestrator` | Opus, max | plans, writes cards, delegates, integrates, verifies, keeps the board | write code, read large files | it holds the longest context, so not the dearest model |
 | `engine` | Opus, high | `caladrius-nca`, `caladrius-models`, `caladrius-fit`: everything that produces a number | UI | long agentic coding where a wrong digit matters |
-| `reader` | Sonnet, high | `specs/` from the allowed sources and the screenshots | code | careful reading against a clear card |
+| `reader` | Sonnet, high | `specs/` from textbooks, papers, PKNCA and other open tools | code | careful reading against a clear card |
 | `oracle` | Sonnet, high | `oracle/`, `caladrius-testkit`, R scripts, tests that fail first | fix the engine to make a test pass | a clear card, and another model than the engine it checks |
 | `interface` | Sonnet, high | the workspace, `xtask`, `caladrius-project`, `caladrius-engine` commands, `caladrius-ui`, `caladrius-cli`, `caladrius-mcp`, `caladrius-web` | numerical code | routine coding against a clear card |
 | `reviewer` | Fable, high | reviews a diff it did not see being written; the iteration audit | modify the reviewed code | it reasons hardest and wrote none of the code |

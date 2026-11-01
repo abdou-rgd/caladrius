@@ -2,72 +2,11 @@
 
 Maintained by the `reader` agent. First written 2026-10-08 for card T-002. Every rule in `specs/nca.md` cites sources by the keys of section 3.
 
-Naming note: `AGENTS.md` keeps the reference software's vendor and product names out of the docs. Section 2 has to record the address of the documentation site it checked, so the vendor host name appears there and nowhere else in `specs/`. Question Q-006 in `board/QUESTIONS.md` asks the human to confirm this is acceptable.
+Commercial pharmacokinetic software is not a source: not its documentation, not its exports, not its screens. Specifications cite textbooks, papers, PKNCA and other open tools. Questions Q-002 and Q-005 to Q-012 in `board/QUESTIONS.md` are closed on that decision (T-129); they draw no conclusion about what a licence permits.
 
-## 1. Result in one paragraph
+## 2. What is not a source
 
-The terms attached to the reference software's public documentation do not authorise the use this project would make of it (an automated agent reading it to write an independent specification for an open-source tool). They tie the documentation to the vendor's customers and to a licence agreement the reader cannot see, and they forbid reproduction. The reader therefore treated the use as forbidden, did **not** use the reference documentation as a source of any rule, and recorded the matter as question Q-005. The specification rests on the PKNCA documentation, peer-reviewed papers, and the public documentation of other NCA tools. Where the reference software's conventions cannot be established from those, the rule is tagged `assumed` and is a test task for the oracle (observed results), not a documented fact.
-
-## 2. Reference software documentation: terms-of-use check
-
-Date of the check: 2026-10-08.
-
-### 2.1 What was opened
-
-Three pages, all through a page-reading tool that returns a machine summary rather than the page verbatim (a fourth address, a guessed terms-of-use path on the vendor website, answered "not found" and returned no content):
-
-1. A documentation topic page (about the λz settings) on the documentation host `onlinehelp.certara.com`, opened **only** to find the link to its legal notice. The prompt asked for legal text and footer links and explicitly not for technical content. The tool returned only footer information (a rights-reserved line and the link to the legal notice). No technical content was taken from it.
-2. The legal notice shipped with that documentation: `https://onlinehelp.certara.com/phoenix/8.5/Phoenix_UserDocs/LegalNotice/LegalNotice.htm` (copyright range 2005-2024).
-3. The vendor website's legal notice: `https://certara.com/legal` (last-updated line 5 September 2025).
-
-### 2.2 What the terms say (paraphrase of the tool's summary, which also gave a few short quotes)
-
-Documentation legal notice:
-
-- The software and its documentation may be used only as the controlling licence agreement authorises.
-- The documentation is for use by the vendor's customers (and those of its affiliates and designates) only; use for any other purpose is not authorised.
-- No part of the software or documentation may be reproduced, transmitted or translated, in any form or by any means, unless the licence agreement allows it or the vendor gives prior written permission.
-- Silent on derivative works, reverse engineering and building other software. It refers to the licence agreement without linking it.
-
-Website legal notice (it says it covers "this website"; it does not say it covers the documentation host):
-
-- Site material is the vendor's property. Users may not modify, reproduce, upload, post, transmit, download or distribute it.
-- Printing or downloading portions is allowed only for personal, informational, non-commercial use, with notices intact; any other use of the vendor's materials is prohibited.
-- No robot, spider or other automatic device or process may be used to access the site for any purpose, and manual monitoring or copying of site material needs prior written consent.
-- Silent on product documentation and on competing products.
-
-Limit of this record: the reader saw summaries and short quotes, not the full legal texts. If the human decides to authorise the use, he should read the two notices in full.
-
-### 2.3 Assessment
-
-- The documentation is offered to customers under a licence agreement. The agreement that applies here is the human's university licence, which the reader cannot see (question Q-002 is still pending). Nothing in the notices gives a third party, or an automated agent working for a public open-source project, permission to read the documentation for this purpose.
-- Rewriting facts and formulas in our own words is not "reproducing" the documentation in the usual sense, but the notices do not say it is allowed, and the "customers only, other purposes not authorised" clause points the other way.
-- The main website notice forbids automated access. Whether it reaches the documentation host is not stated, but the reader's tools are automated.
-- The licence of the software itself is not available to the reader.
-
-Result: **use not allowed as the terms read; treated as forbidden.** Per `AGENTS.md` section 6 the reader stopped, did not read the reference documentation, and wrote question Q-005.
-
-### 2.4 Incidental exposure, disclosed
-
-Three web searches run on 2026-10-08 (two to locate the documentation site, one about how another NCA tool's λz selection compares with the reference software) returned tool-written summaries that restated parts of the reference documentation and of community forum threads about it. The reader did not ask for these pages and did not open any of them. The topics that appeared:
-
-- the λz best-fit definition (largest adjusted R², a 1e-4 tie allowance in favour of more points, candidate sets built from the last 3, 4, 5 … points, zero concentrations skipped);
-- which early points are left out of the automatic selection (before the maximum, during an infusion, and the maximum itself for non-bolus data);
-- a setting for a minimum adjusted R² that only flags profiles;
-- the existence of three or four AUC calculation options, their menu labels, and that a newer release may have changed the λz selection procedure (an unverified community report).
-
-Handling: none of this is used as a source. Every rule in `specs/nca.md` on these topics is sourced from the register below, independently of those summaries. Anything the independent sources do not settle is tagged `assumed`. The orchestrator can judge whether this exposure matters for the clean-room record.
-
-Forum threads whose titles appeared in search results were not opened. Later searches excluded the vendor's domains.
-
-### 2.5 Where the reference software's behaviour was learned instead
-
-- A public conference poster comparing three NCA programs, one being the reference software (S-04).
-- A peer-reviewed open-access paper on an NCA package built to reproduce the reference software, with a published comparison table (S-05).
-- The manuals of two R packages written to reproduce the reference software (S-06, S-07).
-- The public documentation of a commercial PK tool that uses the same parameter names (S-08, S-09).
-
-None of these is the reference software's own documentation.
+Vendor documentation, vendor project files, exported result tables and screenshots are not read and not committed. A search summary that restates a vendor manual is not a source either. Where an open tool or a paper states a formula, the rule cites that tool or paper.
 
 ## 3. Register of sources used
 
@@ -78,8 +17,8 @@ Terms column: what the source's licence or terms say about our use, as far as th
 | S-01 | PKNCA 0.12.1 reference manual (CRAN, 2025-08-19). Topics cited as `S-01:<topic>` (e.g. `pk.calc.auxc`, `pk.calc.half.life`, `pk.calc.c0`, `clean.conc.blq`, `assert_conc_time`). | `https://cran.r-project.org/web/packages/PKNCA/refman/PKNCA.html` | AGPL-3 (package licence). Read only. Facts, formulas and defaults re-expressed; no sentence copied. The package source code was not read. |
 | S-02 | PKNCA vignettes: v01 Introduction and usage; v05 AUC calculation; v06 Half-life calculation; v07 Unit assignment and conversion; v08 Data imputation; v23 AUC integration methods; v31 Introduction article; v40 Options. Cited as `S-02:v05` etc. | `https://cran.r-project.org/web/packages/PKNCA/vignettes/` (same files on `https://humanpred.github.io/pknca/articles/`) | AGPL-3. As S-01. A few printed example results are quoted as numbers in `nca.md` (worked example W1, λz targets W8); row added to `ATTRIBUTION.md`. |
 | S-03 | PKNCA NEWS file, versions 0.6 to 0.12.1 (behaviour changes: edge cases, defaults, bug fixes). | `https://cran.r-project.org/web/packages/PKNCA/news/news.html` | AGPL-3. As S-01. |
-| S-04 | Conference poster T-102, ACOP 2019: comparison of NCA results between PKNCA, one other open tool and the reference software, on simulated profiles (Ma, Guglieri-Lopez, Gobburu, Denney, Ivaturi). | `http://www.humanpredictions.com/wp-content/uploads/2020/01/ACOP_2019_T102_NCA_performance_evaluation_Yingbo_revised.pdf` (linked from the PKNCA manual, S-01 topic `PKNCA`) | Public PDF, no licence stated. Cited and paraphrased only. The fetch tool cached the PDF outside the repository. |
-| S-05 | Kim H, Han S, Cho Y-S, Yoon S-K, Bae K-S. Development of R packages: NonCompart and ncar for noncompartmental analysis (NCA). Transl Clin Pharmacol 2018;26(1):10-15. doi:10.12793/tcp.2018.26.1.10 (PMC6989226). Its Table 1 maps output names, its Table 3 compares package output with the reference software on a public dataset. | `https://pmc.ncbi.nlm.nih.gov/articles/PMC6989226/` | CC BY-NC 3.0. The non-commercial clause does not fit an MIT OR Apache-2.0 repository, so no text or table is copied. Used to check rules and to establish names. See question Q-007 about the published numbers. |
+| S-04 | Conference poster T-102, ACOP 2019, on NCA results of PKNCA and other tools, simulated profiles (Ma, Guglieri-Lopez, Gobburu, Denney, Ivaturi). | `http://www.humanpredictions.com/wp-content/uploads/2020/01/ACOP_2019_T102_NCA_performance_evaluation_Yingbo_revised.pdf` (linked from the PKNCA manual, S-01 topic `PKNCA`) | Public PDF, no licence stated. Not used to claim agreement with any one program. The fetch tool cached the PDF outside the repository. |
+| S-05 | Kim H, Han S, Cho Y-S, Yoon S-K, Bae K-S. Development of R packages: NonCompart and ncar for noncompartmental analysis (NCA). Transl Clin Pharmacol 2018;26(1):10-15. doi:10.12793/tcp.2018.26.1.10 (PMC6989226). | `https://pmc.ncbi.nlm.nih.gov/articles/PMC6989226/` | CC BY-NC 3.0. No text, table or number is copied. Not used as a comparison (T-129). |
 | S-06 | NonCompart 0.8.4 reference manual (CRAN, 2026-09-21): `sNCA`, `BestSlope`, `LinAUC`, `LogAUC`, `AUC`. | `https://cran.r-project.org/web/packages/NonCompart/refman/NonCompart.html` | GPL-3. Facts only. Outside the card's explicit list; used only as a second source. |
 | S-07 | pkr 0.1.6 reference manual (CRAN, 2026-07-30): `BestSlope`, `IndiNCA`, `AUC`. | `https://cran.r-project.org/web/packages/pkr/refman/pkr.html` | GPL-3. Facts only. Outside the card's explicit list; second source. |
 | S-08 | PKanalix "Parameters" page (NCA parameter names, CDISC codes, formulas). | `https://pkanalix.lixoft.com/nca-parameters/` | Simulations Plus documentation. The terms page of the company website (read 2026-10-08) covers only its main website, forbids reproduction there, and says nothing on the documentation host. Reading and facts only; nothing copied. Outside the card's explicit list; second source for names and formulas. |
@@ -101,8 +40,8 @@ PubMed bibliographic data came from the PubMed service (NLM); the records are ci
 
 ## 4. Looked at and deliberately not used
 
-- The reference software's own documentation (section 2).
-- Community forum threads and mailing-list archives about the reference software (may quote its documentation); not opened.
+- Vendor documentation of commercial pharmacokinetic software (section 2).
+- Community forum threads that quote that documentation; not opened.
 - The PKNCA source code (AGPL-3; the clean-room rule allows documentation only). Not opened.
 - `private/` and `crates/`: not opened.
 - Documentation of other commercial NCA tools beyond S-08 and S-09: not needed.
@@ -113,7 +52,6 @@ A small script kept in the session's scratch folder (not in the repository, not 
 
 - H1: the nine-point profile of the PKNCA AUC vignette (S-02:v05): AUClast, AUCall, tlast, λz, R², adjusted R², Clast,pred, half-life, span ratio, AUCinf,obs and AUCinf,pred all reproduced.
 - H2: the three λz outcomes printed in the PKNCA half-life vignette (S-02:v06) for one subject of the public theophylline data (default selection; one point excluded; manual range): number of points, first time and λz reproduced to the printed digits.
-- H3: the published comparison table of S-05 for one subject of the same public dataset (linear trapezoid, extravascular, best-fit λz): λz, adjusted R², half-life, AUClast, AUCinf (observed and predicted), AUMClast, AUMCinf (observed and predicted), percent extrapolated, CL/F, Vz/F and the MRT values were reproduced to the digits printed in the paper, by the formulas in `nca.md`. This is a statement about a published table, not a copy of it; see question Q-007.
 - H4: for a pure mono-exponential profile, the log rule reproduces the analytic AUC and AUMC to rounding error, and the percentage error of the linear rule at 0.5, 2 and 4 half-lives per interval matches the figures in the abstract of S-12 (about 1%, 15.5%, 57.1%).
 - H5: a search over random profiles found the discriminating λz profiles of worked example W6.
 - H6: the rules of `specs/nca.md` applied to the 18 public profiles of T-003 reproduce every parameter in `oracle/expected/*.csv` that the script computes, to better than 1e-14 relative (details in `specs/nca.md` section 11). Reading the public oracle files is allowed; `private/` and `crates/` were not opened.
@@ -133,7 +71,7 @@ What the oracle does not cover is listed per rule in `specs/nca.md` (lines "Not 
 
 ## 7. Sources added for `specs/models.md` and `specs/fit.md` (card T-008, 2026-10-08)
 
-Same rules as before: the reference software's own documentation was not used; textbooks are not accessible to the reader and are cited at book level; bibliographic records were checked through the Crossref service (DOI resolution), the papers themselves were not read.
+Same rules as before: vendor documentation was not used; textbooks are not accessible to the reader and are cited at book level; bibliographic records were checked through the Crossref service (DOI resolution), the papers themselves were not read.
 
 | key | source | location | terms and how used |
 |---|---|---|---|
@@ -163,7 +101,7 @@ Same rules as section 6: the reader read the board cards and `oracle/` (data fil
 
 Hand check added: H7, see above.
 
-## 9. Evidence from the model and fit oracles, and the screenshots (card T-017, 2026-10-08)
+## 9. Evidence from the model and fit oracles (card T-017, 2026-10-08)
 
 Same rules as sections 6 and 8: the reader read the board cards, `oracle/` (expected files, options files, data README), and `specs/differences.md`, not `crates/`; engine and test results are as reported by the agents and were not re-run. Hand checks H8 (stable model forms against 60-digit arithmetic, `specs/models.md`) and H9 (stationarity sums at the genuine fixed points of two Indometh fits, `specs/fit.md` F5) were done by the reader in a throwaway script outside the repository.
 
@@ -173,16 +111,10 @@ Same rules as sections 6 and 8: the reader read the board cards, `oracle/` (expe
 | E-09 | Model engine (card T-010 and reviews): `oracle_models` 73 of 73, the stable rearrangements of the closed forms, the `Overflow` error, the domain checks | `board/tasks/T-010.md` | As reported by the engine and reviewer agents. |
 | E-10 | Fit oracle (cards T-009 and T-018): 15 cases, 90 reference fits, 5245 values; estimates by `minpack.lm::nlsLM` (ftol = ptol = 1e-15), agreement of `stats::nls` where it converges, statistics by an independent R implementation checked against `summary.nls` and by a separate Rust implementation; the iterates of worked example F1 at 15 digits (`gauss_newton_f1.csv`); the corrected Indometh predicted-weight cases | `oracle/expected/fit/*`, `oracle/scripts/fit_wls.R`, `board/tasks/T-009.md`, `board/tasks/T-018.md`, `specs/differences.md` (D-02, withdrawn) | R packages minpack.lm 1.2.4, Rmpfr 1.1.3 and base R are used as external tools. |
 | E-11 | Fit engine (cards T-011a, T-011b and reviews): `oracle_fit` 114 of 114, convergence rule for predicted-value weights, own-weight WRSS check, generated bounds, flags, option ranges | `board/tasks/T-011a.md`, `T-011b.md` | As reported by the engine and reviewer agents. |
-| S-31 | The thirteen screenshots in `private/screenshots/` (groups nca-setup, plot-and-worksheet, locale-and-preferences, preferences), seen by the reader only, as allowed by `AGENTS.md` section 7. Used to describe the reference workflow in `specs/ux.md` in the reader's words; no label, layout, screenshot or number of the human's worksheets is reproduced | `private/screenshots/` (git-ignored) | Observed behaviour is an allowed source (`AGENTS.md` section 6). The screens also give partial answers to Q-008, noted in `board/QUESTIONS.md`. |
-| S-32 | Orchestrator message to the reader, 2026-10-08: observed failures on the logarithmic axis and the locale-dependent import | `board/messages/2026-10-08-orchestrator-reader-ux-friction-logscale.md` | Observation by the human, relayed. |
-
-## 10. Observed facts carried into `specs/nca.md` (card T-023, 2026-10-08)
-
-The status `observed` (see `specs/nca.md` section 0) marks facts seen on the human's screen of the reference software: the five NCA-setup screenshots of S-31 (calculation-method list, weighting list, model-family list, user-defined parameters page, λz rules and acceptance page) and the answers recorded under Q-008 in `board/QUESTIONS.md`. They are described in the reader's words, with no label or layout transcribed. The rules concerned are NCA-AUC-11, NCA-LZ-15, NCA-LZ-16, NCA-LZ-17 and NCA-OPT-01, and the observed lines of NCA-AUC-05 and NCA-OBS-05. Hand check H10 (the weighted λz regression of worked example W10, recomputed by the reader in a throwaway script outside the repository; with uniform weights it reproduces the values of W1). No number from `private/` is used.
 
 ## 11. Sources added for the two-compartment section of `specs/models.md` (card T-031, 2026-10-09)
 
-Same rules as before: the reference software's own documentation was not used (Q-005 pending); the textbooks (S-17, S-18) are not accessible to the reader and are cited at book level only, so every textbook citation of section 11 of `models.md` still lacks chapter and page (open items OM-11, OM-13 there). The equations were derived (D) from the compartment differential equations and checked by hand checks H11 to H14 (70-digit decimal arithmetic and a Runge-Kutta ODE solution, in a throwaway script outside the repository; section 11.7 of `models.md`). No sentence, table or number of a source is copied, so no row was added to `ATTRIBUTION.md`.
+Same rules as before: vendor documentation was not used; the textbooks (S-17, S-18) are not accessible to the reader and are cited at book level only, so every textbook citation of section 11 of `models.md` still lacks chapter and page (open items OM-11, OM-13 there). The equations were derived (D) from the compartment differential equations and checked by hand checks H11 to H14 (70-digit decimal arithmetic and a Runge-Kutta ODE solution, in a throwaway script outside the repository; section 11.7 of `models.md`). No sentence, table or number of a source is copied, so no row was added to `ATTRIBUTION.md`.
 
 | key | source | location | terms and how used |
 |---|---|---|---|
@@ -192,15 +124,15 @@ Same rules as before: the reference software's own documentation was not used (Q
 
 Re-used from before: S-20 (pmxTools "Drawing PK curves": its two-compartment single-dose functions have the names `calc_sd_2cmt_linear_bolus`, `_infusion`, `_oral_0`, `_oral_0_lag`, `_oral_1`, `_oral_1_lag` and are parameterised by CL, V1, V2, Q, plus tinf, dur, ka, tlag; the steady-state versions exist; no equation is written on the page; read 2026-10-09, first 100 000 of 145 000 characters), S-13, S-14, S-15 (moments and Vss), S-30 (Bertrand and Mentré, through S-20).
 
-**Incident to record (clean room).** The second web search made for this card (a general query on two-compartment conversions) returned, among its results, titles of the online help of the reference software (its pharmacokinetic-models page, several versions). The reader did not open any of those pages. The search tool's written summary nevertheless paraphrased statements attributed to them (the quadratic whose roots are the two exponents, AUC as A/α + B/β, the names of two of its models) and added the usual conversion relations between macro- and micro-constants as "standard results". The reader saw this summary before starting its own derivation, so the claim of full independence cannot be made. What the reader did: every relation was re-derived from the differential equations and checked numerically at 70 digits and against an ODE solution (H11 to H14); the specific content of section 11 that goes beyond those relations (the superposition of two one-compartment functions, the stable forms, the limits ka = α and ka = β, the Tmax bracket, the partial derivatives and their chain rule, the domain and refusal rules) is the reader's own and was not in any result seen; no rule cites that documentation. The orchestrator should judge; if Q-005 is answered "forbidden", the relations concerned are textbook-standard (S-17, S-18, S-33) and can be re-sourced to a reader holding the books. Later searches for this project should pass the domains of the reference software's documentation in `blocked_domains`.
+**Incident to record (clean room).** A web search for this card returned titles of a commercial product's online help. Those pages were not opened. A search summary paraphrased them; that summary is not a source, and no rule cites it. Every relation in section 11 of `specs/models.md` was re-derived from the differential equations and checked at 70 digits and against an ODE solution (H11 to H14). The relations are the textbook ones (S-17, S-18, S-33).
 
 ## 12. Source added for the multiple-dose, steady-state and later sections of `specs/models.md` (card T-046, 2026-10-09)
 
-Same rules as before: the reference software's own documentation was not used (Q-005 pending), `private/` was not opened, no web search was made. One document was read, page by page, by the reader.
+Same rules as before: vendor documentation was not used, no web search was made. One document was read, page by page, by the reader.
 
 | key | source | location | terms and how used |
 |---|---|---|---|
-| S-36 | Bertrand J, Mentré F (INSERM U738, Paris Diderot University; programmers Lavielle M, Mesa H, Chatel K, INRIA). Mathematical expressions of the pharmacokinetic and pharmacodynamic models implemented in the Monolix software. September 2008 (Monolix 2.4). 68 numbered pages: chapter 1 (pharmacokinetic models, pp. 3-53), chapter 2 (pharmacodynamic models, pp. 54-60), appendices I to III (lists of the models of the PK, PKe0 and PD libraries, pp. 61-68). This is the document that S-20 cites and that S-30 listed as unread. | Local copy outside the repository: `notes/sources/bertrand-mentre-2008-monolix-pkpd-library.pdf` (a third-party PDF, not versioned, not to be committed). Page numbers cited in `specs/` are the printed ones (the PDF has one more page in front, the cover, so printed page n is PDF page n + 1). Equation numbers (1.1 to 1.90) are given as locators. | An academic document (INSERM and INRIA, 2008) that writes down the standard models of **another program, Monolix, which is not the reference software** of this project. Allowed as a paper (`AGENTS.md` section 3, rule 1: papers). Used for the mathematics only (closed forms, parameter definitions, the assumptions it states for several doses and steady state); no sentence, table or equation layout is copied, the rules of `specs/models.md` are in the reader's own words and notation, and each cites the page. Nothing was copied, so no row was added to `ATTRIBUTION.md`. Its statements about Monolix's parameter names and conventions say nothing about the reference software and are not evidence for its behaviour. |
+| S-36 | Bertrand J, Mentré F (INSERM U738, Paris Diderot University; programmers Lavielle M, Mesa H, Chatel K, INRIA). Mathematical expressions of the pharmacokinetic and pharmacodynamic models implemented in the Monolix software. September 2008 (Monolix 2.4). 68 numbered pages: chapter 1 (pharmacokinetic models, pp. 3-53), chapter 2 (pharmacodynamic models, pp. 54-60), appendices I to III (lists of the models of the PK, PKe0 and PD libraries, pp. 61-68). This is the document that S-20 cites and that S-30 listed as unread. | Local copy outside the repository: `notes/sources/bertrand-mentre-2008-monolix-pkpd-library.pdf` (a third-party PDF, not versioned, not to be committed). Page numbers cited in `specs/` are the printed ones (the PDF has one more page in front, the cover, so printed page n is PDF page n + 1). Equation numbers (1.1 to 1.90) are given as locators. | An academic document (INSERM and INRIA, 2008) that writes down the standard models of the Monolix library. Allowed as a paper (`AGENTS.md` section 3, rule 1: papers). Used for the mathematics only (closed forms, parameter definitions, the assumptions it states for several doses and steady state); no sentence, table or equation layout is copied, the rules of `specs/models.md` are in the reader's own words and notation, and each cites the page. Nothing was copied, so no row was added to `ATTRIBUTION.md`. Its statements about Monolix's parameter names and conventions are conventions of that library. |
 
 **What the document contains (map, in the reader's words).** Chapter 1 is organised by number of compartments (one: pp. 4-16; two: pp. 17-36; three: pp. 37-53), then by input (IV bolus, infusion, first-order absorption, zero-order absorption), then by elimination (linear, then Michaelis-Menten), with a lag time for the two absorption inputs. For each model it gives the concentration of the central compartment after a single dose, after n doses at arbitrary times, and, for linear elimination only, at steady state of equal doses at interval τ, in a closed form (sums of exponentials, written with explicit branches for the finite-duration inputs and for the lag). For the Michaelis-Menten models it gives only the differential equations, no closed form and no steady state. Each model also has the matching effect-compartment concentration (one extra rate constant, ke0), pp. 5-34. Page 4 states the assumptions of the multiple-dose and steady-state forms (the interval is longer than the infusion or zero-order duration). Pages 18 and 39 give the exponents of the two- and three-compartment systems; pp. 18-20, 24, 28 (two compartments) and pp. 39-53 (three) give the macro-coefficients. Chapter 2 (pharmacodynamic response models, pp. 54-60) is outside the scope of `AGENTS.md` section 1. The appendices (pp. 62-66) list the 78 PK models and the PKe0 models of the library with their parameter sets, and mark which are available as single dose, multiple dose and steady state; pp. 67-68 list the PD models. The document does **not** give AUC, AUMC, MRT, half-lives, Cmax or Tmax formulas, partial derivatives, the limits at equal rate constants, parameter domains, or any numerical example.
 

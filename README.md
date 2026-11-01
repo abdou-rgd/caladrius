@@ -69,7 +69,7 @@ cargo run -p caladrius -- study.caladrius.json     # open a saved project
 
 "Validated" here has a narrow meaning: a number produced by Caladrius equals a number produced by an independent computation, within a stated tolerance, on a stated case. It does not mean that Caladrius gives the same answer as any commercial program, and the table says where the independent computation comes from. Everything is reproducible: the R scripts that write the expected values are in `oracle/scripts/` (versions recorded in each `*.options.json`), `cargo xtask conformance` regenerates `docs/conformance.md` (the per-case counts; never edited by hand), and the tests are in `crates/*/tests/`. The full validation report — versions, methods, tolerances, coverage, documented differences, open items and how to reproduce — is `docs/validation.md`.
 
-**Where the numbers come from.** None of the values in the conformance table comes from the reference commercial software: every expected value is produced by PKNCA, by 256-bit evaluations of closed forms cross-checked with expm and deSolve, or by R nls and nlsLM, from public or synthetic data, with a versioned script. The reference software was compared once, privately, on counts only.
+**Where the numbers come from.** Every expected value in the conformance table is produced by PKNCA, by 256-bit evaluations of closed forms cross-checked with expm and deSolve, or by R nls and nlsLM, from public or synthetic data, with a versioned script.
 
 ## Where to read more
 
@@ -82,7 +82,7 @@ cargo run -p caladrius -- study.caladrius.json     # open a saved project
 
 ## Trademark notice
 
-Caladrius is an independent project and is not affiliated with, endorsed by or derived from Certara. Phoenix and WinNonlin are trademarks of Certara. Caladrius aims at compatible conventions for standard pharmacokinetic calculations, reimplemented from public textbooks and documentation.
+Caladrius is an independent project and is not affiliated with, endorsed by or derived from Certara. Phoenix and WinNonlin are trademarks of Certara.
 
 ## License
 

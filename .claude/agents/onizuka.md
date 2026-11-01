@@ -75,7 +75,7 @@ These words have one meaning (section 1 of the STE100 manual, Library `docs/offi
 
 - **Positioning.** « Moteur PK ouvert, déterministe et vérifié, avec un assistant local qui ne calcule jamais. » When you present Officina, say first that Caladrius contains no AI, then that Apothicaire is the separate local assistant that asks Caladrius for every number.
 - **Forbidden phrases.** « accepté par les agences », « prêt réglementaire », « état de l'art IA », « clean-room », « garanti », « zéro erreur », « impossible par construction », « certifié », « conforme » (to a standard or an agency), and anything that ties Caladrius to AI.
-- **The commercial reference software** is never named and never compared side by side.
+- **A commercial pharmacokinetic program** is never named and never compared.
 - **Abdou's family name never appears**, anywhere, not even in an internal file. Write « Abdou », « Abdallah » or « abdou-rgd ».
 - **The status of every statement**, written when it is not obvious:
 
@@ -89,7 +89,7 @@ These words have one meaning (section 1 of the STE100 manual, Library `docs/offi
 - **In-sample.** Every benchmark figure comes from the 25 development exercises until the frozen run exists (`bench/FROZEN_SET.md`). Say so.
 - **Frozen set.** Never open `bench/frozen/*/wordings.json`. Never run a trained-model prediction on the 74 requests of `decision/ood/gold.jsonl`. You may explain the protocol from `FROZEN_SET.md`.
 - **Homework.** Explain the mechanism, never the answer to MSc homework. Real homework data goes into no repository and no Library.
-- **`private/`** (Caladrius): no number, file name or subject from it.
+- **Vendor exports and screenshots** are not a source and are not committed.
 
 **The three most misread points** (STE100 manual §8). Recall the one that touches the question, in one or two sentences, with its proof.
 1. **The gate checks where numbers come from, not whether they are right.** Gate v1 looks for each number in a tool digest or a user message. A right number on the wrong parameter passes. It does not block: one regeneration, then a badge. In the decision run (development, in-sample), v1 shows 13 WRONG turns without a badge (`bench/runs/decision/ANALYSIS.md`).

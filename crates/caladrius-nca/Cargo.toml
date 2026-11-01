@@ -13,11 +13,6 @@ serde = { version = "1.0.229", features = ["derive"] }
 # Pinned: another version may round another way, and every digest would change.
 libm = "=0.2.16"
 
-[features]
-# Tests against the reference software's exports in `private/` (AGENTS.md section 5.2); they are
-# skipped, with a message, when the exports are not there. Nothing from `private/` is versioned.
-private-oracle = []
-
 [dev-dependencies]
 caladrius-testkit = { path = "../caladrius-testkit" }
 # Exact float round trip, for the serialization tests.

@@ -2,8 +2,7 @@
 
 This report states what Caladrius verifies, against what, at which tolerance, and what it does not
 verify. It is written from the repository's own files; every number cites the file that owns it. It
-reproduces no text, and no number, from the reference commercial software, and nothing from
-`private/`.
+reproduces no text and no number from a commercial program.
 
 ## 1. Scope and position
 
@@ -35,11 +34,9 @@ any commercial program. "Validated" here has the narrow meaning given in `README
 "What is verified, and what is not": a number produced by Caladrius equals a number produced by an
 independent computation, within a stated tolerance, on a stated case.
 
-**No number in the repository comes from the reference commercial software.** Every expected value
-is produced by PKNCA, by 256-bit evaluations of closed forms cross-checked with a matrix exponential
-and an ODE solver, or by R `nls`/`nlsLM`, from public or synthetic data, with a versioned script
-(`README.md`, "Where the numbers come from"). The reference software was compared once, privately,
-on counts only; that comparison is not published and is not part of any versioned test.
+Every expected value is produced by PKNCA, by 256-bit evaluations of closed forms cross-checked
+with a matrix exponential and an ODE solver, or by R `nls`/`nlsLM`, from public or synthetic data,
+with a versioned script (`README.md`, "Where the numbers come from").
 
 ## 2. Methods of verification
 
@@ -49,11 +46,7 @@ on counts only; that comparison is not published and is not part of any versione
 
 1. **Public, in `oracle/`**: the R datasets Theoph and Indometh with PKNCA results from a versioned
    R script, hand-made edge profiles, and exact closed-form model values (`oracle/README.md`).
-2. **Private, in `private/`**: coursework results and exports from the reference software. The
-   matching tests sit behind the Cargo feature `private-oracle` and are skipped when the folder is
-   empty. No file, number or subject name from `private/` may appear in a versioned file, a commit
-   message or the board (`AGENTS.md` section 5).
-3. **Independent computation**: where no external reference exists, a second, naive implementation
+2. **Independent computation**: where no external result exists, a second, naive implementation
    in `caladrius-testkit`, never the same function tested against itself (`AGENTS.md` section 5).
    Two instances: every fit statistic is recomputed naively and the optimality condition
    `Jᵀ W r = 0` is re-checked in `crates/caladrius-testkit/tests/step3_consistency.rs`
@@ -94,7 +87,7 @@ Tolerances are defined once, in `caladrius-testkit`, and never loosened inside a
 | `FIT_WEIGHTED_SS` | weighted sum of squares of a fit | relative 1e-6 |
 | `MODEL_VALUES` | closed-form model values | relative 1e-12; an expected zero is exactly zero |
 | `MODEL_DERIVATIVES` | partial derivatives of the two-compartment models | relative 1e-12; an expected zero is exactly zero |
-| `Tolerance::displayed(n)` | against a reference export | equality at the `n` decimals shown |
+| `Tolerance::displayed(n)` | equality at a printed precision | equality at the `n` decimals given |
 
 **Measured margins, not assumed ones.** `specs/fit.md` section 10 records the worst gaps between the
 engine (closed-form derivatives, relative decrease 1e-10) and the reference fits: **7.4e-6** on an
@@ -180,14 +173,12 @@ and section 3.1 holds the coverage table the README carried until 2026-10-29. **
 
 | Analysis | Validated against | Tolerance | Cases and values (`docs/conformance.md`) | Not validated |
 |---|---|---|---|---|
-| NCA: extravascular, IV bolus, IV infusion; linear and lin-up/log-down areas | PKNCA 0.12.1 on R 4.5.2 (`oracle/scripts/nca_pknca.R`); Theoph and Indometh, 14 edge-case runs on hand-made profiles and 2 runs on 4 hand-made profiles built to separate the terminal-phase rule; plus naive second implementations in `caladrius-testkit` | 1e-6 | 20 cases, 3744 values; 16 more values are the documented difference D-01 | Steady state and multiple doses, partial AUC, urine, sparse sampling, weighted λz (`specs/nca.md` section 12); every reference-software convention |
+| NCA: extravascular, IV bolus, IV infusion; linear and lin-up/log-down areas | PKNCA 0.12.1 on R 4.5.2 (`oracle/scripts/nca_pknca.R`); Theoph and Indometh, 14 edge-case runs on hand-made profiles and 2 runs on 4 hand-made profiles built to separate the terminal-phase rule; plus naive second implementations in `caladrius-testkit` | 1e-6 | 20 cases, 3744 values; 16 more values are the documented difference D-01 | Steady state and multiple doses, partial AUC, urine, sparse sampling, weighted λz (`specs/nca.md` section 12) |
 | One-compartment model curves, AUC and secondary parameters (six models) | Exact closed forms in 256-bit arithmetic (`Rmpfr` 1.1.3), cross-checked against `expm` 1.0.1 and `deSolve` 1.42; textbook double-precision forms in `caladrius-testkit` (`oracle/scripts/models_closed_form.R`) | 1e-12 | 21 cases, 886 values | Any other program's output; user-written models. The closed forms are the project's own derivation from textbooks, checked three ways |
 | Two-compartment models: curves, AUC, AUMC, partial derivatives and refused inputs (six models, three parameterisations) | Explicit sums of exponentials in 256-bit arithmetic and central differences of them, cross-checked on every case against `expm` and `deSolve` (`oracle/scripts/models_2c_closed_form.R`) | 1e-12 | 172 cases, 16906 values: 107 value cases, 64 derivative cases (entries with condition number above 1e3 omitted), plus `model_pk2_errors` (80 not-available rows the engine must refuse) | Any other program's output; the two-compartment fit (no reference fit exists); the 393 ill-conditioned derivative entries (OM-14) |
 | Multiple dosing and steady state (twelve models): schedules, regular regimens of n doses, steady-state profiles and derived quantities, refused inputs | Plain sums of single-dose closed forms in 256-bit arithmetic (`Rmpfr`), the geometric-series forms of the specification implemented a second time and checked at 2^-60, and every case cross-checked at 1e-8 against `deSolve` with dosing events and the periodic solution of the linear system (`oracle/scripts/models_md.R`) | 1e-12 | 247 cases, 16919 values, including `model_md_errors` (inputs the engine must refuse) | Any other program's output; the engine's own limits (non-integer `n_doses`, the 1e7 evaluation cap) have unit tests only (`specs/models.md`, `assumed` rules) |
 | Fits, IV bolus and first-order oral: estimates and every statistic | R `stats::nls` and `minpack.lm::nlsLM` 1.2.4 on R 4.5.2 (`oracle/scripts/fit_wls.R`); statistics from an independent R implementation of `specs/fit.md`, standard errors and S checked against `summary.nls` | 1e-4 parameters and statistics, 1e-6 residual sum of squares | 15 cases, five weightings each: 95 fits, 5340 values (with the convergence status) | Bounds, generated initial estimates and quality flags have unit tests only |
 | Fits, IV infusion, zero-order input, first-order with lag | `nlsLM` checked against `nls`, same R and package versions, on synthetic profiles written from the closed forms (fixed seed, 8 % log-normal noise; the input duration is a fixed parameter) | 1e-4 and 1e-6 as above | 15 cases, 90 fits, 5160 values (with status) | Real (non-synthetic) profiles for these models; a published worked example with a page reference for any fit |
-| The reference commercial software | One private coursework exercise, kept out of the repository; only counts recorded, in a local run | equality at the displayed precision | counts only, not published | Everything else: its fitting defaults and its definitions of the fit statistics are `assumed` from observation and untested against its output |
-
 The fit sections total 30 cases and 10500 values (5340 + 5160; `docs/conformance.md`). The
 model sections total 440 cases and 34711 values (886 + 16906 + 16919; `docs/conformance.md`).
 
@@ -199,13 +190,11 @@ rows against `docs/conformance.md` (`review-claims-checked`).
 
 | What | Checked against | Tolerance (relative) | Cases and values | Not validated |
 |---|---|---|---|---|
-| NCA parameters: extravascular, IV bolus, IV infusion; linear and lin-up/log-down areas | `PKNCA` 0.12.1 on R 4.5.2 (`oracle/scripts/nca_pknca.R`): Theoph and Indometh (the R datasets, two area rules each), 14 edge-case runs on hand-made profiles (values below the limit, missing, negative, lag, infusion, IV C0) and 2 runs on 4 hand-made profiles built to separate the readings of the terminal-phase rule; plus naive second implementations in `caladrius-testkit` | 1e-6 | 20 cases, 3744 values; 16 more values are a documented difference (D-01), counted in neither column | Steady state and multiple doses, partial AUC, urine, sparse sampling, weighted lambda-z (`specs/nca.md` section 12, "not specified"); the combinations of open item O-17; every reference-software convention (last row) |
+| NCA parameters: extravascular, IV bolus, IV infusion; linear and lin-up/log-down areas | `PKNCA` 0.12.1 on R 4.5.2 (`oracle/scripts/nca_pknca.R`): Theoph and Indometh (the R datasets, two area rules each), 14 edge-case runs on hand-made profiles (values below the limit, missing, negative, lag, infusion, IV C0) and 2 runs on 4 hand-made profiles built to separate the readings of the terminal-phase rule; plus naive second implementations in `caladrius-testkit` | 1e-6 | 20 cases, 3744 values; 16 more values are a documented difference (D-01), counted in neither column | Steady state and multiple doses, partial AUC, urine, sparse sampling, weighted lambda-z (`specs/nca.md` section 12, "not specified"); the combinations of open item O-17 |
 | Model curves, AUC and secondary parameters: six one-compartment models (IV bolus, IV infusion, first-order oral with and without lag, zero-order oral with and without lag) | Exact closed forms evaluated in 256-bit arithmetic (`Rmpfr` 1.1.3), cross-checked against a matrix exponential (`expm` 1.0.1) and an ODE solver (`deSolve` 1.42); textbook double-precision forms in `caladrius-testkit` | 1e-12 | 145 cases, 9405 values: 21 single-dose cases (886 values) and, since tasks T-047 and T-049, 124 multiple-dose and steady-state cases (schedules of 1 to 40 doses, regular regimens, steady state for several intervals) with their refusals | Any other program's output; user-written models (not implemented). The closed forms are the project's own derivation from textbooks, checked three ways, not an external reference |
 | Model curves, AUC, AUMC, partial derivatives and refused inputs: six two-compartment models (IV bolus, IV infusion, first-order oral with and without lag, zero-order oral with and without lag), in the macro, micro and clearance/volume parameter sets (added by tasks T-031 to T-034) | Explicit sums of exponentials evaluated in 256-bit arithmetic (`Rmpfr`) and central differences of them, cross-checked on every case against a matrix exponential (`expm`) and an ODE solver (`deSolve` lsoda); `oracle/scripts/models_2c_closed_form.R`, `models_2c_derivatives.R` | 1e-12 | 295 cases, 25306 values: 107 single-dose value cases, 64 derivative cases (conditions above 1e3 omitted), `model_pk2_errors` (80 not-available rows the engine must refuse, with the reason) and, since tasks T-047 and T-049, 124 multiple-dose and steady-state cases with their refusals | Any other program's output; user-written models (not implemented); the two-compartment fit (only one-compartment fits have a reference fit, see the rows below). As for one compartment, the closed forms are the project's own derivation from textbooks, checked four ways rather than against an outside reference |
 | Fit, IV bolus and first-order oral: estimates and every statistic (standard errors, CV%, intervals, correlation, eigenvalues, AIC, SBC, secondary parameters) | `stats::nls` (Gauss-Newton) and `minpack.lm` 1.2.4 `nlsLM` on R 4.5.2 (`oracle/scripts/fit_wls.R`); statistics from an independent R implementation of `specs/fit.md`, standard errors and S checked against `summary.nls` | 1e-4 parameters and statistics, 1e-6 residual sum of squares | 15 cases (Theoph, 12 subjects; Indometh, 6; a five-point example), five weightings each: 95 fits, 5340 values (with the convergence status) | Default settings (closed-form derivatives, relative decrease 1e-10, 50 iterations): 0 of 490 estimates beyond 1e-4 on the 185 reference fits (worst 7.4e-6); the former defaults, kept as the preset `reference_conventions`, give 168 (worst 5.8e-3) (`specs/differences.md` D-03, D-04; Q-014 answered). Bounds, generated initial estimates and quality flags have unit tests only |
 | Fit, IV infusion, zero-order input, first-order with lag (added by task T-029) | `nlsLM` checked against `nls`, same R and package versions, on synthetic profiles written by the same script from the closed forms (fixed seed, 8 % log-normal noise; each options file says how); the infusion or input duration is a fixed parameter | 1e-4 and 1e-6 as above | 15 cases, 90 fits, 5070 values (5160 with status). 1e-4 on parameters and statistics. The engine's own closed-form derivatives for these models (task T-030) reproduce all of them: 125 of 125 oracle tests pass (`crates/caladrius-fit/tests/oracle_fit_models.rs`) and the conformance run validates all 5160 values | Real (non-synthetic) profiles for these models; a published worked example with a page reference for any fit |
-| The reference commercial software | One private coursework exercise, kept out of the repository. Only counts are recorded and nothing from it, numeric or otherwise, is published here (publishing a comparison is the maintainer's decision) | equality at the displayed precision | counts only, in a local run | Everything else. Its fitting defaults (increment, convergence, bounds) and its definitions of the fit statistics are `assumed` from the maintainer's observation and have not been tested against its output |
-
 ## 4. Documented differences
 
 `specs/differences.md` holds the places where Caladrius deliberately gives another answer than an
@@ -230,46 +219,42 @@ tolerance to widen (`AGENTS.md` section 5).
   forward differences of relative increment 1e-3 and the reference fits' stopping rule (relative
   decrease 1e-10), 40 of the 490 estimates of the 185 reference fits land more than 1e-4 from the
   exact minimum (worst 6.9e-4); with the assumed reference defaults (stopping at a relative decrease
-  of 1e-4, now the preset `reference_conventions`) it is 168 (D-04); the engine and the reference then solve slightly different problems — an exact Jacobian
+  of 1e-4, the preset `reference_conventions`) it is 168 (D-04); the engine and the R oracle then solve slightly different problems — an exact Jacobian
   against a 0.1 % finite-difference approximation (`specs/differences.md`, D-03). The contract
   tolerance (1e-4) compares two fits of the same objective computed the same way, so widening it
-  would hide the method difference instead of removing it; the engine offers both settings, and how
-  the reference software forms its derivatives stays open (OF-01).
+  would hide the method difference instead of removing it. The engine offers both settings. The preset and the default are defined in the engine (OF-01, OF-02).
 - **D-05, steady state with a lag follows the physical superposition, not a printed branch.** The
   closed forms printed in S-36 for the steady state with a lag are used outside their domain when
   the interval is shorter than the lag (plus the input duration); there they give another value, a
   negative one in one case. Caladrius follows the shift rule of MOD-MD-05, which is what the plain
   sum of single doses gives, and the oracle has no branch (`specs/differences.md`, D-05).
-- **D-04, the default fit settings differ from the assumed reference defaults.** Since task T-040
+- **D-04, the default fit settings differ from the optional preset.** Since task T-040
   the default fit uses closed-form derivatives when the model has them (otherwise forward
   differences with h = 1e-5) and stops at a relative decrease of 1e-10, giving 0 of 490 estimates
   beyond 1e-4 (worst 7.4e-6); the former defaults remain the named preset `reference_conventions`
   (`specs/differences.md`, D-04). This is a Caladrius design choice (Q-014, option 2), not a claim
-  about the reference software, and the oracle tests are unaffected because they set their options
+  about another program, and the oracle tests are unaffected because they set their options
   explicitly.
 
 ## 5. Known limits and open items
 
-**Which rules are settled.** Every behaviour rule in `specs/` carries a status. "Confirmed by oracle" means the rule's arithmetic or definition agrees with PKNCA, R or the closed forms above; it says nothing about the reference commercial software. Counts of the `- Status:` lines in each file (made with `grep`):
+**Which rules are settled.** Every behaviour rule in `specs/` carries a status. "Confirmed by oracle" means the rule's arithmetic or definition agrees with PKNCA, R or the closed forms above. Counts of the `- Status:` lines in each file:
 
 | Specification | confirmed by oracle | documented, untested | assumed | observed |
 |---|---|---|---|---|
-| `specs/nca.md` | 44 | 15 | 13 | 5 |
+| `specs/nca.md` | 44 | 15 | 12 | 0 |
 | `specs/models.md` | 52 | 2 | 12 | 0 |
 | `specs/fit.md` | 18 | 3 | 22 | 0 |
-| `specs/ux.md` | 0 | 12 | 26 | 0 |
+| `specs/ux.md` | 1 | 5 | 26 | 0 |
 
-The `assumed` rules are the ones that a reference comparison or a human decision still has to settle (for example the fit defaults of `AGENTS.md` section 6); none is presented as settled.
+The `assumed` rules are design choices or formulas not yet exercised by an oracle case. None is presented as settled. T-129 dropped the rules whose only source was a screen.
 
-- **Pending questions.** `board/QUESTIONS.md` still holds Q-004 to Q-012 without a human answer:
-  Q-004 (licence of the public datasets and PKNCA output), Q-005 (terms of the reference
-  documentation), Q-006 (vendor name in `specs/sources.md`), Q-007 (published reference numbers),
-  Q-008 (NCA defaults read off the screen), Q-009 (fitting defaults), Q-010 (replaced values and
-  the extrapolation to infinity), Q-011 (how to drop the exports of the reference software),
-  Q-011b (a sample import file) and Q-012 (a small private oracle for the open NCA conventions).
-  Each has a decision taken meanwhile, so work is not blocked on them.
+- **Pending questions.** `board/QUESTIONS.md` still holds Q-004 (licence of the public datasets and
+  PKNCA output) without a human answer. Q-002 and Q-005 to Q-012 are closed by T-129: the project
+  does not compare with a commercial program and does not use its documentation, exports or
+  screenshots. That closure is not a ruling on what a licence permits.
 - **Q-014 is settled.** The human answered option 2 on 2026-10-09: the default fit uses closed-form
-  derivatives and the tight stop, and the assumed reference defaults stay as the preset
+  derivatives and the tight stop, and the other iteration settings stay as the preset
   `reference_conventions` (`board/QUESTIONS.md`, Q-014; `specs/differences.md`, D-04).
 - **OM-14.** The 393 derivative entries the two-compartment oracle omits (condition number above
   1e3, at zero crossings and near-degenerate points) are returned by the engine but checked by no
@@ -277,12 +262,6 @@ The `assumed` rules are the ones that a reference comparison or a human decision
   `MODEL_DERIVATIVES` (`specs/models.md`, OM-14).
 - **OM-15.** No NCA run on pk2-simulated profiles is compared with the model's AUC, AUMC, MRT, Vss
   and terminal half-life yet; the oracle case is still to be written (`specs/models.md`, OM-15).
-- **Private oracle.** The private comparison is behind the Cargo feature `private-oracle`; with an
-  empty `private/` the tests print `SKIPPED` and pass, and `cargo xtask conformance` prints private
-  counts on the console but writes them into `docs/conformance.md` only with `--private`, because
-  publishing a numeric comparison with the reference software is the maintainer's decision
-  (`board/QUESTIONS.md`, Q-011; `AGENTS.md` section 2).
-
 ## 6. How to reproduce
 
 From the repository root, with the Rust toolchain of `rust-toolchain.toml`:

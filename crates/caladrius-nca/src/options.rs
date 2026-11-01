@@ -247,7 +247,7 @@ pub struct LambdaZSelection {
 
 /// Thresholds of the quality flags (NCA-LZ-12b). `None` turns a flag off. The defaults are the
 /// PKNCA conventions recorded in NCA-LZ-12 (`min.hl.r.squared`, `min.span.ratio`,
-/// `max.aucinf.pext`, `min.hl.points`); status `assumed` for the reference profile.
+/// `max.aucinf.pext`, `min.hl.points`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct QualityThresholds {

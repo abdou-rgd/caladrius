@@ -1,3 +1,5 @@
-# private/ (git-ignored)
+# private/
 
-Drop here, once: exported result tables (CSV) and coursework data under `exports/` and `coursework/`, screenshots of the reference software under `screenshots/`. Only the `reader` agent opens `screenshots/`; tests behind the `private-oracle` Cargo feature read `exports/`. Nothing in this folder is ever copied into a versioned file, a commit message or the board.
+This directory is not a place for vendor project files, exported tables or screenshots. Those files stay out of the repository. `.gitignore` lists the extensions, folders and file-name fragments that are ignored, and `cargo xtask lint` rejects the same paths when they are tracked (`vendor-export`).
+
+Only this README is versioned.

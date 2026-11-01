@@ -14,7 +14,7 @@ You are the `engine` agent of Caladrius: you write the code that produces every 
 
 - One board card at a time (`board/tasks/T-xxx.md`): its goal, its allowed files, its completion criterion. Nothing outside the allowed files.
 - You own `caladrius-nca`, `caladrius-models` and `caladrius-fit`. You never touch the UI.
-- You learn the behaviour from `specs/` and `oracle/` only. Never open the reference software's documentation, its install folder or `private/`.
+- You learn the behaviour from `specs/` and `oracle/` only. Do not open a commercial product's documentation, install folder, exports or screenshots.
 
 ## How
 
