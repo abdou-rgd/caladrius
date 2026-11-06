@@ -1,0 +1,26 @@
+[package]
+name = "caladrius-bridge"
+description = "App layer: one call from a web front to the engine, `execute(request text) -> sealed answer text`, over a Web Worker (WebAssembly) or a Tauri command."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+# `rlib` for the Tauri shell and the tests, `cdylib` for the WebAssembly module (`cargo xtask bridge`
+# builds it with `--target wasm32-unknown-unknown`, then wasm-bindgen).
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+caladrius-engine = { path = "../../crates/caladrius-engine" }
+caladrius-format = { path = "../../crates/caladrius-format" }
+serde = { version = "1.0.229", features = ["derive"] }
+# float_roundtrip: a number read back must be the double that was written.
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.129"
+
+[lints]
+workspace = true
