@@ -144,4 +144,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-131 | Inventory of the current interface, screen by screen | interface | done | |
 | T-132 | Three visual directions of the NCA screen (mockups) | interface | done | |
 | T-133 | One plot scene for the screen and the export (`plot.scene`) | interface | done | T-131 |
-| T-134 | The engine bridge: one call, two transports and shared number formatting | interface | in progress | T-131 |
+| T-134 | The engine bridge: one call, two transports and shared number formatting | interface | done | T-131 |
