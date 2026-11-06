@@ -1,0 +1,56 @@
+# The desktop shell of the web front (T-134): a Tauri 2 window that calls the one command of
+# `caladrius-bridge`. It is NOT a member of the workspace (`exclude` in the root Cargo.toml): it has its
+# own Cargo.lock, and the workspace CI, clippy and `cargo xtask` do not compile Tauri. Build and run it
+# from here:
+#
+#   cargo run  --manifest-path apps/caladrius-tauri/Cargo.toml
+#   cargo test --manifest-path apps/caladrius-tauri/Cargo.toml
+#
+# The Cargo.lock was started from the one of the workspace, so the crates the engine uses (libm, serde,
+# serde_json) are at the same versions as in `cargo xtask digest`.
+[package]
+name = "caladrius-tauri"
+description = "Desktop shell of the web front: a Tauri 2 window and one command, `engine_execute`, that calls caladrius-bridge."
+version = "0.3.2"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.85"
+publish = false
+
+[lib]
+name = "caladrius_tauri_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "caladrius-tauri"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+caladrius-bridge = { path = "../caladrius-bridge" }
+tauri = { version = "2", features = [] }
+
+[dev-dependencies]
+# The mock runtime: the command handler is called through the IPC, without a window on the screen.
+tauri = { version = "2", features = ["test"] }
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+
+# Same rules as the workspace (AGENTS.md, golden rule 6).
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unreachable = "deny"
+
+# The release executable: smaller rather than faster.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

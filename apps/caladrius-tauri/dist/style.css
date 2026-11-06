@@ -1,0 +1,7 @@
+:root { color-scheme: light dark; --fg: #1d2429; --bg: #fbfaf7; --muted: #5d6870; --rule: #d9d5cb; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e8e6e1; --bg: #171a1c; --muted: #9aa5ab; --rule: #333a3e; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+main { max-width: 56rem; margin: 0 auto; padding: 2rem 1rem; }
+h1 { margin: 0 0 .5rem; font-weight: 600; }
+#status { color: var(--muted); }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; border: 1px solid var(--rule); border-radius: 6px; font: 13px/1.45 ui-monospace, Consolas, monospace; }

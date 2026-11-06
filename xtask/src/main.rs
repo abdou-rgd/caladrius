@@ -7,6 +7,7 @@
 )]
 //! Developer tasks for the Caladrius workspace, run as `cargo xtask <task>` (alias in `.cargo/config.toml`).
 
+mod bridge;
 mod conformance;
 mod console;
 mod digest;
@@ -43,6 +44,9 @@ tasks:
                same line on every machine, or a number depends on the platform; `--wasm` runs the same
                workload in the browser build under Node, `--dump FILE` keeps the canonical text,
                `--diff LEFT RIGHT` compares two dumps
+  bridge       run the fixed script of apps/caladrius-bridge through the one call of the bridge, in Rust,
+               in WebAssembly under Node and through the Tauri command handler (`--no-tauri` skips it),
+               and print `bridge: k of n answers identical on 3 transports`
   help         show this message";
 
 /// The tasks this binary can run.
@@ -60,6 +64,8 @@ enum Task {
     },
     /// The arguments after `digest` (`--wasm`, `--dump FILE`, `--diff LEFT RIGHT`), checked by the task.
     Digest(Vec<OsString>),
+    /// The arguments after `bridge` (`--no-tauri`, `--dump DIR`), checked by the task.
+    Bridge(Vec<OsString>),
     Help,
 }
 
@@ -75,6 +81,7 @@ fn parse_task(args: &[OsString]) -> std::result::Result<Task, String> {
             Some("conformance") => Ok(Task::Conformance),
             Some("review") => Ok(Task::Review { strict: false }),
             Some("digest") => Ok(Task::Digest(Vec::new())),
+            Some("bridge") => Ok(Task::Bridge(Vec::new())),
             Some("help" | "-h" | "--help") => Ok(Task::Help),
             _ => Err(format!("unknown task `{}`", task.to_string_lossy())),
         },
@@ -83,6 +90,7 @@ fn parse_task(args: &[OsString]) -> std::result::Result<Task, String> {
         }
         [task, rest @ ..] if task.to_str() == Some("web") => Ok(Task::Web(rest.to_vec())),
         [task, rest @ ..] if task.to_str() == Some("digest") => Ok(Task::Digest(rest.to_vec())),
+        [task, rest @ ..] if task.to_str() == Some("bridge") => Ok(Task::Bridge(rest.to_vec())),
         [_, extra, ..] => Err(format!("unexpected argument `{}`", extra.to_string_lossy())),
     }
 }
@@ -105,6 +113,7 @@ fn main() -> ExitCode {
         Task::Conformance => conformance::run(),
         Task::Review { strict } => review::run(strict),
         Task::Digest(args) => digest::run(&args),
+        Task::Bridge(args) => bridge::run(&args),
         Task::Help => {
             console::out(USAGE);
             Ok(())
@@ -159,6 +168,11 @@ mod tests {
                 OsString::from("--dump"),
                 OsString::from("d.ndjson")
             ]))
+        );
+        assert_eq!(parse(&["bridge"]), Ok(Task::Bridge(Vec::new())));
+        assert_eq!(
+            parse(&["bridge", "--no-tauri"]),
+            Ok(Task::Bridge(vec![OsString::from("--no-tauri")]))
         );
         assert_eq!(parse(&["help"]), Ok(Task::Help));
         assert_eq!(parse(&["--help"]), Ok(Task::Help));

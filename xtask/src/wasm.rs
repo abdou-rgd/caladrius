@@ -102,6 +102,7 @@ mod tests {
                 "caladrius-models",
                 "caladrius-fit",
                 "caladrius-project",
+                "caladrius-format",
                 "caladrius-engine",
                 "caladrius-ui",
             ]

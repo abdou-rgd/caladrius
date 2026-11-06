@@ -1,0 +1,4 @@
+/node_modules/
+/dist/
+# The WebAssembly module and its glue, made by `wasm-bindgen --target web` (see README in the crate doc).
+/pkg/
