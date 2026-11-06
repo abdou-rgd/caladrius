@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `iter2/**`: the branches of iteration 2 (T-130), checked on Linux, Windows and macOS before
+    # any merge (Q-019). Remove before the iteration reaches main.
+    branches: [main, 'iter2/**']
   pull_request:
     branches: [main]
 
