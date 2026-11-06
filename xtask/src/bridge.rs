@@ -412,7 +412,8 @@ fn strings(value: Option<&Value>) -> Option<Vec<String>> {
 }
 
 /// The answers the command handler of the Tauri shell gives: the test of the shell reads the
-/// requests from the file named by `CALADRIUS_BRIDGE_REQUESTS` and prints the answers on one line.
+/// requests from the file named by `CALADRIUS_BRIDGE_REQUESTS` and prints the answers on one line (the
+/// test harness may put its own `test ... ` text before it, so the prefix is looked for in the line).
 fn run_tauri(root: &Path, work: &Path, requests_path: &Path) -> Result<Vec<String>> {
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     console::err(&format!(
@@ -436,7 +437,7 @@ fn run_tauri(root: &Path, work: &Path, requests_path: &Path) -> Result<Vec<Strin
     }
     let line = stdout
         .lines()
-        .find_map(|l| l.strip_prefix(ANSWERS_PREFIX))
+        .find_map(|l| l.split_once(ANSWERS_PREFIX).map(|(_, rest)| rest))
         .ok_or_else(|| {
             XtaskError::new(format!(
                 "bridge: the test of the Tauri shell printed no `{}` line",
