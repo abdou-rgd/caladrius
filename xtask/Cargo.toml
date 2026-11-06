@@ -16,6 +16,8 @@ caladrius-fit = { path = "../crates/caladrius-fit" }
 # `digest` runs a fixed workload through the engine and fingerprints what it returns.
 caladrius-engine = { path = "../crates/caladrius-engine" }
 caladrius-digest = { path = "../crates/caladrius-digest" }
+# `bridge` runs the single call of the web bridge in this process, the reference of its three transports.
+caladrius-bridge = { path = "../apps/caladrius-bridge" }
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
 # The same pure Rust exp and log as the engine, for the formulas the conformance table re-checks.
 libm = "=0.2.16"

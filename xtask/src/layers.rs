@@ -364,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn the_table_registers_each_crate_once_and_six_crates_compile_to_wasm() {
+    fn the_table_registers_each_crate_once_and_seven_crates_compile_to_wasm() {
         let mut names: Vec<&str> = LAYER_TABLE.iter().map(|(name, _)| *name).collect();
         names.sort_unstable();
         names.dedup();
@@ -373,7 +373,7 @@ mod tests {
             .iter()
             .filter(|(_, layer)| layer.compiles_to_wasm())
             .count();
-        assert_eq!(wasm, 6);
+        assert_eq!(wasm, 7);
     }
 
     #[test]
