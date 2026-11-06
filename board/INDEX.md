@@ -141,5 +141,5 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-128 | Umbrella README, profile and the rule written once | orchestrator | done | T-125, T-126, T-127 |
 | T-129 | Remove vendor-derived material (private comparison, screen-only rules, vendor-export guard) | orchestrator | done | |
 | T-130 | Iteration 2: the interface stack, chosen on measures | orchestrator | in progress | T-124 |
-| T-131 | Inventory of the current interface, screen by screen | interface | in progress | |
+| T-131 | Inventory of the current interface, screen by screen | interface | done | |
 | T-132 | Three visual directions of the NCA screen (mockups, Artifacts) | interface | in progress | |
