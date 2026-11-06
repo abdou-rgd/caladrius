@@ -1,0 +1,20 @@
+{
+  "name": "@caladrius/bridge-client",
+  "version": "0.3.2",
+  "description": "TypeScript client of the Caladrius engine bridge: one call, two transports (Web Worker, Tauri) and synchronous number formatting on the page.",
+  "license": "MIT OR Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.4"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
