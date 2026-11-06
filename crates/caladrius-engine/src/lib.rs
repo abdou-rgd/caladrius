@@ -37,6 +37,8 @@ mod tests;
 #[cfg(test)]
 mod tests_compare;
 #[cfg(test)]
+mod tests_golden_plot;
+#[cfg(test)]
 mod tests_pk2;
 #[cfg(test)]
 mod tests_plot;

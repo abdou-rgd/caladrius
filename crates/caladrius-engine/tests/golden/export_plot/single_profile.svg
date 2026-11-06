@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="342" viewBox="0 0 840 342">
+<title>Plot of inv, all subjects</title>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="16" y="23" font-family="sans-serif" font-size="16" font-weight="bold" fill="#132017">Plot of inv, all subjects</text>
+<text x="64" y="51" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">Linear</text>
+<rect x="64" y="60" width="340" height="228" fill="#ffffff" stroke="#e3e8df"/>
+<line x1="79.45" y1="60" x2="79.45" y2="288" stroke="#e3e8df"/>
+<text x="79.45" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0</text>
+<line x1="208.24" y1="60" x2="208.24" y2="288" stroke="#e3e8df"/>
+<text x="208.24" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">10</text>
+<line x1="337.03" y1="60" x2="337.03" y2="288" stroke="#e3e8df"/>
+<text x="337.03" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">20</text>
+<line x1="64" y1="277.64" x2="404" y2="277.64" stroke="#e3e8df"/>
+<text x="58" y="281.64" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0</text>
+<line x1="64" y1="209.12" x2="404" y2="209.12" stroke="#e3e8df"/>
+<text x="58" y="213.12" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">20</text>
+<line x1="64" y1="140.6" x2="404" y2="140.6" stroke="#e3e8df"/>
+<text x="58" y="144.6" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">40</text>
+<line x1="64" y1="72.08" x2="404" y2="72.08" stroke="#e3e8df"/>
+<text x="58" y="76.08" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">60</text>
+<text x="234" y="322" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017">Time (h)</text>
+<text x="16" y="174" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017" transform="rotate(-90 16 174)">Concentration (ng/mL)</text>
+<clipPath id="clip-0"><rect x="64" y="60" width="340" height="228"/></clipPath>
+<g clip-path="url(#clip-0)">
+<polyline points="79.45,277.64 82.67,169.72 85.89,99.48 92.33,70.36 105.21,146.76 130.97,216.31 182.48,264.62 388.55,277.6" fill="none" stroke="#33415c" stroke-width="1.5"/>
+<circle cx="79.45" cy="277.64" r="4" fill="#33415c"/>
+<circle cx="82.67" cy="169.72" r="4" fill="#33415c"/>
+<circle cx="85.89" cy="99.48" r="4" fill="#33415c"/>
+<circle cx="92.33" cy="70.36" r="4" fill="#33415c"/>
+<circle cx="105.21" cy="146.76" r="4" fill="#33415c"/>
+<circle cx="130.97" cy="216.31" r="4" fill="#33415c"/>
+<circle cx="182.48" cy="264.62" r="4" fill="#33415c"/>
+<circle cx="388.55" cy="277.6" r="4" fill="#33415c"/>
+</g>
+<text x="484" y="51" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">Semi-log</text>
+<rect x="484" y="60" width="340" height="228" fill="#ffffff" stroke="#e3e8df"/>
+<line x1="499.45" y1="60" x2="499.45" y2="288" stroke="#e3e8df"/>
+<text x="499.45" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0</text>
+<line x1="628.24" y1="60" x2="628.24" y2="288" stroke="#e3e8df"/>
+<text x="628.24" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">10</text>
+<line x1="757.03" y1="60" x2="757.03" y2="288" stroke="#e3e8df"/>
+<text x="757.03" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">20</text>
+<line x1="484" y1="281.42" x2="824" y2="281.42" stroke="#e3e8df"/>
+<text x="478" y="285.42" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0.01</text>
+<line x1="484" y1="226.62" x2="824" y2="226.62" stroke="#e3e8df"/>
+<text x="478" y="230.62" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0.1</text>
+<line x1="484" y1="171.81" x2="824" y2="171.81" stroke="#e3e8df"/>
+<text x="478" y="175.81" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">1</text>
+<line x1="484" y1="117" x2="824" y2="117" stroke="#e3e8df"/>
+<text x="478" y="121" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">10</text>
+<line x1="484" y1="62.19" x2="824" y2="62.19" stroke="#e3e8df"/>
+<text x="478" y="66.19" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">100</text>
+<text x="654" y="322" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017">Time (h)</text>
+<text x="436" y="174" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017" transform="rotate(-90 436 174)">Concentration (ng/mL)</text>
+<clipPath id="clip-1"><rect x="484" y="60" width="340" height="228"/></clipPath>
+<g clip-path="url(#clip-1)">
+<polyline points="502.67,89.69 505.89,77.76 512.33,74.15 525.21,85.1 550.97,103.14 602.48,140.03 808.55,279.15" fill="none" stroke="#33415c" stroke-width="1.5"/>
+<circle cx="502.67" cy="89.69" r="4" fill="#33415c"/>
+<circle cx="505.89" cy="77.76" r="4" fill="#33415c"/>
+<circle cx="512.33" cy="74.15" r="4" fill="#33415c"/>
+<circle cx="525.21" cy="85.1" r="4" fill="#33415c"/>
+<circle cx="550.97" cy="103.14" r="4" fill="#33415c"/>
+<circle cx="602.48" cy="140.03" r="4" fill="#33415c"/>
+<circle cx="808.55" cy="279.15" r="4" fill="#33415c"/>
+</g>
+</svg>

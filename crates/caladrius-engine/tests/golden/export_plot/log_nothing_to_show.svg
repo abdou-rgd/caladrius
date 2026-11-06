@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="342" viewBox="0 0 840 342">
+<title>Plot of inv, all subjects</title>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="16" y="23" font-family="sans-serif" font-size="16" font-weight="bold" fill="#132017">Plot of inv, all subjects</text>
+<text x="64" y="51" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">Linear</text>
+<rect x="64" y="60" width="340" height="228" fill="#ffffff" stroke="#e3e8df"/>
+<line x1="79.45" y1="60" x2="79.45" y2="288" stroke="#e3e8df"/>
+<text x="79.45" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0</text>
+<line x1="156.73" y1="60" x2="156.73" y2="288" stroke="#e3e8df"/>
+<text x="156.73" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0.5</text>
+<line x1="234" y1="60" x2="234" y2="288" stroke="#e3e8df"/>
+<text x="234" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">1.0</text>
+<line x1="311.27" y1="60" x2="311.27" y2="288" stroke="#e3e8df"/>
+<text x="311.27" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">1.5</text>
+<line x1="388.55" y1="60" x2="388.55" y2="288" stroke="#e3e8df"/>
+<text x="388.55" y="303" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">2.0</text>
+<line x1="64" y1="277.64" x2="404" y2="277.64" stroke="#e3e8df"/>
+<text x="58" y="281.64" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">-1.0</text>
+<line x1="64" y1="225.82" x2="404" y2="225.82" stroke="#e3e8df"/>
+<text x="58" y="229.82" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">-0.5</text>
+<line x1="64" y1="174" x2="404" y2="174" stroke="#e3e8df"/>
+<text x="58" y="178" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0</text>
+<line x1="64" y1="122.18" x2="404" y2="122.18" stroke="#e3e8df"/>
+<text x="58" y="126.18" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0.5</text>
+<line x1="64" y1="70.36" x2="404" y2="70.36" stroke="#e3e8df"/>
+<text x="58" y="74.36" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">1.0</text>
+<text x="234" y="322" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017">Time</text>
+<text x="16" y="174" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017" transform="rotate(-90 16 174)">Concentration</text>
+<clipPath id="clip-0"><rect x="64" y="60" width="340" height="228"/></clipPath>
+<g clip-path="url(#clip-0)">
+<polyline points="79.45,174 234,174 388.55,174" fill="none" stroke="#33415c" stroke-width="1.5"/>
+<circle cx="79.45" cy="174" r="4" fill="#33415c"/>
+<circle cx="234" cy="174" r="4" fill="#33415c"/>
+<circle cx="388.55" cy="174" r="4" fill="#33415c"/>
+</g>
+<text x="484" y="51" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">Semi-log</text>
+<text x="484" y="174" font-family="sans-serif" font-size="12" fill="#5b675e">No value above zero: nothing to show on a logarithmic axis.</text>
+</svg>

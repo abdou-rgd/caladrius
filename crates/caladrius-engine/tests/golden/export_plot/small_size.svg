@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="482" viewBox="0 0 400 482">
+<title>Plot of inv, all subjects</title>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="16" y="23" font-family="sans-serif" font-size="16" font-weight="bold" fill="#132017">Plot of inv, all subjects</text>
+<text x="64" y="51" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">P, linear</text>
+<rect x="64" y="60" width="120" height="128" fill="#ffffff" stroke="#e3e8df"/>
+<line x1="69.45" y1="60" x2="69.45" y2="188" stroke="#e3e8df"/>
+<text x="69.45" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0</text>
+<line x1="105.82" y1="60" x2="105.82" y2="188" stroke="#e3e8df"/>
+<text x="105.82" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">2</text>
+<line x1="142.18" y1="60" x2="142.18" y2="188" stroke="#e3e8df"/>
+<text x="142.18" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">4</text>
+<line x1="178.55" y1="60" x2="178.55" y2="188" stroke="#e3e8df"/>
+<text x="178.55" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">6</text>
+<line x1="64" y1="182.18" x2="184" y2="182.18" stroke="#e3e8df"/>
+<text x="58" y="186.18" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0</text>
+<line x1="64" y1="154.48" x2="184" y2="154.48" stroke="#e3e8df"/>
+<text x="58" y="158.48" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">1</text>
+<line x1="64" y1="126.77" x2="184" y2="126.77" stroke="#e3e8df"/>
+<text x="58" y="130.77" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">2</text>
+<line x1="64" y1="99.06" x2="184" y2="99.06" stroke="#e3e8df"/>
+<text x="58" y="103.06" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">3</text>
+<line x1="64" y1="71.36" x2="184" y2="71.36" stroke="#e3e8df"/>
+<text x="58" y="75.36" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">4</text>
+<text x="124" y="222" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017">Time (h)</text>
+<text x="16" y="124" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017" transform="rotate(-90 16 124)">Concentration (mg/L)</text>
+<clipPath id="clip-0"><rect x="64" y="60" width="120" height="128"/></clipPath>
+<g clip-path="url(#clip-0)">
+<polyline points="87.64,65.82 105.82,96.29 178.55,148.94" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
+<circle cx="87.64" cy="65.82" r="4" fill="#2a78d6"/>
+<circle cx="105.82" cy="96.29" r="4" fill="#2a78d6"/>
+<circle cx="178.55" cy="148.94" r="4" fill="#2a78d6"/>
+<polygon points="64.25,178.02 74.65,178.02 69.45,186.34" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
+</g>
+<text x="264" y="51" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">P, semi-log</text>
+<rect x="264" y="60" width="120" height="128" fill="#ffffff" stroke="#e3e8df"/>
+<line x1="269.45" y1="60" x2="269.45" y2="188" stroke="#e3e8df"/>
+<text x="269.45" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0</text>
+<line x1="305.82" y1="60" x2="305.82" y2="188" stroke="#e3e8df"/>
+<text x="305.82" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">2</text>
+<line x1="342.18" y1="60" x2="342.18" y2="188" stroke="#e3e8df"/>
+<text x="342.18" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">4</text>
+<line x1="378.55" y1="60" x2="378.55" y2="188" stroke="#e3e8df"/>
+<text x="378.55" y="203" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">6</text>
+<line x1="264" y1="174.76" x2="384" y2="174.76" stroke="#e3e8df"/>
+<text x="258" y="178.76" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">1</text>
+<line x1="264" y1="64.41" x2="384" y2="64.41" stroke="#e3e8df"/>
+<text x="258" y="68.41" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">10</text>
+<text x="324" y="222" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017">Time (h)</text>
+<text x="216" y="124" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017" transform="rotate(-90 216 124)">Concentration (mg/L)</text>
+<clipPath id="clip-1"><rect x="264" y="60" width="120" height="128"/></clipPath>
+<g clip-path="url(#clip-1)">
+<polyline points="287.64,105.99 305.82,120.54 378.55,166.02" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
+<circle cx="287.64" cy="105.99" r="4" fill="#2a78d6"/>
+<circle cx="305.82" cy="120.54" r="4" fill="#2a78d6"/>
+<circle cx="378.55" cy="166.02" r="4" fill="#2a78d6"/>
+<polygon points="264.25,177.22 274.65,177.22 269.45,185.54" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
+</g>
+<text x="64" y="251" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">Q, linear</text>
+<rect x="64" y="260" width="120" height="128" fill="#ffffff" stroke="#e3e8df"/>
+<line x1="69.45" y1="260" x2="69.45" y2="388" stroke="#e3e8df"/>
+<text x="69.45" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0</text>
+<line x1="96.73" y1="260" x2="96.73" y2="388" stroke="#e3e8df"/>
+<text x="96.73" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">2</text>
+<line x1="124" y1="260" x2="124" y2="388" stroke="#e3e8df"/>
+<text x="124" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">4</text>
+<line x1="151.27" y1="260" x2="151.27" y2="388" stroke="#e3e8df"/>
+<text x="151.27" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">6</text>
+<line x1="178.55" y1="260" x2="178.55" y2="388" stroke="#e3e8df"/>
+<text x="178.55" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">8</text>
+<line x1="64" y1="382.18" x2="184" y2="382.18" stroke="#e3e8df"/>
+<text x="58" y="386.18" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0</text>
+<line x1="64" y1="352.34" x2="184" y2="352.34" stroke="#e3e8df"/>
+<text x="58" y="356.34" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">1</text>
+<line x1="64" y1="322.51" x2="184" y2="322.51" stroke="#e3e8df"/>
+<text x="58" y="326.51" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">2</text>
+<line x1="64" y1="292.67" x2="184" y2="292.67" stroke="#e3e8df"/>
+<text x="58" y="296.67" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">3</text>
+<line x1="64" y1="262.83" x2="184" y2="262.83" stroke="#e3e8df"/>
+<text x="58" y="266.83" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">4</text>
+<text x="124" y="422" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017">Time (h)</text>
+<text x="16" y="324" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017" transform="rotate(-90 16 324)">Concentration (mg/L)</text>
+<clipPath id="clip-2"><rect x="64" y="260" width="120" height="128"/></clipPath>
+<g clip-path="url(#clip-2)">
+<polyline points="69.45,382.18 76.27,304.61 83.09,265.82 96.73,298.64 124,331.46 151.27,355.33 178.55,367.26" fill="none" stroke="#eb6834" stroke-width="1.5"/>
+<rect x="66.05" y="378.78" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="72.87" y="301.21" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="79.69" y="262.42" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="93.33" y="295.24" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="120.6" y="328.06" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="147.87" y="351.93" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="175.15" y="363.86" width="6.8" height="6.8" fill="#eb6834"/>
+</g>
+<text x="264" y="251" font-family="sans-serif" font-size="13" font-weight="bold" fill="#132017">Q, semi-log</text>
+<rect x="264" y="260" width="120" height="128" fill="#ffffff" stroke="#e3e8df"/>
+<line x1="269.45" y1="260" x2="269.45" y2="388" stroke="#e3e8df"/>
+<text x="269.45" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">0</text>
+<line x1="296.73" y1="260" x2="296.73" y2="388" stroke="#e3e8df"/>
+<text x="296.73" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">2</text>
+<line x1="324" y1="260" x2="324" y2="388" stroke="#e3e8df"/>
+<text x="324" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">4</text>
+<line x1="351.27" y1="260" x2="351.27" y2="388" stroke="#e3e8df"/>
+<text x="351.27" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">6</text>
+<line x1="378.55" y1="260" x2="378.55" y2="388" stroke="#e3e8df"/>
+<text x="378.55" y="403" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#5b675e">8</text>
+<line x1="264" y1="380.89" x2="384" y2="380.89" stroke="#e3e8df"/>
+<text x="258" y="384.89" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">0.1</text>
+<line x1="264" y1="321.63" x2="384" y2="321.63" stroke="#e3e8df"/>
+<text x="258" y="325.63" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">1</text>
+<line x1="264" y1="262.37" x2="384" y2="262.37" stroke="#e3e8df"/>
+<text x="258" y="266.37" font-family="sans-serif" font-size="11" text-anchor="end" fill="#5b675e">10</text>
+<text x="324" y="422" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017">Time (h)</text>
+<text x="216" y="324" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#132017" transform="rotate(-90 216 324)">Concentration (mg/L)</text>
+<clipPath id="clip-3"><rect x="264" y="260" width="120" height="128"/></clipPath>
+<g clip-path="url(#clip-3)">
+<polyline points="276.27,297.04 283.09,286.6 296.73,295.13 324,307.97 351.27,324.34 378.55,339.47" fill="none" stroke="#eb6834" stroke-width="1.5"/>
+<rect x="272.87" y="293.64" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="279.69" y="283.2" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="293.33" y="291.73" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="320.6" y="304.57" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="347.87" y="320.94" width="6.8" height="6.8" fill="#eb6834"/>
+<rect x="375.15" y="336.07" width="6.8" height="6.8" fill="#eb6834"/>
+</g>
+<line x1="16" y1="444" x2="38" y2="444" stroke="#2a78d6" stroke-width="2"/>
+<circle cx="27" cy="444" r="4" fill="#2a78d6"/>
+<text x="44" y="448" font-family="sans-serif" font-size="12" fill="#132017">P</text>
+<line x1="69" y1="444" x2="91" y2="444" stroke="#eb6834" stroke-width="2"/>
+<rect x="76.6" y="440.6" width="6.8" height="6.8" fill="#eb6834"/>
+<text x="97" y="448" font-family="sans-serif" font-size="12" fill="#132017">Q</text>
+<polygon points="21.8,459.84 32.2,459.84 27,468.16" fill="none" stroke="#5b675e" stroke-width="1.5"/>
+<text x="44" y="468" font-family="sans-serif" font-size="12" fill="#132017">below the limit of quantification</text>
+</svg>
