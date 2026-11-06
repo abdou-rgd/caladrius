@@ -465,8 +465,15 @@ fn export_plot_gives_the_svg_of_the_stored_panels() {
         "nca.run",
         json!({ "worksheet": 1, "route": "extravascular" }),
     );
+    // An NCA analysis is drawn per subject: two subjects, so one must be named.
     assert_eq!(
         err(&mut e, "export.plot", json!({ "analysis": nca["id"] })).code,
+        "invalid_parameters"
+    );
+    // A fit is neither a plot nor an NCA analysis.
+    let (fit_id, _) = fit_and_plot(&mut e, "residuals_time", "linear");
+    assert_eq!(
+        err(&mut e, "export.plot", json!({ "analysis": fit_id })).code,
         "not_a_plot"
     );
     // A stale plot exports with its status.

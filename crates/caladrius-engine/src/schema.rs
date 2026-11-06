@@ -564,6 +564,129 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
                 &["title", "x", "y", "series"],
             )
         }
+        "PlotScene" => {
+            let role = one_of_strings(&[
+                "subject",
+                "observed",
+                "predicted",
+                "profile",
+                "replaced",
+                "excluded",
+                "lambda_z_used",
+                "lambda_z_start",
+                "lambda_z_fit",
+            ]);
+            let style = one_of_strings(&["points", "line", "line_points"]);
+            let axis = object(
+                vec![
+                    ("title", string()),
+                    ("log", boolean()),
+                    ("min", number()),
+                    ("max", number()),
+                    (
+                        "ticks",
+                        array_of(object(
+                            vec![("value", number()), ("label", string())],
+                            &["value", "label"],
+                        )),
+                    ),
+                ],
+                &["title", "log", "min", "max", "ticks"],
+            );
+            let pair = json!({ "type": "array", "items": number(), "minItems": 2, "maxItems": 2 });
+            let panel = object(
+                vec![
+                    ("title", string()),
+                    ("x", axis.clone()),
+                    ("y", axis),
+                    (
+                        "series",
+                        array_of(object(
+                            vec![
+                                ("name", string()),
+                                ("role", role.clone()),
+                                ("slot", integer()),
+                                ("style", style.clone()),
+                                (
+                                    "points",
+                                    array_of(object(
+                                        vec![("x", number()), ("y", number()), ("blq", boolean())],
+                                        &["x", "y"],
+                                    )),
+                                ),
+                            ],
+                            &["name", "role", "style", "points"],
+                        )),
+                    ),
+                    (
+                        "guide",
+                        object(
+                            vec![
+                                ("kind", one_of_strings(&["identity", "zero"])),
+                                ("from", pair.clone()),
+                                ("to", pair),
+                            ],
+                            &["kind", "from", "to"],
+                        ),
+                    ),
+                    (
+                        "hidden",
+                        object(
+                            vec![
+                                ("count", integer()),
+                                ("note", string()),
+                                (
+                                    "points",
+                                    array_of(object(
+                                        vec![
+                                            ("series", string()),
+                                            ("x", number()),
+                                            ("y", number()),
+                                        ],
+                                        &["series", "x", "y"],
+                                    )),
+                                ),
+                            ],
+                            &["count", "note", "points"],
+                        ),
+                    ),
+                    ("empty", string()),
+                ],
+                &["title", "x", "y", "series"],
+            );
+            described(
+                object(
+                    vec![
+                        ("title", string()),
+                        ("panels", array_of(panel)),
+                        (
+                            "legend",
+                            object(
+                                vec![
+                                    (
+                                        "entries",
+                                        array_of(object(
+                                            vec![
+                                                ("name", string()),
+                                                ("role", role),
+                                                ("slot", integer()),
+                                                ("style", style),
+                                            ],
+                                            &["name", "role", "style"],
+                                        )),
+                                    ),
+                                    ("below_limit", string()),
+                                ],
+                                &["entries"],
+                            ),
+                        ),
+                        ("notes", array_of(string())),
+                    ],
+                    &["title", "panels", "legend", "notes"],
+                ),
+                "A plot as data, with no pixel and no colour. A logarithmic axis is in log10: its min, max, tick values and the points are decades; the tick label is the value in the units of the data. A point with `blq` sits at the marker position of the axis. `hidden` lists the points a logarithmic axis cannot show, with the sentence that says so.",
+            )
+        }
         "AnalysisSpec" => json!({ "type": "object", "required": ["kind"],
             "properties": { "kind": one_of_strings(&["nca", "fit", "simulation", "plot"]) } }),
         "AnalysisView" => object(

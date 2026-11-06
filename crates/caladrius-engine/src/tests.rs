@@ -68,6 +68,7 @@ fn the_commands_are_the_documented_ones() {
             "analysis.run",
             "export.table",
             "export.plot",
+            "plot.scene",
             "analysis.compare",
             "project.describe",
             "project.save",

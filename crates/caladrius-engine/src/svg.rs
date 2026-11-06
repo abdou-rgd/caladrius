@@ -1,13 +1,14 @@
-//! A plot result as an SVG document (T-110): the panels in a grid, each with its axes, ticks,
-//! grid lines, series and reference line, a title above and one legend below. The points are
-//! placed where the stored values say; nothing is computed but their position on the page.
-//! Plain text out: the caller writes the file.
+//! A plot scene as an SVG document (T-110, T-133): the panels in a grid, each with its axes, ticks,
+//! grid lines, series and reference line, a title above and one legend below. It draws the
+//! [`PlotScene`] and nothing else: the ranges, the ticks, the labels, the hidden points and the
+//! legend are the scene's, and the only computation here is the affine map from scene units to
+//! the page. Plain text out: the caller writes the file.
 
 use std::fmt::Write as _;
 
-use caladrius_project::{
-    PlotAxis, PlotGuide, PlotPanel, PlotPoint, PlotRun, PlotSeries, SeriesRole, SeriesStyle,
-};
+use caladrius_project::{PlotGuide, SeriesStyle};
+
+use crate::scene::{PlotScene, ScenePanel, SceneRole, SceneSeries};
 
 /// The colours of an exported plot: the light theme of the interface (a document is printed on
 /// white). `caladrius-ui` checks that its light theme tokens give the same values.
@@ -20,6 +21,12 @@ pub struct SvgColors {
     pub observed: &'static str,
     pub predicted: &'static str,
     pub other: &'static str,
+    /// The points used for λz (NCA).
+    pub selected: &'static str,
+    /// The first point of the λz range (NCA).
+    pub start: &'static str,
+    /// A value a policy put in place of a missing or BLQ one (NCA).
+    pub replaced: &'static str,
     pub subjects: [&'static str; 8],
 }
 
@@ -32,6 +39,9 @@ pub const COLORS: SvgColors = SvgColors {
     observed: "#33415c",
     predicted: "#c62828",
     other: "#8b95a7",
+    selected: "#2255c4",
+    start: "#00897b",
+    replaced: "#9a4d00",
     subjects: [
         "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948",
     ],
@@ -61,7 +71,7 @@ const MARKER: f64 = 4.0;
 
 /// The panels per row: a linear and a logarithmic panel of the same thing side by side, else up
 /// to three per row.
-fn columns(panels: &[PlotPanel]) -> usize {
+fn columns(panels: &[ScenePanel]) -> usize {
     let n = panels.len().max(1);
     let mixed = panels.iter().any(|p| p.y.log) && panels.iter().any(|p| !p.y.log);
     if mixed { 2.min(n) } else { 3.min(n) }
@@ -95,176 +105,30 @@ fn px(v: f64) -> String {
     }
 }
 
-/// Tick values from `lo` to `hi` at a step of 1, 2 or 5 times a power of ten (about five).
-fn nice_ticks(lo: f64, hi: f64) -> (Vec<f64>, f64) {
-    let span = hi - lo;
-    if !(span.is_finite() && span > 0.0) {
-        return (vec![lo], 1.0);
-    }
-    let raw = span / 5.0;
-    let power = pow10(libm::log10(raw).floor() as i32);
-    let step = [1.0, 2.0, 5.0, 10.0]
-        .iter()
-        .map(|m| m * power)
-        .find(|s| *s >= raw)
-        .unwrap_or(10.0 * power);
-    let first = (lo / step).ceil();
-    let last = (hi / step).floor();
-    let mut ticks = Vec::new();
-    let mut k = first;
-    // At most a few dozen ticks; the bound also stops a loop on a degenerate range.
-    while k <= last && ticks.len() < 50 {
-        let v = k * step;
-        ticks.push(if v.abs() < step * 1e-9 { 0.0 } else { v });
-        k += 1.0;
-    }
-    (ticks, step)
-}
-
-/// A tick label for a linear axis: as many decimals as the step needs.
-fn tick_label(v: f64, step: f64) -> String {
-    if v == 0.0 {
-        return "0".to_owned();
-    }
-    if v.abs() >= 1e6 || v.abs() < 1e-4 {
-        return format!("{v:e}");
-    }
-    let decimals = (-libm::log10(step).floor()).clamp(0.0, 8.0) as usize;
-    format!("{v:.decimals$}")
-}
-
-/// A tick label for a decade: `0.01`, `1`, `1000`, `1e-6`.
-fn decade_label(k: i32) -> String {
-    match k {
-        -4..=-1 => format!("{:.*}", k.unsigned_abs() as usize, pow10(k)),
-        0..=5 => format!("{}", pow10(k)),
-        _ => format!("1e{k}"),
-    }
-}
-
-/// 10^k, the double nearest to it, for any `k` (zero or infinity beyond about 300 decades): the text
-/// `1e{k}` read by the standard library's parser, which rounds correctly and the same on every
-/// machine. A power function does not give that for every `k` (`libm::pow(10, -5)` is one bit away
-/// from 1e-5, and a platform's `powf` may be too), nor does a loop of products beyond 10^22.
-fn pow10(k: i32) -> f64 {
-    format!("1e{}", k.clamp(-400, 400))
-        .parse()
-        .unwrap_or(f64::NAN)
-}
-
-/// One axis on the page: its range in data units (decades on a log axis) and its ticks.
-#[derive(Debug, Clone)]
-struct Scale {
-    lo: f64,
-    hi: f64,
-    log: bool,
-    ticks: Vec<(f64, String)>,
-    /// Where a BLQ point sits on this axis (a vertical axis only).
-    blq_at: f64,
-}
-
-impl Scale {
-    /// The position of a data value, `None` when a log axis cannot show it.
-    fn value(&self, v: f64) -> Option<f64> {
-        if self.log {
-            (v > 0.0 && v.is_finite()).then(|| libm::log10(v))
-        } else {
-            v.is_finite().then_some(v)
-        }
-    }
-
-    fn fraction(&self, t: f64) -> f64 {
-        if self.hi > self.lo {
-            (t - self.lo) / (self.hi - self.lo)
-        } else {
-            0.5
-        }
-    }
-}
-
-fn range(values: &[f64]) -> Option<(f64, f64)> {
-    let lo = values.iter().copied().fold(f64::INFINITY, f64::min);
-    let hi = values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-    (lo.is_finite() && hi.is_finite()).then_some((lo, hi))
-}
-
-/// A linear axis over `values`, with a margin, and 0 inside when `zero` asks for it.
-fn linear(values: &[f64], zero: bool) -> Scale {
-    let (mut lo, mut hi) = range(values).unwrap_or((0.0, 1.0));
-    if zero {
-        lo = lo.min(0.0);
-        hi = hi.max(0.0);
-    }
-    if hi <= lo {
-        let d = if lo == 0.0 { 1.0 } else { lo.abs() * 0.1 };
-        lo -= d;
-        hi += d;
-    }
-    let pad = 0.05 * (hi - lo);
-    let (lo, hi) = (lo - pad, hi + pad);
-    let (ticks, step) = nice_ticks(lo, hi);
-    Scale {
-        lo,
-        hi,
-        log: false,
-        ticks: ticks.iter().map(|v| (*v, tick_label(*v, step))).collect(),
-        blq_at: 0.0,
-    }
-}
-
-/// A log axis over the positive `values`, rounded out to whole decades, with a margin below
-/// for BLQ markers; `None` when no value is positive.
-fn logarithmic(values: &[f64]) -> Option<Scale> {
-    let logs: Vec<f64> = values
-        .iter()
-        .filter(|v| **v > 0.0 && v.is_finite())
-        .map(|v| libm::log10(*v))
-        .collect();
-    let (lo, hi) = range(&logs)?;
-    let mut d_lo = lo.floor();
-    let mut d_hi = hi.ceil();
-    if d_hi <= d_lo {
-        d_lo -= 0.5;
-        d_hi += 0.5;
-    }
-    let ticks = ((d_lo.ceil() as i32)..=(d_hi.floor() as i32))
-        .take(40)
-        .map(|k| (f64::from(k), decade_label(k)))
-        .collect();
-    Some(Scale {
-        lo: d_lo - 0.12,
-        hi: d_hi + 0.04,
-        log: true,
-        ticks,
-        blq_at: d_lo - 0.06,
-    })
-}
-
-fn scale_for(axis: &PlotAxis, values: &[f64], zero: bool) -> Option<Scale> {
-    if axis.log {
-        logarithmic(values)
-    } else {
-        Some(linear(values, zero))
-    }
-}
-
-fn color(role: SeriesRole) -> &'static str {
+fn color(role: SceneRole) -> &'static str {
     match role {
-        SeriesRole::Subject { slot } => COLORS
+        SceneRole::Subject { slot } => COLORS
             .subjects
             .get(slot % COLORS.subjects.len())
             .copied()
             .unwrap_or(COLORS.observed),
-        SeriesRole::Observed => COLORS.observed,
-        SeriesRole::Predicted => COLORS.predicted,
+        SceneRole::Observed => COLORS.observed,
+        SceneRole::Predicted | SceneRole::LambdaZFit => COLORS.predicted,
+        SceneRole::Profile | SceneRole::Excluded => COLORS.other,
+        SceneRole::Replaced => COLORS.replaced,
+        SceneRole::LambdaZUsed => COLORS.selected,
+        SceneRole::LambdaZStart => COLORS.start,
     }
 }
 
 /// The marker of a series: subjects take the next shape after each round of colours, so colour
-/// is never the only way to tell two subjects apart.
-fn shape(role: SeriesRole) -> usize {
+/// is never the only way to tell two subjects apart; the roles of an NCA profile each have one.
+fn shape(role: SceneRole) -> usize {
     match role {
-        SeriesRole::Subject { slot } => slot % 5,
+        SceneRole::Subject { slot } => slot % 5,
+        SceneRole::Replaced => 2,
+        SceneRole::LambdaZStart => 3,
+        SceneRole::Excluded => 4,
         _ => 0,
     }
 }
@@ -339,7 +203,7 @@ fn blq_marker(out: &mut String, x: f64, y: f64, stroke: &str) {
 }
 
 /// Draws one panel with its top-left corner at (`left`, `top`).
-fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, size: Size) {
+fn panel(out: &mut String, p: &ScenePanel, index: usize, left: f64, top: f64, size: Size) {
     let c = &COLORS;
     let x0 = left + MARGIN_LEFT;
     let x1 = left + size.width - MARGIN_RIGHT;
@@ -353,26 +217,18 @@ fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, siz
         c.text,
         escape(&p.title)
     );
-    let all: Vec<&PlotPoint> = p.series.iter().flat_map(|s| &s.points).collect();
-    let xs: Vec<f64> = all.iter().map(|q| q.x).collect();
-    let ys: Vec<f64> = all.iter().filter(|q| !q.blq).map(|q| q.y).collect();
-    // Observed vs predicted shares one range on both axes, so that the identity line is the diagonal.
-    let shared: Vec<f64> = xs.iter().chain(&ys).copied().collect();
-    let (xv, yv): (&[f64], &[f64]) = match p.guide {
-        Some(PlotGuide::Identity) => (&shared, &shared),
-        _ => (&xs, &ys),
-    };
-    let zero = matches!(p.guide, Some(PlotGuide::Zero)) || all.iter().any(|q| q.blq);
-    let (Some(sx), Some(sy)) = (scale_for(&p.x, xv, false), scale_for(&p.y, yv, zero)) else {
+    if let Some(sentence) = &p.empty {
         let _ = writeln!(
             out,
-            "<text x=\"{}\" y=\"{}\" {FONT} font-size=\"12\" fill=\"{}\">No value above zero: nothing to show on a logarithmic axis.</text>",
+            "<text x=\"{}\" y=\"{}\" {FONT} font-size=\"12\" fill=\"{}\">{}</text>",
             px(x0),
             px((y0 + y1) / 2.0),
-            c.text_muted
+            c.text_muted,
+            escape(sentence)
         );
         return;
-    };
+    }
+    let (sx, sy) = (&p.x, &p.y);
     let to_x = |v: f64| x0 + sx.fraction(v) * (x1 - x0);
     let to_y = |v: f64| y1 - sy.fraction(v) * (y1 - y0);
     // Frame, grid and ticks.
@@ -386,8 +242,8 @@ fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, siz
         c.background,
         c.grid
     );
-    for (v, label) in &sx.ticks {
-        let x = to_x(*v);
+    for tick in &sx.ticks {
+        let x = to_x(tick.value);
         let _ = writeln!(
             out,
             "<line x1=\"{0}\" y1=\"{1}\" x2=\"{0}\" y2=\"{2}\" stroke=\"{3}\"/>\n<text x=\"{0}\" y=\"{4}\" {FONT} font-size=\"11\" text-anchor=\"middle\" fill=\"{5}\">{6}</text>",
@@ -397,11 +253,11 @@ fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, siz
             c.grid,
             px(y1 + 15.0),
             c.text_muted,
-            escape(label)
+            escape(&tick.label)
         );
     }
-    for (v, label) in &sy.ticks {
-        let y = to_y(*v);
+    for tick in &sy.ticks {
+        let y = to_y(tick.value);
         let _ = writeln!(
             out,
             "<line x1=\"{0}\" y1=\"{1}\" x2=\"{2}\" y2=\"{1}\" stroke=\"{3}\"/>\n<text x=\"{4}\" y=\"{5}\" {FONT} font-size=\"11\" text-anchor=\"end\" fill=\"{6}\">{7}</text>",
@@ -412,7 +268,7 @@ fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, siz
             px(x0 - 6.0),
             px(y + 4.0),
             c.text_muted,
-            escape(label)
+            escape(&tick.label)
         );
     }
     let _ = writeln!(
@@ -421,7 +277,7 @@ fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, siz
         px((x0 + x1) / 2.0),
         px(y1 + 34.0),
         c.text,
-        escape(&p.x.title())
+        escape(&sx.title)
     );
     let (lx, ly) = (left + 16.0, (y0 + y1) / 2.0);
     let _ = writeln!(
@@ -430,7 +286,7 @@ fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, siz
         px(lx),
         px(ly),
         c.text,
-        escape(&p.y.title())
+        escape(&sy.title)
     );
     // Everything else stays inside the frame.
     let clip = format!("clip-{index}");
@@ -442,51 +298,32 @@ fn panel(out: &mut String, p: &PlotPanel, index: usize, left: f64, top: f64, siz
         px(x1 - x0),
         px(y1 - y0)
     );
-    match p.guide {
-        Some(PlotGuide::Zero) if !sy.log => {
-            let _ = writeln!(
-                out,
-                "<line x1=\"{}\" y1=\"{2}\" x2=\"{}\" y2=\"{2}\" stroke=\"{3}\" stroke-width=\"1.5\"/>",
-                px(x0),
-                px(x1),
-                px(to_y(0.0)),
-                c.other
-            );
-        }
-        Some(PlotGuide::Identity) => {
-            // The diagonal of the shared range (the same on both axes).
-            let _ = writeln!(
-                out,
-                "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"1.5\" stroke-dasharray=\"6 4\"/>",
-                px(to_x(sx.lo)),
-                px(to_y(sx.lo)),
-                px(to_x(sx.hi)),
-                px(to_y(sx.hi)),
-                c.other
-            );
-        }
-        _ => {}
+    if let Some(g) = &p.guide {
+        let (ax, ay) = (px(to_x(g.from[0])), px(to_y(g.from[1])));
+        let (bx, by) = (px(to_x(g.to[0])), px(to_y(g.to[1])));
+        let dash = match g.kind {
+            PlotGuide::Zero => "",
+            PlotGuide::Identity => " stroke-dasharray=\"6 4\"",
+        };
+        let _ = writeln!(
+            out,
+            "<line x1=\"{ax}\" y1=\"{ay}\" x2=\"{bx}\" y2=\"{by}\" stroke=\"{}\" stroke-width=\"1.5\"{dash}/>",
+            c.other
+        );
     }
     for s in &p.series {
-        series(out, s, &sx, &sy, &to_x, &to_y);
+        series(out, s, &to_x, &to_y);
     }
     let _ = writeln!(out, "</g>");
 }
 
-fn series(
-    out: &mut String,
-    s: &PlotSeries,
-    sx: &Scale,
-    sy: &Scale,
-    to_x: &dyn Fn(f64) -> f64,
-    to_y: &dyn Fn(f64) -> f64,
-) {
+fn series(out: &mut String, s: &SceneSeries, to_x: &dyn Fn(f64) -> f64, to_y: &dyn Fn(f64) -> f64) {
     let fill = color(s.role);
     let placed: Vec<(f64, f64)> = s
         .points
         .iter()
         .filter(|q| !q.blq)
-        .filter_map(|q| Some((to_x(sx.value(q.x)?), to_y(sy.value(q.y)?))))
+        .map(|q| (to_x(q.x), to_y(q.y)))
         .collect();
     if matches!(s.style, SeriesStyle::Line | SeriesStyle::LinePoints) && placed.len() > 1 {
         let path: Vec<String> = placed
@@ -509,50 +346,30 @@ fn series(
             marker(out, shape(s.role), *x, *y, fill);
         }
     }
-    let at = to_y(sy.blq_at);
     for q in s.points.iter().filter(|q| q.blq) {
-        if let Some(x) = sx.value(q.x) {
-            blq_marker(out, to_x(x), at, fill);
-        }
+        blq_marker(out, to_x(q.x), to_y(q.y), fill);
     }
 }
 
-/// The entries of the legend: one per distinct series name, in order of appearance.
-fn legend_entries(run: &PlotRun) -> Vec<&PlotSeries> {
-    let mut seen: Vec<&PlotSeries> = Vec::new();
-    for s in run.panels.iter().flat_map(|p| &p.series) {
-        if !seen.iter().any(|e| e.name == s.name) {
-            seen.push(s);
-        }
-    }
-    seen
-}
-
-/// The SVG document of a plot result. `size` is the size of one panel.
-pub(crate) fn render(run: &PlotRun, size: Size) -> String {
+/// The SVG document of a plot scene. `size` is the size of one panel.
+pub(crate) fn render(scene: &PlotScene, size: Size) -> String {
     let c = &COLORS;
-    let cols = columns(&run.panels);
-    let rows = run.panels.len().div_ceil(cols).max(1);
+    let cols = columns(&scene.panels);
+    let rows = scene.panels.len().div_ceil(cols).max(1);
     let width = size.width * cols as f64;
-    let entries = legend_entries(run);
-    let has_blq = run
-        .panels
-        .iter()
-        .flat_map(|p| &p.series)
-        .any(|s| s.points.iter().any(|q| q.blq));
     // The legend wraps at the width of the figure; about 7 px per character at 12 px.
     let item_width = |name: &str| 34.0 + 7.0 * name.chars().count() as f64;
     let mut legend_rows = 0usize;
     let mut cursor = f64::INFINITY;
     let mut placed: Vec<(f64, usize)> = Vec::new();
-    let show_legend = entries.len() > 1 || has_blq;
-    let mut items: Vec<String> = if show_legend {
-        entries.iter().map(|e| e.name.clone()).collect()
-    } else {
-        Vec::new()
-    };
-    if has_blq {
-        items.push("below the limit of quantification".to_owned());
+    let mut items: Vec<&str> = scene
+        .legend
+        .entries
+        .iter()
+        .map(|e| e.name.as_str())
+        .collect();
+    if let Some(sentence) = &scene.legend.below_limit {
+        items.push(sentence);
     }
     for name in &items {
         let w = item_width(name);
@@ -572,7 +389,7 @@ pub(crate) fn render(run: &PlotRun, size: Size) -> String {
         px(width),
         px(height)
     );
-    let _ = writeln!(out, "<title>{}</title>", escape(&run.title));
+    let _ = writeln!(out, "<title>{}</title>", escape(&scene.title));
     let _ = writeln!(
         out,
         "<rect width=\"100%\" height=\"100%\" fill=\"{}\"/>",
@@ -582,9 +399,9 @@ pub(crate) fn render(run: &PlotRun, size: Size) -> String {
         out,
         "<text x=\"16\" y=\"23\" {FONT} font-size=\"16\" font-weight=\"bold\" fill=\"{}\">{}</text>",
         c.text,
-        escape(&run.title)
+        escape(&scene.title)
     );
-    for (i, p) in run.panels.iter().enumerate() {
+    for (i, p) in scene.panels.iter().enumerate() {
         let left = size.width * (i % cols) as f64;
         let top = grid_top + size.height * (i / cols) as f64;
         panel(&mut out, p, i, left, top, size);
@@ -595,7 +412,7 @@ pub(crate) fn render(run: &PlotRun, size: Size) -> String {
             continue;
         };
         let y = legend_top + LEGEND_ROW * row as f64 + 10.0;
-        match entries.get(k).filter(|_| show_legend) {
+        match scene.legend.entries.get(k) {
             Some(e) => {
                 let fill = color(e.role);
                 if e.style != SeriesStyle::Points {
@@ -629,7 +446,8 @@ pub(crate) fn render(run: &PlotRun, size: Size) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use caladrius_project::PlotAxis;
+    use crate::scene;
+    use caladrius_project::{PlotAxis, PlotPanel, PlotPoint, PlotRun, PlotSeries, SeriesRole};
 
     fn pt(x: f64, y: f64) -> PlotPoint {
         PlotPoint { x, y, blq: false }
@@ -678,72 +496,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn ticks_are_round_numbers_inside_the_range() {
-        let (t, step) = nice_ticks(-0.3, 9.4);
-        assert_eq!(step, 2.0);
-        assert_eq!(t, vec![0.0, 2.0, 4.0, 6.0, 8.0]);
-        let (t, step) = nice_ticks(0.012, 0.047);
-        assert!((step - 0.01).abs() < 1e-15);
-        assert_eq!(t.len(), 3);
-        assert_eq!(tick_label(0.02, step), "0.02");
-        assert_eq!(tick_label(1500.0, 500.0), "1500");
-        assert_eq!(nice_ticks(3.0, 3.0).0, vec![3.0]);
-        assert_eq!(decade_label(-2), "0.01");
-        assert_eq!(decade_label(3), "1000");
-        assert_eq!(decade_label(-7), "1e-7");
-    }
-
-    #[test]
-    fn a_power_of_ten_is_the_nearest_double_whatever_the_exponent() {
-        for (k, expected) in [
-            (0, 1.0_f64),
-            (3, 1e3),
-            (-1, 1e-1),
-            (-5, 1e-5),
-            (22, 1e22),
-            (23, 1e23),
-            (-30, 1e-30),
-            (67, 1e67),
-            (308, 1e308),
-            (-323, 1e-323),
-        ] {
-            assert_eq!(pow10(k).to_bits(), expected.to_bits(), "10^{k}");
-        }
-        assert!(pow10(309).is_infinite() && pow10(i32::MAX).is_infinite());
-        assert_eq!(pow10(-400), 0.0);
-        assert_eq!(pow10(i32::MIN), 0.0);
-    }
-
-    #[test]
-    fn a_span_of_a_few_subnormal_numbers_neither_hangs_nor_draws_nan() {
-        // raw = span / 5 rounds to 0: log10 is -inf, and the step is 0 (no tick, as it always was).
-        let (ticks, step) = nice_ticks(0.0, 5e-324);
-        assert!(ticks.is_empty() && step == 0.0);
-        // raw is subnormal but not 0: the ticks are drawn.
-        let (ticks, step) = nice_ticks(0.0, 1e-307);
-        assert!(step > 0.0 && ticks.len() >= 2, "{ticks:?} {step}");
-        assert!(ticks.iter().all(|t| t.is_finite()), "{ticks:?}");
-    }
-
-    #[test]
-    fn a_log_axis_covers_whole_decades_and_leaves_room_for_blq() {
-        let s = logarithmic(&[0.0, 0.5, 30.0]).unwrap();
-        assert_eq!(
-            s.ticks.iter().map(|t| t.1.as_str()).collect::<Vec<_>>(),
-            vec!["0.1", "1", "10", "100"]
-        );
-        assert!(s.lo < s.blq_at && s.blq_at < -1.0);
-        assert_eq!(s.value(0.0), None);
-        assert!(logarithmic(&[0.0, -1.0]).is_none());
-        // One value: a decade around it.
-        let one = logarithmic(&[5.0]).unwrap();
-        assert!(one.lo < libm::log10(5f64) && libm::log10(5f64) < one.hi);
+    fn draw(run: &PlotRun) -> String {
+        render(&scene::from_run(run), PANEL)
     }
 
     #[test]
     fn the_document_is_escaped_and_holds_every_point() {
-        let svg = render(&run(false), PANEL);
+        let svg = draw(&run(false));
         assert!(svg.starts_with("<svg xmlns=\"http://www.w3.org/2000/svg\""));
         assert!(svg.trim_end().ends_with("</svg>"));
         assert!(svg.contains("<title>A &amp; B &lt;invented&gt;</title>"));
@@ -766,7 +525,7 @@ mod tests {
 
     #[test]
     fn a_log_panel_leaves_out_zero_and_says_when_nothing_is_left() {
-        let svg = render(&run(true), PANEL);
+        let svg = draw(&run(true));
         // B's zero is not on the line: B has one placed point, so no polyline for it.
         assert_eq!(svg.matches("<polyline").count(), 1);
         let mut empty = run(true);
@@ -776,7 +535,7 @@ mod tests {
                 s.points = vec![pt(1.0, 0.0)];
             }
         }
-        assert!(render(&empty, PANEL).contains("nothing to show on a logarithmic axis"));
+        assert!(draw(&empty).contains("nothing to show on a logarithmic axis"));
     }
 
     #[test]
@@ -785,13 +544,13 @@ mod tests {
         let mut log = r.panels[0].clone();
         log.y.log = true;
         r.panels = vec![r.panels[0].clone(), log.clone(), r.panels[0].clone(), log];
-        assert_eq!(columns(&r.panels), 2);
-        let svg = render(&r, PANEL);
+        assert_eq!(columns(&scene::from_run(&r).panels), 2);
+        let svg = draw(&r);
         assert!(svg.contains(&format!("width=\"{}\"", px(2.0 * PANEL.width))));
         r.panels.retain(|p| !p.y.log);
-        assert_eq!(columns(&r.panels), 2);
+        assert_eq!(columns(&scene::from_run(&r).panels), 2);
         r.panels.push(r.panels[0].clone());
         r.panels.push(r.panels[0].clone());
-        assert_eq!(columns(&r.panels), 3);
+        assert_eq!(columns(&scene::from_run(&r).panels), 3);
     }
 }

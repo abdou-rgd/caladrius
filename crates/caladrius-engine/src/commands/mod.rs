@@ -50,6 +50,7 @@ pub(crate) const COMMANDS: &[CommandDef] = &[
     analysis::ANALYSIS_RUN,
     analysis::EXPORT_TABLE,
     plot::EXPORT_PLOT,
+    plot::PLOT_SCENE,
     compare::ANALYSIS_COMPARE,
     project::DESCRIBE,
     project::SAVE,

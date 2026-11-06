@@ -28,6 +28,7 @@ mod history;
 mod plot;
 pub mod replay;
 mod run;
+pub mod scene;
 mod schema;
 pub mod seal;
 mod svg;
@@ -44,6 +45,8 @@ mod tests_pk2;
 mod tests_plot;
 #[cfg(test)]
 mod tests_replay;
+#[cfg(test)]
+mod tests_scene;
 #[cfg(test)]
 mod tests_seal;
 #[cfg(test)]
