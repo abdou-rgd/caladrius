@@ -125,3 +125,9 @@ Answer (2026-10-29, human, in chat): the runs used free credits offered by Anthr
 T-104 (Abdou's request of 2026-10-22) removed the family name from the four repositories, and `.claude/agents/onizuka.md` says it never appears, anywhere. The public profile `abdou-rgd/abdou-rgd` starts with the full name (`### Abdallah ...`), as does its copy `../notes/github-profile-README.md`. Options: (1) keep it on the profile only, which is Abdou's own page, and say so in the rule; (2) replace it with « Abdallah » or « Abdou ». Untouched until the answer.
 
 Answer (2026-10-29, human, in chat): "il faut retirer mon nom de famille", option 2. The profile now says « Abdallah » (abdou-rgd/abdou-rgd ff2ecf1, pushed), and its copy in `../notes/` too. Still there, outside the text: the author e-mail of past commits in every public repository, which only a history rewrite would remove; future commits can use the GitHub no-reply address if Abdou changes the git setting.
+
+## Q-019 (2026-11-06, orchestrator): push the prototype branches of iteration 2
+
+Iteration 2 (T-130) builds three prototypes of the NCA screen on branches (`iter2/base`, then one branch per stack). Q-013 covers pushes of this repository after a closed task; these branches are pushed before any card closes, so that CI can render them on Linux. Nothing of them merges into `main` before 2026-11-18.
+
+Answer (2026-11-06, human, in chat): "oui pour pousser les branches". The branches of T-133 to T-137 may be pushed. Merging into `main` still waits for the decision of T-138.
