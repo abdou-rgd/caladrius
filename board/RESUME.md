@@ -1,4 +1,4 @@
-# How to resume (state of 2026-10-29)
+# How to resume (state of 2026-11-07)
 
 1. Open Claude Code in `C:\Users\abdou\apothicaire\caladrius`: the agent files of `.claude/agents/` load only when a session starts here. Say: "Reprends le rôle d'orchestrateur : lis AGENTS.md, board/RESUME.md, board/INDEX.md et la carte d'itération ouverte, puis continue."
 2. One session = one iteration (`AGENTS.md` section 9). The open iteration card holds the brief, the plan and the state of each card; if none is open, propose the next one to Abdou from the bolder next step of the last outcome.
@@ -7,20 +7,29 @@
 
 ## State
 
-- **Iterations.** None has run yet. T-113 to T-118 (merged and pushed on 2026-10-29: 2e3b2b0 here, apothicaire 278929c, umbrella 32b6953) brought in the motto, the roles with their model and effort, the iteration loop and its lint, and one place for Onizuka. Iteration 1 (T-124, done 2026-10-29, pushed in all five repositories): READMEs that do not drift; its outcome holds the figures and the bolder next step. Iteration 2, chosen by Abdou, next session: review the interface stack (prompt in `../notes/prompt-iteration-2-interface-2026-10-29.md`); the demo of 2026-11-17 stays on the current interface. The site redesign (T-123) comes after it.
-- **Last pieces merged** (Sceau, 2026-10-23): T-111 same numbers on every machine (#19, 634ad58), T-112 a seal on every result and `project.replay` (#20, cb327a0); the site serves cb327a0 under `/app/`; apothicaire#19 re-golded the bench after T-111; gate v3 was killed by its pre-registered rule (apothicaire#18, 557/600 turns against 562), so v1 stays the demo gate. Details: the cards, `LOG.md` and git history.
-- **First deadline:** the demo at Sanofi Montpellier on 2026-11-17 (`../notes/insights-audit-2026-10-16.md` section 4).
+- **Iteration 2 is open: T-130**, the interface stack chosen on measures. Waves 1 and 2 are done: T-131 (inventory), T-132 (three mockups, local files in `../notes/iteration-2-mockups/`), T-133 (the plot scene) and T-134 (the engine bridge).
+- **Code of the iteration** is on branches, pushed under Q-019: `iter2/base` (T-133 and T-134 merged), `iter2/scene` and `iter2/bridge`. Their worktrees are `C:\Users\abdou\caladrius-iter2\scene` (now on `iter2/base`) and `C:\Users\abdou\caladrius-iter2\bridge`. Only `docs/` and `board/` reach `main` before 2026-11-18.
+- **CI on the branches:** `iter2/base` adds a push trigger for `iter2/**` to `.github/workflows/ci.yml`. Remove it before the iteration is merged into `main`.
+- **Next:** wave 3 (T-135 egui 0.37 and T-136 Tauri + React 19, then T-137 Leptos) starts when Abdou has picked a mockup. Its brief adds what wave 2 found (T-130, thread of 2026-11-07).
+- Iteration 1 (T-124, done 2026-10-29): READMEs that do not drift. The site redesign (T-123) comes after iteration 2.
+- **First deadline:** the demo of 2026-11-17 stays on the current egui interface. If the quota runs short, demo prep comes before waves 3 to 5.
 
-## Open on the PC
+## This PC
 
-- Rebuild `caladrius-mcp` from main into `target/agent-apothicaire` before the next benchmark: the binary there is still the build of 2026-10-21, before T-111, and the frozen-set freeze must hash the new one (`cargo build --release -p caladrius-mcp --target-dir target/agent-apothicaire`).
-- Frozen set, case freeze: it waits for `../agent/bench/frozen/demo/wordings.json`, written by Abdou (2 per turn kind) and dsh (1 per kind) from `wordings.template.json`; Claude never opens it. Then the case freeze and the frozen runs, as in the "Commands" section of `../agent/bench/frozen/README.md`, with C1 = v1 and C2 = v2.
+- Programs under `target/` are refused file writes (os error 5). `cargo test --workspace --no-fail-fast` gives 25 failures for that reason alone, the same on `main` and on `iter2/base` (2026-11-07). The linker started by `cargo xtask` can hit LNK1104 on a cold target. Build first with plain `cargo`: for `cargo xtask bridge`, run `cargo test --no-run --manifest-path apps/caladrius-tauri/Cargo.toml` with `CARGO_TARGET_DIR=<target>/bridge/tauri-target`.
+- `caladrius-mcp` was rebuilt from `main` into `target/agent-apothicaire` on 2026-11-07. The code is that of f8d1c1a, after T-111 and T-129; sha256 b72beca797749eb3f5abf78c0f5ec10d7188e2fbebfeeb0da25610695cd0e678. The frozen-set freeze hashes this binary.
+- Frozen set, case freeze: it waits for `../agent/bench/frozen/demo/wordings.json`, written by Abdou (2 per turn kind) and dsh (1 per kind) from `wordings.template.json`; Claude never opens it. Then follow the "Commands" section of `../agent/bench/frozen/README.md`, with C1 = v1 and C2 = v2.
 
 ## Waiting for Abdou
 
-- Q-015, answered (delete): Abdou deletes `C:\Users\abdou\.claude\commands\onizuka.md` by hand; the session's permission check refused it.
-- The Fisher-information design (it needs an amendment of `AGENTS.md` section 1 and the written agreement of the Sanofi tutor); `qc.nca` (differences between NCA tools as named conventions); the plan-first assistant (after the frozen run); the PAGE 2027 abstract (one per participant).
-- Q-002 and Q-005 to Q-012 are closed (T-129): no vendor comparison, documentation, exports or screenshots. Q-004 (public datasets) is still open.
+- **Iteration 2:** pick a mockup direction (A Workbench, B Paper, C Instrument). Later: decide the stack and the `AGENTS.md` amendment (T-138).
+- Q-015, answered (delete): Abdou deletes `C:\Users\abdou\.claude\commands\onizuka.md` by hand.
+- Ideas that wait for Abdou:
+  - the Fisher-information design, which needs an amendment of `AGENTS.md` section 1;
+  - `qc.nca`;
+  - the plan-first assistant;
+  - the PAGE 2027 abstract.
+- Q-004 (public datasets) is still open.
 - Todo cards from the red team (T-054 to T-093, `INDEX.md`): most touch `../agent`, `../optchat` or the umbrella.
 
 ## Places
