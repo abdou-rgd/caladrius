@@ -1,0 +1,831 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: helpers panic on purpose
+//! Population-fit oracle (card T-152, rules POP-* of `specs/population.md`): the ground truth for the
+//! population fit, written before any engine code exists.
+//!
+//! What is compared, and with what (`oracle/README.md`, section "Population fit"):
+//!
+//! * `oracle/expected/pop/exact/`: the exact identification suite (POP-ORA-01). Objectives and conditional
+//!   modes at fixed parameters, computed at 256 bits by `oracle/scripts/pop_exact.R` with no population
+//!   software, on the test-only model `identity_linear` (POP-MOD-05) and on the catalogue models. Cases whose
+//!   variance is held ("frozen", OP-14) identify the objective forms against each other and are checked in
+//!   `caladrius-testkit` only: the engine has no frozen mode, so they are not given to it
+//!   (`POP_EXACT_IDENTITY_CASES`).
+//! * `oracle/expected/pop/ofv/`: the objective at fixed parameters in double precision, with the
+//!   diagnostics (PRED, IPRED, IWRES, CWRES in three forms, shrinkage with both divisors, AIC and BIC with k),
+//!   for three models by four error models, on seeded synthetic data, Theoph and Indometh.
+//! * `oracle/expected/pop/errors.json`: refusals as rows (POP-INN-03, PX4), each refused row with a control.
+//! * `oracle/expected/pop/sealed/` and `oracle/data/pop/sealed/`: the sealed simulate-then-fit data
+//!   (POP-ORA-04): 200 replicates per design, committed before any engine code; only aggregates are asserted.
+//!
+//! Written before the engine exists: every engine test fails at run time with "population fit not built",
+//! from the one function below, `population_fit`. **The engine card (T-153) replaces the body of that
+//! function and nothing else.** The guards at the end are green today.
+//!
+//! # The request and the answer (assumed; the plainest name where `specs/population.md` is silent)
+//!
+//! The request is data (golden rule 4), in the vocabulary of the refusal rows of `errors.json` (the same
+//! JSON, so a refusal row can be given to the adapter unchanged):
+//!
+//! ```text
+//! { "model": "pk1.iv_bolus" | "pk1.oral_1" | "pk2.iv_bolus" | "identity_linear",
+//!   "initial": { "<par>": x },                 typical values (and the start of a fit)
+//!   "random_effects": ["cl", "v"],             in the order of the rows of Omega
+//!   "omega": [[..]], "omega_shape": "diagonal" | "block",
+//!   "error_model": "additive" | "proportional" | "combined" | "combined_sd",
+//!   "error_init": [a] | [b] | [a, b],          user units, as FIT-ML-21
+//!   "model_options": { "z_powers": [..] },     identity_linear only: Z column k = t^z_powers[k]
+//!   "options": { "method": "foce_i" | "fo",    POP-OBJ-03 (foce_i is the default)
+//!                "ofv_convention": "full" | "no_2pi",       POP-OBJ-05
+//!                "evaluate_only": true },      assumed name: the objective, the modes and the
+//!                                              diagnostics at the given parameters, no outer iteration
+//!   "subjects": [ { "id", "dose", "time": [..], "y": [..] } ] }
+//! ```
+//!
+//! The answer, read by name:
+//!
+//! ```text
+//! { "method", "ofv_convention", "ofv": total,
+//!   "subjects": [ { "id", "ofv", "eta_hat": [..],
+//!                   "pred", "ipred", "iwres", "cwres_diagonal", "cwres_cholesky", "cwres_symmetric": [..] } ],
+//!   "eta_shrinkage": [..]  (divisor m - 1, POP-DIA-03),  "eps_shrinkage": x (divisor N - 1),
+//!   "k": n, "aic": x, "bic": x  (BIC with ln N, OP-05) }
+//! and, for a fit (no evaluate_only):
+//!   "estimate": { "<par>": x }, "se": { "<par>": x }, "status": "converged" | .. }
+//! ```
+//!
+//! A refusal is a `PopError { code, message }` (serialised code: `unbounded_likelihood`,
+//! `non_positive_sigma`, `too_few_subjects`, `too_few_observations`, `inner_failed`, `invalid_option`). The
+//! three CWRES forms are all required while OP-06 is open; FO has no EBE-based quantity (POP-OBJ-03).
+//!
+//! # Tolerances
+//!
+//! All from `caladrius_testkit::AbsoluteTolerance` (`POP_OFV`, `POP_ETA`, `POP_DIAGNOSTIC`, `POP_DERIVED`:
+//! absolute, because the objective crosses zero; the reasons and the measurements behind them are in the
+//! report of T-152 and in `crates/caladrius-testkit/src/pop.rs`). Nothing existing is loosened. The sealed
+//! aggregates use the constants written in the sealed files (`aggregate_checks.constants`).
+
+use std::fmt;
+
+use caladrius_testkit::{
+    AbsoluteTolerance, POP_FORMS, POP_SEALED_DESIGNS, PopErrorCase, PopExactCase, PopModel,
+    PopOfvCase, PopSealed, PopSubject, list_pop_exact_cases, list_pop_ofv_cases, load_pop_errors,
+    load_pop_exact_case, load_pop_ofv_case, load_pop_sealed, load_pop_sealed_replicate,
+    pop_data_dir, verify_pop_sealed,
+};
+use serde_json::{Value, json};
+
+// ---------------------------------------------------------------- the adapter (the only thing T-153 changes)
+
+/// A refusal or a failure of the population fit, as the adapter reports it.
+#[derive(Debug, Clone)]
+struct PopError {
+    code: String,
+    message: String,
+}
+
+impl fmt::Display for PopError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.code, self.message)
+    }
+}
+
+/// THE ADAPTER. Today: the population fit is not built. T-153 replaces this body (and only this body) with
+/// the call into `caladrius-fit`, building the engine's input from `request` and returning the answer in the
+/// shape described in the header of this file.
+fn population_fit(request: &Value) -> Result<Value, PopError> {
+    let _ = request;
+    Err(PopError {
+        code: "not_built".to_owned(),
+        message: "population fit not built".to_owned(),
+    })
+}
+
+// ---------------------------------------------------------------- building requests from the cases
+
+fn f(text: &str) -> f64 {
+    text.trim()
+        .parse::<f64>()
+        .unwrap_or_else(|e| panic!("`{text}` is not a number: {e}"))
+}
+
+fn model_request(
+    model: &PopModel,
+    subjects: &[PopSubject],
+    method: &str,
+    convention: &str,
+    evaluate_only: bool,
+) -> Value {
+    let initial: serde_json::Map<String, Value> = model
+        .theta
+        .iter()
+        .map(|(k, v)| (k.clone(), json!(f(v))))
+        .collect();
+    let omega: Vec<Vec<f64>> = model
+        .omega
+        .iter()
+        .map(|r| r.iter().map(|t| f(t)).collect())
+        .collect();
+    let error_init: Vec<f64> = match model.error_model.as_str() {
+        "additive" => vec![f(&model.xi["a"])],
+        "proportional" => vec![f(&model.xi["b"])],
+        _ => vec![f(&model.xi["a"]), f(&model.xi["b"])],
+    };
+    let mut request = json!({
+        "model": model.name,
+        "initial": initial,
+        "random_effects": model.random_effects,
+        "omega": omega,
+        "omega_shape": if model.omega_is_block() { "block" } else { "diagonal" },
+        "error_model": model.error_model,
+        "error_init": error_init,
+        "options": {
+            "method": method,
+            "ofv_convention": convention,
+            "evaluate_only": evaluate_only,
+        },
+        "subjects": subjects.iter().map(|s| json!({
+            "id": s.id,
+            "dose": f(&s.dose),
+            "time": s.time.iter().map(|t| f(t)).collect::<Vec<_>>(),
+            "y": s.y.iter().map(|t| f(t)).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
+    });
+    if let Some(z) = &model.z_powers {
+        request["model_options"] = json!({ "z_powers": z });
+    }
+    request
+}
+
+fn evaluate(model: &PopModel, subjects: &[PopSubject], method: &str, convention: &str) -> Value {
+    let request = model_request(model, subjects, method, convention, true);
+    population_fit(&request)
+        .unwrap_or_else(|e| panic!("{}: the engine refuses a valid evaluation: {e}", model.name))
+}
+
+// ---------------------------------------------------------------- reading answers
+
+fn number(v: &Value, what: &str) -> f64 {
+    v.as_f64()
+        .unwrap_or_else(|| panic!("the answer has no number at `{what}`: {v}"))
+}
+
+fn vector(v: &Value, what: &str) -> Vec<f64> {
+    v.as_array()
+        .unwrap_or_else(|| panic!("the answer has no array at `{what}`: {v}"))
+        .iter()
+        .map(|x| number(x, what))
+        .collect()
+}
+
+fn answer_subjects(answer: &Value, expected_count: usize) -> &[Value] {
+    let subjects = answer["subjects"]
+        .as_array()
+        .unwrap_or_else(|| panic!("the answer has no `subjects`: {answer}"));
+    assert_eq!(subjects.len(), expected_count, "subjects in the answer");
+    subjects
+}
+
+/// Collects the values outside tolerance, one line each.
+struct Problems(Vec<String>, usize);
+
+impl Problems {
+    fn new() -> Self {
+        Problems(Vec::new(), 0)
+    }
+    fn check(&mut self, label: &str, actual: f64, expected: f64, tol: AbsoluteTolerance) {
+        self.1 += 1;
+        if !tol.accepts(actual, expected) {
+            self.0.push(format!(
+                "{label}: expected {expected:e}, got {actual:e} (absolute {:e})",
+                tol.abs
+            ));
+        }
+    }
+    fn check_vec(&mut self, label: &str, actual: &[f64], expected: &[f64], tol: AbsoluteTolerance) {
+        if actual.len() != expected.len() {
+            self.1 += 1;
+            self.0.push(format!(
+                "{label}: {} values, expected {}",
+                actual.len(),
+                expected.len()
+            ));
+            return;
+        }
+        for (i, (a, e)) in actual.iter().zip(expected).enumerate() {
+            self.check(&format!("{label}[{i}]"), *a, *e, tol);
+        }
+    }
+    fn finish(self, case: &str) {
+        assert!(self.1 > 0, "{case}: nothing was compared");
+        assert!(
+            self.0.is_empty(),
+            "{case}: {} of {} values outside tolerance\n  {}",
+            self.0.len(),
+            self.1,
+            self.0.join("\n  ")
+        );
+    }
+}
+
+fn ofv_label(method: &str) -> &'static str {
+    match method {
+        "fo" => "fo",
+        _ => "linearised",
+    }
+}
+
+// ---------------------------------------------------------------- exact cases (POP-ORA-01)
+
+fn exact_case(name: &str) -> PopExactCase {
+    let case = load_pop_exact_case(name).expect("the exact case loads");
+    assert_eq!(case.frozen_sigma, "none", "{name}: not an engine case");
+    case
+}
+
+fn check_exact_ofv(name: &str, method: &str) {
+    let case = exact_case(name);
+    let answer = evaluate(&case.model, &case.subjects, method, "full");
+    let form = ofv_label(method);
+    let mut p = Problems::new();
+    p.check(
+        &format!("{name} total {form}"),
+        number(&answer["ofv"], "ofv"),
+        f(&case.expected.total_full[form]),
+        AbsoluteTolerance::POP_OFV,
+    );
+    let subjects = answer_subjects(&answer, case.expected.per_subject.len());
+    for (a, e) in subjects.iter().zip(&case.expected.per_subject) {
+        p.check(
+            &format!("{name} {} {form}", e.id),
+            number(&a["ofv"], "subjects.ofv"),
+            f(&e.ofv_full[form]),
+            AbsoluteTolerance::POP_OFV,
+        );
+    }
+    p.finish(name);
+}
+
+fn check_exact_modes(name: &str) {
+    let case = exact_case(name);
+    let answer = evaluate(&case.model, &case.subjects, "foce_i", "full");
+    let mut p = Problems::new();
+    let subjects = answer_subjects(&answer, case.expected.per_subject.len());
+    for (a, e) in subjects.iter().zip(&case.expected.per_subject) {
+        let expected: Vec<f64> = e.eta_hat.iter().map(|t| f(t)).collect();
+        p.check_vec(
+            &format!("{name} {} eta_hat", e.id),
+            &vector(&a["eta_hat"], "eta_hat"),
+            &expected,
+            AbsoluteTolerance::POP_ETA,
+        );
+    }
+    p.finish(name);
+}
+
+macro_rules! exact_case_tests {
+    ($($case:ident),* $(,)?) => {
+        $(
+            mod $case {
+                use super::*;
+                const NAME: &str = stringify!($case);
+                #[test]
+                fn ofv_foce_i() { check_exact_ofv(NAME, "foce_i"); }
+                #[test]
+                fn ofv_fo() { check_exact_ofv(NAME, "fo"); }
+                #[test]
+                fn conditional_modes() { check_exact_modes(NAME); }
+            }
+        )*
+    };
+}
+
+// ---------------------------------------------------------------- objectives and diagnostics at fixed parameters
+
+fn ofv_case(name: &str) -> PopOfvCase {
+    load_pop_ofv_case(name).expect("the ofv case loads")
+}
+
+fn check_ofv(name: &str, method: &str, convention: &str) {
+    let case = ofv_case(name);
+    let answer = evaluate(&case.model, &case.subjects, method, convention);
+    assert_eq!(
+        answer["ofv_convention"].as_str(),
+        Some(convention),
+        "{name}: every answer names its convention (POP-OBJ-05)"
+    );
+    let form = ofv_label(method);
+    let (total, per_subject) = if convention == "full" {
+        (&case.expected.total_full, true)
+    } else {
+        (&case.expected.total_no_2pi, false)
+    };
+    let mut p = Problems::new();
+    p.check(
+        &format!("{name} total {form} ({convention})"),
+        number(&answer["ofv"], "ofv"),
+        total[form],
+        AbsoluteTolerance::POP_OFV,
+    );
+    let subjects = answer_subjects(&answer, case.expected.per_subject.len());
+    for (a, e) in subjects.iter().zip(&case.expected.per_subject) {
+        let table = if per_subject {
+            &e.ofv_full
+        } else {
+            &e.ofv_no_2pi
+        };
+        p.check(
+            &format!("{name} {} {form} ({convention})", e.id),
+            number(&a["ofv"], "subjects.ofv"),
+            table[form],
+            AbsoluteTolerance::POP_OFV,
+        );
+    }
+    p.finish(name);
+}
+
+fn check_ofv_modes(name: &str) {
+    let case = ofv_case(name);
+    let answer = evaluate(&case.model, &case.subjects, "foce_i", "full");
+    let mut p = Problems::new();
+    let subjects = answer_subjects(&answer, case.expected.per_subject.len());
+    for (a, e) in subjects.iter().zip(&case.expected.per_subject) {
+        p.check_vec(
+            &format!("{name} {} eta_hat", e.id),
+            &vector(&a["eta_hat"], "eta_hat"),
+            &e.eta_hat,
+            AbsoluteTolerance::POP_ETA,
+        );
+    }
+    p.finish(name);
+}
+
+fn check_diagnostics(name: &str) {
+    let case = ofv_case(name);
+    let answer = evaluate(&case.model, &case.subjects, "foce_i", "full");
+    let tol = AbsoluteTolerance::POP_DIAGNOSTIC;
+    let mut p = Problems::new();
+    let subjects = answer_subjects(&answer, case.expected.per_subject.len());
+    for (a, e) in subjects.iter().zip(&case.expected.per_subject) {
+        let d = &e.diagnostics;
+        for (key, expected) in [
+            ("pred", &d.pred),
+            ("ipred", &d.ipred),
+            ("iwres", &d.iwres),
+            ("cwres_diagonal", &d.cwres_diagonal),
+            ("cwres_cholesky", &d.cwres_cholesky),
+            ("cwres_symmetric", &d.cwres_symmetric),
+        ] {
+            p.check_vec(
+                &format!("{name} {} {key}", e.id),
+                &vector(&a[key], key),
+                expected,
+                tol,
+            );
+        }
+    }
+    p.finish(name);
+}
+
+fn check_shrinkage_and_criteria(name: &str) {
+    let case = ofv_case(name);
+    let answer = evaluate(&case.model, &case.subjects, "foce_i", "full");
+    let d = &case.diagnostics_population;
+    let mut p = Problems::new();
+    p.check_vec(
+        &format!("{name} eta_shrinkage"),
+        &vector(&answer["eta_shrinkage"], "eta_shrinkage"),
+        &d.eta_shrinkage_divisor_m_minus_1,
+        AbsoluteTolerance::POP_DERIVED,
+    );
+    p.check(
+        &format!("{name} eps_shrinkage"),
+        number(&answer["eps_shrinkage"], "eps_shrinkage"),
+        d.eps_shrinkage_divisor_n_minus_1,
+        AbsoluteTolerance::POP_DERIVED,
+    );
+    p.check(
+        &format!("{name} k"),
+        number(&answer["k"], "k"),
+        d.k.total as f64,
+        AbsoluteTolerance { abs: 0.0 },
+    );
+    let c = &d.information_criteria_full["linearised"];
+    p.check(
+        &format!("{name} aic"),
+        number(&answer["aic"], "aic"),
+        c.aic,
+        AbsoluteTolerance::POP_OFV,
+    );
+    p.check(
+        &format!("{name} bic (ln N)"),
+        number(&answer["bic"], "bic"),
+        c.bic_n_observations,
+        AbsoluteTolerance::POP_OFV,
+    );
+    p.finish(name);
+}
+
+macro_rules! ofv_case_tests {
+    ($($case:ident),* $(,)?) => {
+        $(
+            mod $case {
+                use super::*;
+                const NAME: &str = stringify!($case);
+                #[test]
+                fn ofv_foce_i_full() { check_ofv(NAME, "foce_i", "full"); }
+                #[test]
+                fn ofv_fo_full() { check_ofv(NAME, "fo", "full"); }
+                #[test]
+                fn ofv_foce_i_no_2pi() { check_ofv(NAME, "foce_i", "no_2pi"); }
+                #[test]
+                fn ofv_fo_no_2pi() { check_ofv(NAME, "fo", "no_2pi"); }
+                #[test]
+                fn conditional_modes() { check_ofv_modes(NAME); }
+                #[test]
+                fn diagnostics() { check_diagnostics(NAME); }
+                #[test]
+                fn shrinkage_and_criteria() { check_shrinkage_and_criteria(NAME); }
+            }
+        )*
+    };
+}
+
+// ---------------------------------------------------------------- refusals (POP-INN-03, PX4)
+
+fn error_row(name: &str) -> PopErrorCase {
+    load_pop_errors()
+        .expect("errors.json loads")
+        .into_iter()
+        .find(|r| r.case == name)
+        .unwrap_or_else(|| panic!("no refusal row {name}"))
+}
+
+/// The request of a row, made cheap: the objective at the given parameters, no outer iteration (every
+/// refusal of POP-INN-03 comes before the first outer iteration), and the dataset file resolved.
+fn row_request(request: &Value) -> Value {
+    let mut r = request.clone();
+    if let Some(options) = r.get_mut("options").and_then(Value::as_object_mut) {
+        options.insert("evaluate_only".to_owned(), json!(true));
+    } else {
+        r["options"] = json!({ "evaluate_only": true });
+    }
+    if let Some(path) = r.get("dataset_file").and_then(Value::as_str) {
+        let relative = path.strip_prefix("data/pop/").unwrap_or(path);
+        r["dataset_file"] = json!(pop_data_dir().join(relative).display().to_string());
+    }
+    r
+}
+
+fn check_refused(name: &str) {
+    let row = error_row(name);
+    assert_eq!(row.expect, "refused", "{name}");
+    let request = row_request(
+        row.request
+            .as_ref()
+            .expect("a constructible row has a request"),
+    );
+    let expected = row.error.as_ref().expect("a refused row has an error");
+    let error = match population_fit(&request) {
+        Ok(answer) => panic!("{name}: the request must be refused, got an answer: {answer}"),
+        Err(e) => e,
+    };
+    if let Some(code) = &expected.code {
+        assert_eq!(&error.code, code, "{name}: the code of the refusal");
+    }
+    for word in &expected.words {
+        assert!(
+            error.message.contains(word.as_str()),
+            "{name}: the message must contain `{word}`: {}",
+            error.message
+        );
+    }
+    for word in &expected.must_not_contain {
+        assert!(
+            !error.message.contains(word.as_str()),
+            "{name}: the message must not contain `{word}`: {}",
+            error.message
+        );
+    }
+    // the control, where the row has one: the same request with the one change that removes the cause is not
+    // refused (a row without a control is one whose cause has no single-change repair in the data)
+    if let Some(control) = &row.control {
+        let answer = population_fit(&row_request(&control.request));
+        assert!(
+            answer.is_ok(),
+            "{name}: the control ({}) must not be refused: {:?}",
+            control.change,
+            answer.err()
+        );
+    }
+}
+
+fn check_accepted(name: &str) {
+    let row = error_row(name);
+    assert_eq!(row.expect, "accepted", "{name}");
+    let request = row_request(row.request.as_ref().expect("an accepted row has a request"));
+    let answer = population_fit(&request);
+    assert!(
+        answer.is_ok(),
+        "{name}: the request must not be refused: {:?}",
+        answer.err()
+    );
+}
+
+macro_rules! refusal_tests {
+    ($($case:ident),* $(,)?) => {
+        mod refusals {
+            $(
+                #[test]
+                fn $case() { super::check_refused(stringify!($case)); }
+            )*
+        }
+    };
+}
+
+macro_rules! accepted_tests {
+    ($($case:ident),* $(,)?) => {
+        mod accepted {
+            $(
+                #[test]
+                fn $case() { super::check_accepted(stringify!($case)); }
+            )*
+        }
+    };
+}
+
+// ---------------------------------------------------------------- sealed simulate-then-fit (POP-ORA-04)
+
+/// The start of every sealed fit: the truth moved by these factors, so that the optimiser has work to do and
+/// no start depends on an estimate of the engine (written once, before any engine code; OP-13).
+const START_THETA_FACTOR: f64 = 1.25;
+const START_OMEGA_FACTOR: f64 = 1.5;
+const START_XI_FACTOR: f64 = 1.25;
+
+fn sealed_start(sealed: &PopSealed) -> PopModel {
+    let mut m = sealed.model.clone();
+    m.theta = sealed
+        .truth
+        .typical_values
+        .iter()
+        .map(|(k, v)| (k.clone(), format!("{:e}", f(v) * START_THETA_FACTOR)))
+        .collect();
+    m.omega = sealed
+        .truth
+        .omega_full
+        .iter()
+        .map(|r| {
+            r.iter()
+                .map(|t| format!("{:e}", f(t) * START_OMEGA_FACTOR))
+                .collect()
+        })
+        .collect();
+    m.xi = sealed
+        .truth
+        .xi
+        .iter()
+        .map(|(k, v)| (k.clone(), format!("{:e}", f(v) * START_XI_FACTOR)))
+        .collect();
+    m
+}
+
+/// Mean and standard deviation (divisor K - 1) of a sample.
+fn mean_sd(x: &[f64]) -> (f64, f64) {
+    let n = x.len() as f64;
+    let mean = x.iter().sum::<f64>() / n;
+    let var = x.iter().map(|v| (v - mean) * (v - mean)).sum::<f64>() / (n - 1.0);
+    (mean, var.sqrt())
+}
+
+fn check_sealed_recovery(design: &str) {
+    let sealed = load_pop_sealed(design).expect("the sealed design loads");
+    verify_pop_sealed(&sealed).expect("the sealed files are unchanged");
+    let start = sealed_start(&sealed);
+    let k = sealed.design.replicates;
+    let pars: Vec<String> = sealed.truth.typical_values.keys().cloned().collect();
+    let mut estimates: Vec<Vec<f64>> = vec![Vec::new(); pars.len()];
+    let mut covered: Vec<usize> = vec![0; pars.len()];
+    let c = &sealed.aggregate_checks.constants;
+    for rep in 1..=k {
+        let subjects = load_pop_sealed_replicate(&sealed, rep).expect("the replicate loads");
+        let request = model_request(&start, &subjects, "foce_i", "full", false);
+        let answer = population_fit(&request).unwrap_or_else(|e| {
+            panic!("{design} replicate {rep}: the engine refuses valid data: {e}")
+        });
+        for (i, par) in pars.iter().enumerate() {
+            let est = number(&answer["estimate"][par.as_str()], par);
+            let se = number(&answer["se"][par.as_str()], par);
+            let truth = f(&sealed.truth.typical_values[par]);
+            estimates[i].push(est);
+            if (est - truth).abs() <= c.c_interval * se {
+                covered[i] += 1;
+            }
+        }
+    }
+    let mut problems = Vec::new();
+    for (i, par) in pars.iter().enumerate() {
+        let truth = f(&sealed.truth.typical_values[par]);
+        let (mean, sd) = mean_sd(&estimates[i]);
+        let bias_limit = c.c_bias * sd / (k as f64).sqrt();
+        let share = covered[i] as f64 / k as f64;
+        let coverage_limit =
+            c.c_coverage * (c.nominal_coverage * (1.0 - c.nominal_coverage) / k as f64).sqrt();
+        eprintln!(
+            "{design} {par}: truth {truth:e} mean {mean:e} sd {sd:e} bias {:e} (limit {bias_limit:e}) coverage {share:.3} (nominal {} +- {coverage_limit:.3})",
+            mean - truth,
+            c.nominal_coverage
+        );
+        if (mean - truth).abs() > bias_limit {
+            problems.push(format!(
+                "{par}: mean {mean:e} differs from the truth {truth:e} by more than {bias_limit:e}"
+            ));
+        }
+        if (share - c.nominal_coverage).abs() > coverage_limit {
+            problems.push(format!(
+                "{par}: coverage {share:.3} is not {} within {coverage_limit:.3}",
+                c.nominal_coverage
+            ));
+        }
+    }
+    if sealed.aggregate_checks.asserted {
+        assert!(
+            problems.is_empty(),
+            "{design}: aggregate checks failed\n  {}",
+            problems.join("\n  ")
+        );
+    } else {
+        // recorded only (POP-ORA-04: the design that shows the limits of the method): the fits were run, the
+        // numbers are printed above and in the report, nothing is asserted about them
+        eprintln!(
+            "{design}: recorded only; {} aggregate lines outside the checks",
+            problems.len()
+        );
+    }
+}
+
+macro_rules! sealed_tests {
+    ($($design:ident),* $(,)?) => {
+        mod sealed_recovery {
+            $(
+                #[test]
+                fn $design() { super::check_sealed_recovery(stringify!($design)); }
+            )*
+        }
+    };
+}
+
+// ---------------------------------------------------------------- the generated list of cases
+
+include!("oracle_pop.cases");
+
+// ---------------------------------------------------------------- guards (green today)
+
+fn strings(list: &[&str]) -> Vec<String> {
+    let mut v: Vec<String> = list.iter().map(|s| (*s).to_owned()).collect();
+    v.sort();
+    v
+}
+
+/// Guards the guard: every case file of the oracle is run by a test above, and every case named above exists.
+#[test]
+fn every_case_row_and_design_has_tests() {
+    let mut exact = strings(POP_EXACT_ENGINE_CASES);
+    exact.extend(strings(POP_EXACT_IDENTITY_CASES));
+    exact.sort();
+    assert_eq!(
+        list_pop_exact_cases().unwrap(),
+        exact,
+        "the exact cases on disk and the cases listed differ"
+    );
+    assert_eq!(
+        list_pop_ofv_cases().unwrap(),
+        strings(POP_OFV_CASES),
+        "the ofv cases on disk and the cases tested differ"
+    );
+    let rows = load_pop_errors().unwrap();
+    let on_disk = |expect: &str, constructible: bool| -> Vec<String> {
+        let mut v: Vec<String> = rows
+            .iter()
+            .filter(|r| r.expect == expect && r.constructible == constructible)
+            .map(|r| r.case.clone())
+            .collect();
+        v.sort();
+        v
+    };
+    assert_eq!(
+        on_disk("refused", true),
+        strings(POP_REFUSALS),
+        "refused rows"
+    );
+    assert_eq!(
+        on_disk("accepted", true),
+        strings(POP_ACCEPTED),
+        "accepted rows"
+    );
+    assert_eq!(
+        on_disk("refused", false),
+        strings(POP_SENTENCE_ONLY),
+        "sentence-only rows"
+    );
+    assert_eq!(
+        strings(&POP_SEALED_DESIGNS),
+        strings(POP_SEALED),
+        "the sealed designs on disk and tested differ"
+    );
+}
+
+/// The identity cases are exactly those with a frozen variance, and the engine cases exactly those without.
+#[test]
+fn engine_and_identity_cases_are_split_by_the_frozen_variance() {
+    for name in POP_EXACT_ENGINE_CASES {
+        assert_eq!(
+            load_pop_exact_case(name).unwrap().frozen_sigma,
+            "none",
+            "{name}"
+        );
+    }
+    for name in POP_EXACT_IDENTITY_CASES {
+        assert_ne!(
+            load_pop_exact_case(name).unwrap().frozen_sigma,
+            "none",
+            "{name}"
+        );
+    }
+}
+
+/// The sealed files are recomputed against their hashes before they are used, and the aggregate rule is the
+/// one written in the file (POP-ORA-04 items 3 and 5).
+#[test]
+fn the_sealed_hashes_are_recomputed() {
+    for design in POP_SEALED {
+        let sealed = load_pop_sealed(design).unwrap();
+        assert!(sealed.sealed, "{design}");
+        verify_pop_sealed(&sealed).unwrap();
+        assert_eq!(sealed.design.replicates, 200, "{design}");
+    }
+}
+
+/// The reference loads, every subject has the quantities this file compares, and the requests built from the
+/// cases are well formed, so that a red test is red because of the engine.
+#[test]
+fn the_reference_is_complete_for_the_tests() {
+    for name in POP_OFV_CASES {
+        let case = ofv_case(name);
+        assert_eq!(
+            case.subjects.len(),
+            case.expected.per_subject.len(),
+            "{name}"
+        );
+        for (s, e) in case.subjects.iter().zip(&case.expected.per_subject) {
+            assert_eq!(e.n_obs, s.time.len(), "{name} {}", e.id);
+            assert_eq!(
+                e.diagnostics.cwres_symmetric.len(),
+                e.n_obs,
+                "{name} {}",
+                e.id
+            );
+            for form in ["linearised", "fo"] {
+                assert!(
+                    e.ofv_full.contains_key(form) && e.ofv_no_2pi.contains_key(form),
+                    "{name} {form}"
+                );
+            }
+        }
+        for form in POP_FORMS {
+            assert!(case.expected.total_full.contains_key(form), "{name} {form}");
+        }
+        assert!(
+            case.diagnostics_population
+                .information_criteria_full
+                .contains_key("linearised"),
+            "{name}"
+        );
+        let request = model_request(&case.model, &case.subjects, "foce_i", "full", true);
+        assert_eq!(
+            request["subjects"].as_array().unwrap().len(),
+            case.subjects.len(),
+            "{name}"
+        );
+    }
+    for name in POP_EXACT_ENGINE_CASES {
+        let case = exact_case(name);
+        assert_eq!(
+            case.subjects.len(),
+            case.expected.per_subject.len(),
+            "{name}"
+        );
+        for form in ["linearised", "fo"] {
+            assert!(case.expected.total_full.contains_key(form), "{name} {form}");
+        }
+        let request = model_request(&case.model, &case.subjects, "fo", "full", true);
+        assert_eq!(
+            request["model"].as_str(),
+            Some(case.model.name.as_str()),
+            "{name}"
+        );
+    }
+    for row in load_pop_errors().unwrap() {
+        if row.constructible {
+            assert!(row.request.is_some(), "{}", row.case);
+        }
+    }
+}
