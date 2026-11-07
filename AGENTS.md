@@ -16,9 +16,9 @@ Read this whole file before doing anything. If a task conflicts with this file, 
 
 In scope (v1): data worksheet (CSV import), NCA, XY plots, one-compartment models (bolus, infusion, zero- and first-order absorption, tlag), weighted fitting, export of result tables, a CLI and an MCP server exposing the command registry.
 
-Only afterwards, in this order: two compartments, user-written models (ODEs), several subjects. Start an item only when `docs/conformance.md` is green for everything before it.
+Then, in this order: two compartments (done), three compartments, several subjects with their own doses, population modelling (NLME: FOCE with interaction and its diagnostics), population simulation, user-written models (ODEs). Start an item only when `docs/conformance.md` is green for everything before it.
 
-Out of scope: population modelling (NLME), bioequivalence, IVIVC. Do not start them, not even "to prepare".
+Out of scope: bioequivalence, IVIVC, and any population estimator other than the one named above until it is green. Do not start them, not even "to prepare".
 
 ## 2. What the human does (closed list)
 
@@ -40,17 +40,18 @@ Agents do everything else. Ask the human only when none of the rules below settl
 7. **Thin, data-driven UI.** UI state is serializable. Colours, radii and spacing come from a theme token file (light and dark), never hard-coded.
 8. **Look at what you draw.** Every UI change is rendered offscreen to PNG (`cargo run -p caladrius-ui --example snapshot`) and looked at before delivery.
 9. **Never break wasm.** Layers L0 to L3 compile for `wasm32-unknown-unknown`. Platform-only code (files, threads, processes) is gated behind `cfg` and lives in `apps/`. `cargo xtask wasm` is a gate.
-10. **Same numbers on every machine.** The desktop application, the command line, the MCP server and the page in the browser are one engine, and what `Engine::execute` returns must not depend on where it runs. The standard library's `exp`, `ln`, `powf`, `powi`, `sin`... call the platform's maths library and are not rounded alike on Windows, Linux, macOS and WebAssembly. In the numerical crates, the engine and `xtask`, `clippy.toml` bans them (`disallowed-methods`) and the code calls the pure Rust `libm` (`libm::exp(x)`), pinned to one version in the manifests; `sqrt`, `abs`, `floor`, sums, products and quotients are rounded the same everywhere and stay. `caladrius-ui` and `caladrius-testkit` opt out in their crate root, with the reason. `cargo xtask digest` runs a fixed workload through the engine and prints one SHA-256 of the answers; CI runs it on Linux, Windows, macOS and in WebAssembly under Node, and fails on any difference. A new `libm` version changes the digest: upgrade it on purpose, with `docs/conformance.md` regenerated. Known gaps, listed rather than fixed: `min`, `max` and `clamp` may return either zero when they meet +0 and -0 (only the sign of a zero can differ, and the digest tells them apart), and `usize` is 32 bits on wasm32 (an option above 4 294 967 295 is refused with another message there). The answer of every command is sealed (`caladrius-engine`, `seal`: the SHA-256 of the command, its parameters and its answer) and `project.replay` runs a saved history again against its seals (`docs/reproducibility.md`), so an answer is a function of the parameters and of the project alone: no clock, no random number, no path and no fact about the machine in it (a time or a version goes beside the seal, never in it). Changing what is hashed changes every seal: bump `seal::FORMAT` (a seal of another format is not recomputed) and say so in the card.
+10. **Same numbers on every machine.** The desktop application, the command line, the MCP server and the page in the browser are one engine, and what `Engine::execute` returns must not depend on where it runs. The standard library's `exp`, `ln`, `powf`, `powi`, `sin`... call the platform's maths library and are not rounded alike on Windows, Linux, macOS and WebAssembly. In the numerical crates, the engine and `xtask`, `clippy.toml` bans them (`disallowed-methods`) and the code calls the pure Rust `libm` (`libm::exp(x)`), pinned to one version in the manifests; `sqrt`, `abs`, `floor`, sums, products and quotients are rounded the same everywhere and stay. `caladrius-ui` and `caladrius-testkit` opt out in their crate root, with the reason. `cargo xtask digest` runs a fixed workload through the engine and prints one SHA-256 of the answers; CI runs it on Linux, Windows, macOS and in WebAssembly under Node, and fails on any difference. A new `libm` version changes the digest: upgrade it on purpose, with `docs/conformance.md` regenerated. Known gaps, listed rather than fixed: `min`, `max` and `clamp` may return either zero when they meet +0 and -0 (only the sign of a zero can differ, and the digest tells them apart), and `usize` is 32 bits on wasm32 (an option above 4 294 967 295 is refused with another message there). The answer of every command is sealed (`caladrius-engine`, `seal`: the SHA-256 of the command, its parameters and its answer) and `project.replay` runs a saved history again against its seals (`docs/reproducibility.md`), so an answer is a function of the parameters and of the project alone: no clock, no random number except a stream drawn from a seed that is one of the parameters, by a generator written in the engine and specified in `specs/`, no path and no fact about the machine in it (a time or a version goes beside the seal, never in it). Changing what is hashed changes every seal: bump `seal::FORMAT` (a seal of another format is not recomputed) and say so in the card.
 
 ## 4. Repository map and layers
 
 ```text
 crates/
   caladrius-nca      L0  AUC (linear, log-linear, mixed), λz, t½, extrapolation, AUMC, MRT, CL/F, Vz/F, Vss
-  caladrius-models   L0  closed-form solutions: 1 then 2 compartments, bolus, infusion, zero- and first-order absorption, tlag
+  caladrius-models   L0  closed-form solutions: 1, 2 and 3 compartments, bolus, infusion, zero- and first-order absorption, tlag
   caladrius-fit      L0  weighted least squares (1, 1/y, 1/y², 1/ŷ, 1/ŷ²): estimates with SE, CV% and intervals, secondary
                          parameters, diagnostics (sums of squares, S, DF, AIC, SBC), matrices, eigenvalues, condition numbers,
-                         partial derivatives, predicted data, minimization trace
+                         partial derivatives, predicted data, minimization trace; population fitting (FOCE with
+                         interaction), its diagnostics, population simulation
   caladrius-project  L1  project model: worksheets, workflow objects, results (pure data, serde)
   caladrius-engine   L2  command registry, history, seals, replay, export
   caladrius-ui       L3  egui interface
@@ -74,13 +75,14 @@ A crate depends only on lower layers. Nothing below `caladrius-ui` knows egui, e
 
 Two sources, in priority order for versioned tests:
 
-1. **Public, in `oracle/`**: free datasets (theophylline, indomethacin) with `PKNCA` results produced by a versioned R script; worked examples from textbooks, with the page reference; published validation tables of other open or free NCA tools when their license allows it.
+1. **Public, in `oracle/`**: free datasets (theophylline, indomethacin) with `PKNCA` results produced by a versioned R script; worked examples from textbooks, with the page reference; published validation tables of other open or free NCA tools when their license allows it; population fits by nlmixr2, with saemix and `nlme` as second looks, from versioned R scripts, never a commercial program.
 2. **Independent computation**: for a case with no external result, a second, naive implementation in `caladrius-testkit` (never the same function tested against itself).
 
 Tolerances (defined once in `caladrius-testkit`, never loosened inside a test):
 
 - NCA against PKNCA: relative error ≤ 1e-6.
 - Fitting: parameters within 1e-4 relative, weighted sum of squares within 1e-6 relative. Two optimizers do not reach the same minimum bit for bit; a gap beyond tolerance is a method difference to document in `specs/differences.md`, not a tolerance to widen.
+- Population fitting: the tolerances are set in `caladrius-testkit` by the oracle card of iteration 3 from what it measures, asked in `board/QUESTIONS.md` before any engine card uses them, then written here.
 
 "100% reproduction" means: 100% of in-scope parameters, within these tolerances, on every oracle case. `cargo xtask conformance` generates `docs/conformance.md` (validated parameters per case); never edit that file by hand. The README states no measured figure (`review-readme-figures`): each figure lives in its owner file (`docs/conformance.md`, `docs/validation.md`, a release note) and the README links to it.
 

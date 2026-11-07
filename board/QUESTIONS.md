@@ -170,6 +170,8 @@ Iteration 3 brings three compartments, population fitting and population simulat
 
 Decision taken meanwhile: nothing applied. On a yes, the orchestrator applies the agreed points in one commit on `main` (contract and README text, no code: the demo of 2026-11-17 is unaffected), with `cargo xtask lint` and `review` green and `AGENTS.md` under 200 lines (179 today; the points add about two). The roles table (section 8) is unchanged: the model of each card is chosen on the card of T-139.
 
+Answer (2026-11-07, human, in chat): "oui lance, je vais m'en aller donc je te laisse gérer tout ça. pour l'interface, on refera des tests quand on aura intégré la popPK qui nous permettra de vraiment trancher sur quelle stack on part". Read by the orchestrator as a yes to the iteration and to the engine points 3, 4 and 5, applied on `main` the same day. Points 1, 2 and 6 (the interface) are held: Abdou decides the stack on the tests that follow population PK (T-130, wave 4), so line 5, line 71 and the README keep today's text until then. Line 5 still says "individual compartmental models" and "No Tauri, Electron or webview"; iteration 3 touches no interface, so nothing it does conflicts with it.
+
 ## Q-021 (2026-11-07, orchestrator): install Rtools 4.5 for the nlmixr2 oracle
 
 nlmixr2 is the open oracle of the population fit (T-139, brick 3). It compiles each model to C through rxode2, which on Windows needs Rtools 4.5 (free, distributed by CRAN, with its own installer). Section 11 forbids installing software outside the package managers without written agreement here; the R packages themselves install through `install.packages`, which is allowed. On this PC (2026-11-07): R 4.5.2 with `nlme` 3.1.168; no nlmixr2, rxode2, saemix or Rtools. Options:
@@ -179,8 +181,12 @@ nlmixr2 is the open oracle of the population fit (T-139, brick 3). It compiles e
 
 Decision taken meanwhile: option 1 is recommended; until the answer, the oracle card installs saemix with `install.packages` and writes the nlmixr2 scripts without running them.
 
+Answer (2026-11-07): not answered in words. "je te laisse gérer tout ça" is not read as a yes to download and run an installer outside the package managers; the decision taken meanwhile stands. Rtools is needed only from wave 6 of T-139.
+
 ## Q-022 (2026-11-07, orchestrator): push the branches of iteration 3
 
 Iteration 3 (T-139) keeps its code on branches `iter3/*` until 2026-11-18. CI checks them on Linux, Windows, macOS and wasm32 only once they are pushed, as Q-019 allowed for `iter2/*`. Q-013 covers pushes after a closed task only.
 
 Decision taken meanwhile: the `iter3/*` branches stay local; `main` receives only `docs/` and `board/`, pushed under Q-013.
+
+Answer (2026-11-07): not answered in words; the decision taken meanwhile stands.
