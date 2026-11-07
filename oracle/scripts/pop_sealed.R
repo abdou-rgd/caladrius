@@ -14,11 +14,20 @@
 #             the approximation is known to be strained (sparse data, large variances). The aggregates
 #             are RECORDED, not asserted (a question for Abdou in the report).
 #
-# Run: Rscript oracle/scripts/pop_sealed.R   (writes oracle/data/pop/sealed/ and oracle/expected/pop/sealed/)
+# Run (ONCE, already done; the script now stops when its outputs exist): Rscript oracle/scripts/pop_sealed.R   (writes oracle/data/pop/sealed/ and oracle/expected/pop/sealed/)
 source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])), "pop_lib.R"))
 ROOT <- repo_root()
 DATA <- file.path(ROOT, "oracle", "data", "pop", "sealed")
 EXP <- file.path(ROOT, "oracle", "expected", "pop", "sealed")
+# GUARD (T-152 fix round A): the sealed data are never regenerated. If any output exists the script stops here,
+# before the first unlink; there is no option to override it. Removing the sealed files by hand is a decision
+# of Abdou, not of a script.
+existing <- c(list.files(DATA, recursive = TRUE), list.files(EXP, recursive = TRUE))
+if (length(existing) > 0L) {
+  stop("pop_sealed.R: the sealed outputs already exist (", length(existing), " files under oracle/data/pop/sealed and ",
+       "oracle/expected/pop/sealed). Sealed data are never regenerated, re-rolled or edited (POP-ORA-04); nothing was ",
+       "deleted. Only Abdou may decide to remove them by hand.", call. = FALSE)
+}
 unlink(DATA, recursive = TRUE); unlink(EXP, recursive = TRUE)
 dir.create(DATA, recursive = TRUE, showWarnings = FALSE); dir.create(EXP, recursive = TRUE, showWarnings = FALSE)
 arr <- function(x) as.list(x)

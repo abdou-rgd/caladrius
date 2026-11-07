@@ -50,8 +50,17 @@
 //!   "eta_shrinkage": [..]  (divisor m - 1, POP-DIA-03),  "eps_shrinkage": x (divisor N - 1),
 //!   "k": n, "aic": x, "bic": x  (BIC with ln N, OP-05) }
 //! and, for a fit (no evaluate_only):
-//!   "estimate": { "<par>": x }, "se": { "<par>": x }, "status": "converged" | .. }
+//!   "estimate": { "<par>": x, "<xi name>": x }, "se": { "<par>": x },
+//!   "omega": [[..]] (q by q, in the order of "random_effects"), "status": "converged" | .. }
 //! ```
+//!
+//! The sealed test reads `status`: a replicate whose status is not `converged` is counted, printed and left
+//! out of the aggregates, and an asserted design may have at most `MAX_NOT_CONVERGED_SHARE` of them. The
+//! estimates of Omega and of the error parameters are printed, not asserted.
+//!
+//! If T-153 renames fields, the adapter `population_fit` absorbs it, with one exception: the refusal rows of
+//! `errors.json` carry their own `request` JSON (in the vocabulary above), which the tests also give to the
+//! adapter unchanged, so a renamed request field must be accepted by the adapter in that JSON as well.
 //!
 //! A refusal is a `PopError { code, message }` (serialised code: `unbounded_likelihood`,
 //! `non_positive_sigma`, `too_few_subjects`, `too_few_observations`, `inner_failed`, `invalid_option`). The
@@ -596,14 +605,82 @@ fn mean_sd(x: &[f64]) -> (f64, f64) {
     (mean, var.sqrt())
 }
 
+/// The manifests of the sealed designs, pinned in this source. The seal in the JSON next to the data is not
+/// enough alone: a commit that edited the data and the JSON together would pass it. The values are the
+/// `manifest_sha256` written when the data were sealed (commit e8dc5d2); changing one of them is changing the seal.
+const PINNED_MANIFESTS: [(&str, &str); 2] = [
+    (
+        "accurate",
+        "16f92c8e312ef7670a7ce42b9193e2a2a81fc16368ed4ef5fdb2de832eb482be",
+    ),
+    (
+        "limits",
+        "25c9b7c4f41bb0a009bd9b302149c3c8f10bcc66a653e7ed1725034f2bb9f358",
+    ),
+];
+
+/// Verifies a sealed design: every file against the hash list, the hash list against the manifest, and the
+/// manifest against the value pinned in this source; the list has one file per replicate.
+fn verify_sealed_pinned(sealed: &PopSealed) {
+    verify_pop_sealed(sealed).expect("the sealed files are unchanged");
+    let pinned = PINNED_MANIFESTS
+        .iter()
+        .find(|(name, _)| *name == sealed.name)
+        .unwrap_or_else(|| panic!("no pinned manifest for the sealed design `{}`", sealed.name))
+        .1;
+    assert_eq!(
+        sealed.manifest_sha256, pinned,
+        "{}: the manifest differs from the one pinned in oracle_pop.rs",
+        sealed.name
+    );
+    assert_eq!(
+        sealed.files.len(),
+        sealed.design.replicates,
+        "{}: one file per replicate",
+        sealed.name
+    );
+}
+
+/// DECISION TAKEN MEANWHILE (2026-11-08), REVERSIBLE BY ABDOU: the largest share of replicates of an asserted
+/// design that may end without status `converged`. A replicate that does not converge is counted, reported and
+/// left out of the aggregates (the sealed note says so); without a bound, an engine that never converges would
+/// pass with nothing to aggregate. 2% is 4 of 200: a design chosen so that the method is accurate should
+/// converge in nearly every replicate, and a defect shows as a share well above that. The value is a proposal
+/// of the reviewer of T-152, not a measurement (no engine exists); it is to be revisited with the first
+/// measured share of T-153.
+const MAX_NOT_CONVERGED_SHARE: f64 = 0.02;
+
+/// A sample that is recorded, not asserted: the true value, mean, spread and bias of the estimates.
+fn print_recorded(design: &str, what: &str, truth: f64, estimates: &[f64]) {
+    if estimates.len() < 2 {
+        eprintln!(
+            "{design} {what}: truth {truth:e}, {} estimates, nothing to aggregate",
+            estimates.len()
+        );
+        return;
+    }
+    let (mean, sd) = mean_sd(estimates);
+    eprintln!(
+        "{design} {what} (recorded, not asserted): truth {truth:e} mean {mean:e} sd {sd:e} bias {:e} over {} replicates",
+        mean - truth,
+        estimates.len()
+    );
+}
+
 fn check_sealed_recovery(design: &str) {
     let sealed = load_pop_sealed(design).expect("the sealed design loads");
-    verify_pop_sealed(&sealed).expect("the sealed files are unchanged");
+    verify_sealed_pinned(&sealed);
     let start = sealed_start(&sealed);
     let k = sealed.design.replicates;
     let pars: Vec<String> = sealed.truth.typical_values.keys().cloned().collect();
+    let xis: Vec<String> = sealed.truth.xi.keys().cloned().collect();
+    let q = sealed.model.random_effects.len();
     let mut estimates: Vec<Vec<f64>> = vec![Vec::new(); pars.len()];
     let mut covered: Vec<usize> = vec![0; pars.len()];
+    // Omega (lower triangle, row-major) and xi: recorded, never asserted (the note of the sealed file)
+    let mut omega_hat: Vec<Vec<f64>> = vec![Vec::new(); q * (q + 1) / 2];
+    let mut xi_hat: Vec<Vec<f64>> = vec![Vec::new(); xis.len()];
+    let mut not_converged: Vec<usize> = Vec::new();
     let c = &sealed.aggregate_checks.constants;
     for rep in 1..=k {
         let subjects = load_pop_sealed_replicate(&sealed, rep).expect("the replicate loads");
@@ -611,6 +688,10 @@ fn check_sealed_recovery(design: &str) {
         let answer = population_fit(&request).unwrap_or_else(|e| {
             panic!("{design} replicate {rep}: the engine refuses valid data: {e}")
         });
+        if answer["status"].as_str() != Some("converged") {
+            not_converged.push(rep);
+            continue;
+        }
         for (i, par) in pars.iter().enumerate() {
             let est = number(&answer["estimate"][par.as_str()], par);
             let se = number(&answer["se"][par.as_str()], par);
@@ -620,17 +701,80 @@ fn check_sealed_recovery(design: &str) {
                 covered[i] += 1;
             }
         }
+        for (i, xi) in xis.iter().enumerate() {
+            if let Some(v) = answer["estimate"][xi.as_str()].as_f64() {
+                xi_hat[i].push(v);
+            }
+        }
+        let mut at = 0;
+        for row in 0..q {
+            for col in 0..=row {
+                if let Some(v) = answer["omega"][row][col].as_f64() {
+                    omega_hat[at].push(v);
+                }
+                at += 1;
+            }
+        }
+    }
+    let n_ok = k - not_converged.len();
+    let share_bad = not_converged.len() as f64 / k as f64;
+    eprintln!(
+        "{design}: {} of {k} replicates did not converge ({:.1}%), left out of the aggregates{}",
+        not_converged.len(),
+        100.0 * share_bad,
+        if not_converged.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "; first replicates {:?}",
+                &not_converged[..not_converged.len().min(10)]
+            )
+        }
+    );
+    // Omega and xi: printed, never asserted
+    let mut at = 0;
+    for row in 0..q {
+        for col in 0..=row {
+            let truth = f(&sealed.truth.omega_full[row][col]);
+            let what = format!(
+                "omega[{},{}]",
+                sealed.model.random_effects[row], sealed.model.random_effects[col]
+            );
+            print_recorded(design, &what, truth, &omega_hat[at]);
+            at += 1;
+        }
+    }
+    for (i, xi) in xis.iter().enumerate() {
+        print_recorded(
+            design,
+            &format!("xi {xi}"),
+            f(&sealed.truth.xi[xi]),
+            &xi_hat[i],
+        );
     }
     let mut problems = Vec::new();
+    if share_bad > MAX_NOT_CONVERGED_SHARE {
+        problems.push(format!(
+            "{} of {k} replicates did not converge, more than the {:.0}% allowed",
+            not_converged.len(),
+            100.0 * MAX_NOT_CONVERGED_SHARE
+        ));
+    }
     for (i, par) in pars.iter().enumerate() {
         let truth = f(&sealed.truth.typical_values[par]);
+        if n_ok < 2 {
+            problems.push(format!(
+                "{par}: {n_ok} converged replicates, nothing to aggregate"
+            ));
+            continue;
+        }
         let (mean, sd) = mean_sd(&estimates[i]);
-        let bias_limit = c.c_bias * sd / (k as f64).sqrt();
-        let share = covered[i] as f64 / k as f64;
+        let bias_limit = c.c_bias * sd / (n_ok as f64).sqrt();
+        let share = covered[i] as f64 / n_ok as f64;
         let coverage_limit =
-            c.c_coverage * (c.nominal_coverage * (1.0 - c.nominal_coverage) / k as f64).sqrt();
+            c.c_coverage * (c.nominal_coverage * (1.0 - c.nominal_coverage) / n_ok as f64).sqrt();
         eprintln!(
-            "{design} {par}: truth {truth:e} mean {mean:e} sd {sd:e} bias {:e} (limit {bias_limit:e}) coverage {share:.3} (nominal {} +- {coverage_limit:.3})",
+            "{design} {par}: truth {truth:e} mean {mean:e} sd {sd:e} bias {:e} (limit {bias_limit:e}) coverage {share:.3} (nominal {} +- {coverage_limit:.3}) over {n_ok} replicates",
             mean - truth,
             c.nominal_coverage
         );
@@ -759,7 +903,7 @@ fn the_sealed_hashes_are_recomputed() {
     for design in POP_SEALED {
         let sealed = load_pop_sealed(design).unwrap();
         assert!(sealed.sealed, "{design}");
-        verify_pop_sealed(&sealed).unwrap();
+        verify_sealed_pinned(&sealed);
         assert_eq!(sealed.design.replicates, 200, "{design}");
     }
 }
