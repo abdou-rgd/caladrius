@@ -49,6 +49,34 @@ pub struct Secondary {
     pub gradient: BTreeMap<String, f64>,
 }
 
+/// A borrowed model is a model, so that a host which owns its model by value (`FitRun<ModelId>`)
+/// and a caller which lends one (`run_model(&dyn FitModel, ..)`) share one loop. Every method is
+/// forwarded, `secondary` included.
+impl<M: FitModel + ?Sized> FitModel for &M {
+    fn predict(
+        &self,
+        dose: f64,
+        params: &BTreeMap<String, f64>,
+        times: &[f64],
+    ) -> Result<Vec<f64>, ModelError> {
+        (**self).predict(dose, params, times)
+    }
+
+    fn analytic_derivatives(
+        &self,
+        dose: f64,
+        params: &BTreeMap<String, f64>,
+        times: &[f64],
+        names: &[String],
+    ) -> Option<Vec<Vec<f64>>> {
+        (**self).analytic_derivatives(dose, params, times, names)
+    }
+
+    fn secondary(&self, dose: f64, params: &BTreeMap<String, f64>) -> Vec<Secondary> {
+        (**self).secondary(dose, params)
+    }
+}
+
 impl FitModel for ModelId {
     /// One-compartment relations (MOD-SEC-01, SEC-02) in the (v, k) parameterisation: CL = V·k,
     /// t½ = ln 2/k, AUC∞ = D/(V·k). None when `v` or `k` is not a parameter.

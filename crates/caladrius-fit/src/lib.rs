@@ -21,6 +21,7 @@ mod linalg;
 mod model;
 mod result;
 mod stats;
+mod stepper;
 
 use std::collections::BTreeMap;
 
@@ -32,6 +33,7 @@ pub use flags::FitFlag;
 pub use initial::initial_estimates;
 pub use model::{FitModel, Secondary};
 pub use result::{CurvePoint, FitResult, ObservationRow, TraceRow};
+pub use stepper::{Control, FitRun, Observer, Outcome, Progress, Step};
 
 /// Weighting scheme (FIT-WGT-01).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -348,8 +350,7 @@ pub fn run(input: &FitInput) -> Result<FitResult, FitError> {
 
 /// As [`run`], with any [`FitModel`] in place of `input.model`.
 pub fn run_model(model: &dyn FitModel, input: &FitInput) -> Result<FitResult, FitError> {
-    let problem = engine::Problem::new(model, input)?;
-    Ok(problem.solve())
+    Ok(FitRun::new(model, input)?.solve())
 }
 
 #[cfg(test)]
@@ -358,5 +359,7 @@ mod tests;
 mod tests_outputs;
 #[cfg(test)]
 mod tests_presets;
+#[cfg(test)]
+mod tests_progress;
 #[cfg(test)]
 mod tests_stopping;
