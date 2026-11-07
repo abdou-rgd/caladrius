@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "kind": "data_refusal",
+  "case": "refuse_subject_without_observation",
+  "file": "population/refuse_subject_without_observation.csv",
+  "od": "OD-02",
+  "rules": [
+    "DAT-ERR-04"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "event",
+  "columns": [
+    "ID:subject",
+    "TIME:time",
+    "DV:conc",
+    "AMT:amt",
+    "EVID:event"
+  ],
+  "error": {
+    "code": "subject_without_observation",
+    "row": null,
+    "subject": "1",
+    "column": null,
+    "words": [
+      "subject 1 has no observation",
+      "nothing to analyse or fit"
+    ]
+  },
+  "subjects": [
+    "1",
+    "2"
+  ],
+  "affected": [
+    "1"
+  ],
+  "unaffected": [
+    "2"
+  ],
+  "n_rows": 4,
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "problem_found_in_r": {
+      "row": null,
+      "subject": "1"
+    }
+  }
+}

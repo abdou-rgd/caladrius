@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "kind": "data_load",
+  "case": "event_infusion_rate",
+  "file": "population/event_infusion_rate.csv",
+  "od": "OD-01d",
+  "rules": [
+    "DAT-TYP-02",
+    "DAT-REC-01"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "event",
+  "legacy": false,
+  "same_data_as": null,
+  "columns": [
+    {
+      "name": "ID",
+      "unit": null,
+      "role": "subject"
+    },
+    {
+      "name": "TIME",
+      "unit": null,
+      "role": "time"
+    },
+    {
+      "name": "DV",
+      "unit": null,
+      "role": "conc"
+    },
+    {
+      "name": "AMT",
+      "unit": null,
+      "role": "amt"
+    },
+    {
+      "name": "RATE",
+      "unit": null,
+      "role": "rate"
+    },
+    {
+      "name": "EVID",
+      "unit": null,
+      "role": "event"
+    }
+  ],
+  "notes_contain": [],
+  "checks": [],
+  "declared_covariates": [],
+  "subjects": [
+    "1",
+    "2",
+    "3"
+  ],
+  "n_rows": 12,
+  "records": {
+    "1": {
+      "n_rows": 4,
+      "doses": [
+        {
+          "row": 1,
+          "time": 0,
+          "amount": 100,
+          "rate": 50,
+          "duration": 2,
+          "kind": "infusion"
+        }
+      ],
+      "observations": [
+        {
+          "row": 2,
+          "time": 1,
+          "status": "observed",
+          "value": 4.2
+        },
+        {
+          "row": 3,
+          "time": 2,
+          "status": "observed",
+          "value": 7.9
+        },
+        {
+          "row": 4,
+          "time": 4,
+          "status": "observed",
+          "value": 5.1
+        }
+      ],
+      "n_obs": 3,
+      "n_observed": 3,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "2": {
+      "n_rows": 4,
+      "doses": [
+        {
+          "row": 5,
+          "time": 0,
+          "amount": 200,
+          "rate": 100,
+          "duration": 2,
+          "kind": "infusion"
+        }
+      ],
+      "observations": [
+        {
+          "row": 6,
+          "time": 1,
+          "status": "observed",
+          "value": 8
+        },
+        {
+          "row": 7,
+          "time": 2,
+          "status": "observed",
+          "value": 15.5
+        },
+        {
+          "row": 8,
+          "time": 4,
+          "status": "observed",
+          "value": 10.2
+        }
+      ],
+      "n_obs": 3,
+      "n_observed": 3,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "3": {
+      "n_rows": 4,
+      "doses": [
+        {
+          "row": 9,
+          "time": 0,
+          "amount": 50,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 10,
+          "time": 1,
+          "status": "observed",
+          "value": 2
+        },
+        {
+          "row": 11,
+          "time": 2,
+          "status": "observed",
+          "value": 3.9
+        },
+        {
+          "row": 12,
+          "time": 4,
+          "status": "observed",
+          "value": 2.6
+        }
+      ],
+      "n_obs": 3,
+      "n_observed": 3,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    }
+  },
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "subjects": [
+      "1",
+      "2",
+      "3"
+    ],
+    "group_sizes": [
+      3,
+      3,
+      3
+    ],
+    "invariant_columns": []
+  }
+}

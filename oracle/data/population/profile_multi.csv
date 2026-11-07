@@ -1,0 +1,10 @@
+Subject,Time (h),Conc (ng/mL),Dose (mg),Route
+1,0.5,3.1,100,extravascular
+1,2,5.8,100,extravascular
+1,8,2.0,100,extravascular
+2,0.5,2.7,120,extravascular
+2,2,5.2,120,extravascular
+2,8,<0.5,120,extravascular
+3,0.5,,80,extravascular
+3,2,4.9,80,extravascular
+3,8,1.4,80,extravascular

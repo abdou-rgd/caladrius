@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "kind": "data_load",
+  "case": "event_worked_example",
+  "file": "population/event_worked_example.csv",
+  "od": "OD-01a",
+  "rules": [
+    "DAT-LAY-01",
+    "DAT-COL-01",
+    "DAT-REC-01",
+    "DAT-TYP-01",
+    "DAT-TYP-02",
+    "DAT-TYP-03",
+    "DAT-CEN-02",
+    "DAT-UNI-01"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ";",
+  "decimal_comma": false,
+  "layout": "event",
+  "legacy": false,
+  "same_data_as": null,
+  "columns": [
+    {
+      "name": "ID",
+      "unit": null,
+      "role": "subject"
+    },
+    {
+      "name": "TIME",
+      "unit": null,
+      "role": "time"
+    },
+    {
+      "name": "DV",
+      "unit": null,
+      "role": "conc"
+    },
+    {
+      "name": "AMT",
+      "unit": null,
+      "role": "amt"
+    },
+    {
+      "name": "EVID",
+      "unit": null,
+      "role": "event"
+    },
+    {
+      "name": "WT",
+      "unit": null,
+      "role": "other"
+    }
+  ],
+  "notes_contain": [
+    "unit of the amount is not given"
+  ],
+  "checks": [],
+  "declared_covariates": [],
+  "subjects": [
+    "1",
+    "2"
+  ],
+  "n_rows": 8,
+  "records": {
+    "1": {
+      "n_rows": 4,
+      "doses": [
+        {
+          "row": 1,
+          "time": 0,
+          "amount": 100,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 2,
+          "time": 0.5,
+          "status": "observed",
+          "value": 3.1
+        },
+        {
+          "row": 3,
+          "time": 2,
+          "status": "observed",
+          "value": 5.8
+        },
+        {
+          "row": 4,
+          "time": 8,
+          "status": "observed",
+          "value": 2
+        }
+      ],
+      "n_obs": 3,
+      "n_observed": 3,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "2": {
+      "n_rows": 4,
+      "doses": [
+        {
+          "row": 5,
+          "time": 0,
+          "amount": 120,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 6,
+          "time": 0.5,
+          "status": "observed",
+          "value": 2.7
+        },
+        {
+          "row": 7,
+          "time": 2,
+          "status": "observed",
+          "value": 5.2
+        },
+        {
+          "row": 8,
+          "time": 8,
+          "status": "blq",
+          "value": null
+        }
+      ],
+      "n_obs": 3,
+      "n_observed": 2,
+      "n_missing": 0,
+      "n_blq": 1,
+      "covariates": {}
+    }
+  },
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "subjects": [
+      "1",
+      "2"
+    ],
+    "group_sizes": [
+      3,
+      3
+    ],
+    "invariant_columns": []
+  }
+}

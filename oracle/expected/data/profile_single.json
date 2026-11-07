@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "kind": "data_load",
+  "case": "profile_single",
+  "file": "population/profile_single.csv",
+  "od": "OD-03",
+  "rules": [
+    "DAT-LEG-01",
+    "DAT-LEG-02"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "profile",
+  "legacy": true,
+  "same_data_as": null,
+  "columns": [
+    {
+      "name": "time",
+      "unit": null,
+      "role": "time"
+    },
+    {
+      "name": "conc",
+      "unit": null,
+      "role": "conc"
+    },
+    {
+      "name": "dose",
+      "unit": null,
+      "role": "amt"
+    }
+  ],
+  "notes_contain": [],
+  "checks": [],
+  "declared_covariates": [],
+  "subjects": [
+    "1"
+  ],
+  "n_rows": 5,
+  "records": {
+    "1": {
+      "n_rows": 5,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 100,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 1,
+          "time": 0.5,
+          "status": "observed",
+          "value": 3.1
+        },
+        {
+          "row": 2,
+          "time": 1,
+          "status": "observed",
+          "value": 5.8
+        },
+        {
+          "row": 3,
+          "time": 2,
+          "status": "observed",
+          "value": 6.2
+        },
+        {
+          "row": 4,
+          "time": 4,
+          "status": "observed",
+          "value": 4.4
+        },
+        {
+          "row": 5,
+          "time": 8,
+          "status": "observed",
+          "value": 2
+        }
+      ],
+      "n_obs": 5,
+      "n_observed": 5,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    }
+  },
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "subjects": [
+      "1"
+    ],
+    "group_sizes": [
+      5
+    ],
+    "invariant_columns": []
+  }
+}

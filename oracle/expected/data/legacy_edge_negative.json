@@ -1,0 +1,213 @@
+{
+  "schema": 1,
+  "kind": "data_load",
+  "case": "legacy_edge_negative",
+  "file": "edge_negative.csv",
+  "od": "OD-03",
+  "rules": [
+    "DAT-LEG-02"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "profile",
+  "legacy": true,
+  "same_data_as": null,
+  "columns": [
+    {
+      "name": "subject",
+      "unit": null,
+      "role": "subject"
+    },
+    {
+      "name": "time",
+      "unit": null,
+      "role": "time"
+    },
+    {
+      "name": "conc",
+      "unit": null,
+      "role": "conc"
+    },
+    {
+      "name": "dose",
+      "unit": null,
+      "role": "amt"
+    }
+  ],
+  "notes_contain": [],
+  "checks": [],
+  "declared_covariates": [],
+  "subjects": [
+    "1",
+    "2"
+  ],
+  "n_rows": 18,
+  "records": {
+    "1": {
+      "n_rows": 9,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 100,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 1,
+          "time": 0,
+          "status": "observed",
+          "value": 0
+        },
+        {
+          "row": 2,
+          "time": 0.5,
+          "status": "observed",
+          "value": 2.1
+        },
+        {
+          "row": 3,
+          "time": 1,
+          "status": "observed",
+          "value": 6.3
+        },
+        {
+          "row": 4,
+          "time": 2,
+          "status": "observed",
+          "value": 5
+        },
+        {
+          "row": 5,
+          "time": 4,
+          "status": "observed",
+          "value": -0.3
+        },
+        {
+          "row": 6,
+          "time": 6,
+          "status": "observed",
+          "value": 2.2
+        },
+        {
+          "row": 7,
+          "time": 8,
+          "status": "observed",
+          "value": 1.4
+        },
+        {
+          "row": 8,
+          "time": 12,
+          "status": "observed",
+          "value": 0.6
+        },
+        {
+          "row": 9,
+          "time": 24,
+          "status": "observed",
+          "value": 0.2
+        }
+      ],
+      "n_obs": 9,
+      "n_observed": 9,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "2": {
+      "n_rows": 9,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 100,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 10,
+          "time": 0,
+          "status": "observed",
+          "value": 0
+        },
+        {
+          "row": 11,
+          "time": 0.5,
+          "status": "observed",
+          "value": 2.1
+        },
+        {
+          "row": 12,
+          "time": 1,
+          "status": "observed",
+          "value": 6.3
+        },
+        {
+          "row": 13,
+          "time": 2,
+          "status": "observed",
+          "value": 5
+        },
+        {
+          "row": 14,
+          "time": 4,
+          "status": "observed",
+          "value": 3.3
+        },
+        {
+          "row": 15,
+          "time": 6,
+          "status": "observed",
+          "value": 2.2
+        },
+        {
+          "row": 16,
+          "time": 8,
+          "status": "observed",
+          "value": 1.4
+        },
+        {
+          "row": 17,
+          "time": 12,
+          "status": "observed",
+          "value": 0.6
+        },
+        {
+          "row": 18,
+          "time": 24,
+          "status": "observed",
+          "value": -0.2
+        }
+      ],
+      "n_obs": 9,
+      "n_observed": 9,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    }
+  },
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "subjects": [
+      "1",
+      "2"
+    ],
+    "group_sizes": [
+      9,
+      9
+    ],
+    "invariant_columns": []
+  }
+}

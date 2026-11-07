@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "kind": "data_refusal",
+  "case": "refuse_rate_duration_mismatch",
+  "file": "population/refuse_rate_duration_mismatch.csv",
+  "od": "OD-02",
+  "rules": [
+    "DAT-ERR-06",
+    "DAT-TYP-02"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "event",
+  "columns": [
+    "ID:subject",
+    "TIME:time",
+    "DV:conc",
+    "AMT:amt",
+    "RATE:rate",
+    "DUR:dur",
+    "EVID:event"
+  ],
+  "error": {
+    "code": "rate_duration_mismatch",
+    "row": 1,
+    "subject": "1",
+    "column": "RATE",
+    "words": [
+      "row 1 of subject 1",
+      "rate",
+      "dur"
+    ]
+  },
+  "subjects": [
+    "1",
+    "2"
+  ],
+  "affected": [
+    "1"
+  ],
+  "unaffected": [
+    "2"
+  ],
+  "n_rows": 6,
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "problem_found_in_r": {
+      "row": 1,
+      "subject": "1"
+    }
+  }
+}

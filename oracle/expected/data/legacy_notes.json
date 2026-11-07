@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "kind": "legacy_notes",
+  "pinned_from_commit": "7304519",
+  "how": "The notes, checks and number of readings that the importer of this commit gives for each profile-layout file with default options (default reading). Written once from a throwaway test; the rules DAT-LEG-02 and OD-03 say these must not change.",
+  "cases": {
+    "legacy_edge_blq": {
+      "file": "edge_blq.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_edge_infusion": {
+      "file": "edge_infusion.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_edge_iv": {
+      "file": "edge_iv.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_edge_missing": {
+      "file": "edge_missing.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_edge_negative": {
+      "file": "edge_negative.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_edge_oral": {
+      "file": "edge_oral.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_fit_spec": {
+      "file": "fit/spec.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_fit_synthetic_infusion": {
+      "file": "fit/synthetic_infusion.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_fit_synthetic_lag": {
+      "file": "fit/synthetic_lag.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_fit_synthetic_zero_order": {
+      "file": "fit/synthetic_zero_order.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_indometh": {
+      "file": "indometh.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_synthetic_lz": {
+      "file": "synthetic_lz.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "legacy_theoph": {
+      "file": "theoph.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "profile_decimal_comma": {
+      "file": "population/profile_decimal_comma.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "profile_limit_rate": {
+      "file": "population/profile_limit_rate.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "profile_multi": {
+      "file": "population/profile_multi.csv",
+      "notes_exact": ["unit `h` read from the header of column `Time`", "unit `ng/mL` read from the header of column `Conc`", "column `Conc`: 1 cell(s) such as `<0.5` read as below the limit of quantification; they are stored as 0 and marked BLQ: the NCA applies its BLQ rule to them (options.blq) and a fit leaves them out", "unit `mg` read from the header of column `Dose`"],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "profile_single": {
+      "file": "population/profile_single.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    },
+    "theoph_nlme": {
+      "file": "population/theoph_nlme.csv",
+      "notes_exact": [],
+      "checks_exact": [],
+      "readings": 1
+    }
+  }
+}

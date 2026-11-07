@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "kind": "data_load",
+  "case": "profile_decimal_comma",
+  "file": "population/profile_decimal_comma.csv",
+  "od": "OD-03",
+  "rules": [
+    "DAT-LEG-01",
+    "DAT-LEG-02"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ";",
+  "decimal_comma": true,
+  "layout": "profile",
+  "legacy": true,
+  "same_data_as": null,
+  "columns": [
+    {
+      "name": "sujet",
+      "unit": null,
+      "role": "subject"
+    },
+    {
+      "name": "temps",
+      "unit": null,
+      "role": "time"
+    },
+    {
+      "name": "concentration",
+      "unit": null,
+      "role": "conc"
+    },
+    {
+      "name": "dose",
+      "unit": null,
+      "role": "amt"
+    }
+  ],
+  "notes_contain": [],
+  "checks": [],
+  "declared_covariates": [],
+  "subjects": [
+    "A",
+    "B"
+  ],
+  "n_rows": 6,
+  "records": {
+    "A": {
+      "n_rows": 3,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 100,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 1,
+          "time": 0.5,
+          "status": "observed",
+          "value": 3.1
+        },
+        {
+          "row": 2,
+          "time": 2,
+          "status": "observed",
+          "value": 5.8
+        },
+        {
+          "row": 3,
+          "time": 8,
+          "status": "observed",
+          "value": 2
+        }
+      ],
+      "n_obs": 3,
+      "n_observed": 3,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "B": {
+      "n_rows": 3,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 120,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 4,
+          "time": 0.5,
+          "status": "observed",
+          "value": 2.7
+        },
+        {
+          "row": 5,
+          "time": 2,
+          "status": "observed",
+          "value": 5.2
+        },
+        {
+          "row": 6,
+          "time": 8,
+          "status": "observed",
+          "value": 1.1
+        }
+      ],
+      "n_obs": 3,
+      "n_observed": 3,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    }
+  },
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "subjects": [
+      "A",
+      "B"
+    ],
+    "group_sizes": [
+      3,
+      3
+    ],
+    "invariant_columns": []
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "kind": "data_refusal",
+  "case": "refuse_time_backwards",
+  "file": "population/refuse_time_backwards.csv",
+  "od": "OD-02",
+  "rules": [
+    "DAT-ERR-01",
+    "DAT-ORD-01"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "event",
+  "columns": [
+    "ID:subject",
+    "TIME:time",
+    "DV:conc",
+    "AMT:amt",
+    "EVID:event"
+  ],
+  "error": {
+    "code": "time_not_increasing",
+    "row": 3,
+    "subject": "1",
+    "column": "TIME",
+    "words": [
+      "time goes back",
+      "row 3 of subject 1",
+      "time order"
+    ]
+  },
+  "subjects": [
+    "1",
+    "2"
+  ],
+  "affected": [
+    "1"
+  ],
+  "unaffected": [
+    "2"
+  ],
+  "n_rows": 7,
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "problem_found_in_r": {
+      "row": 3,
+      "subject": "1"
+    }
+  }
+}

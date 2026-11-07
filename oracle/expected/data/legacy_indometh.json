@@ -1,0 +1,593 @@
+{
+  "schema": 1,
+  "kind": "data_load",
+  "case": "legacy_indometh",
+  "file": "indometh.csv",
+  "od": "OD-03",
+  "rules": [
+    "DAT-LEG-02"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "profile",
+  "legacy": true,
+  "same_data_as": null,
+  "columns": [
+    {
+      "name": "subject",
+      "unit": null,
+      "role": "subject"
+    },
+    {
+      "name": "time",
+      "unit": null,
+      "role": "time"
+    },
+    {
+      "name": "conc",
+      "unit": null,
+      "role": "conc"
+    },
+    {
+      "name": "dose",
+      "unit": null,
+      "role": "amt"
+    }
+  ],
+  "notes_contain": [],
+  "checks": [],
+  "declared_covariates": [],
+  "subjects": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6"
+  ],
+  "n_rows": 66,
+  "records": {
+    "1": {
+      "n_rows": 11,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 25,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 1,
+          "time": 0.25,
+          "status": "observed",
+          "value": 1.5
+        },
+        {
+          "row": 2,
+          "time": 0.5,
+          "status": "observed",
+          "value": 0.94
+        },
+        {
+          "row": 3,
+          "time": 0.75,
+          "status": "observed",
+          "value": 0.78
+        },
+        {
+          "row": 4,
+          "time": 1,
+          "status": "observed",
+          "value": 0.48
+        },
+        {
+          "row": 5,
+          "time": 1.25,
+          "status": "observed",
+          "value": 0.37
+        },
+        {
+          "row": 6,
+          "time": 2,
+          "status": "observed",
+          "value": 0.19
+        },
+        {
+          "row": 7,
+          "time": 3,
+          "status": "observed",
+          "value": 0.12
+        },
+        {
+          "row": 8,
+          "time": 4,
+          "status": "observed",
+          "value": 0.11
+        },
+        {
+          "row": 9,
+          "time": 5,
+          "status": "observed",
+          "value": 0.08
+        },
+        {
+          "row": 10,
+          "time": 6,
+          "status": "observed",
+          "value": 0.07
+        },
+        {
+          "row": 11,
+          "time": 8,
+          "status": "observed",
+          "value": 0.05
+        }
+      ],
+      "n_obs": 11,
+      "n_observed": 11,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "2": {
+      "n_rows": 11,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 25,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 12,
+          "time": 0.25,
+          "status": "observed",
+          "value": 2.03
+        },
+        {
+          "row": 13,
+          "time": 0.5,
+          "status": "observed",
+          "value": 1.63
+        },
+        {
+          "row": 14,
+          "time": 0.75,
+          "status": "observed",
+          "value": 0.71
+        },
+        {
+          "row": 15,
+          "time": 1,
+          "status": "observed",
+          "value": 0.7
+        },
+        {
+          "row": 16,
+          "time": 1.25,
+          "status": "observed",
+          "value": 0.64
+        },
+        {
+          "row": 17,
+          "time": 2,
+          "status": "observed",
+          "value": 0.36
+        },
+        {
+          "row": 18,
+          "time": 3,
+          "status": "observed",
+          "value": 0.32
+        },
+        {
+          "row": 19,
+          "time": 4,
+          "status": "observed",
+          "value": 0.2
+        },
+        {
+          "row": 20,
+          "time": 5,
+          "status": "observed",
+          "value": 0.25
+        },
+        {
+          "row": 21,
+          "time": 6,
+          "status": "observed",
+          "value": 0.12
+        },
+        {
+          "row": 22,
+          "time": 8,
+          "status": "observed",
+          "value": 0.08
+        }
+      ],
+      "n_obs": 11,
+      "n_observed": 11,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "3": {
+      "n_rows": 11,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 25,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 23,
+          "time": 0.25,
+          "status": "observed",
+          "value": 2.72
+        },
+        {
+          "row": 24,
+          "time": 0.5,
+          "status": "observed",
+          "value": 1.49
+        },
+        {
+          "row": 25,
+          "time": 0.75,
+          "status": "observed",
+          "value": 1.16
+        },
+        {
+          "row": 26,
+          "time": 1,
+          "status": "observed",
+          "value": 0.8
+        },
+        {
+          "row": 27,
+          "time": 1.25,
+          "status": "observed",
+          "value": 0.8
+        },
+        {
+          "row": 28,
+          "time": 2,
+          "status": "observed",
+          "value": 0.39
+        },
+        {
+          "row": 29,
+          "time": 3,
+          "status": "observed",
+          "value": 0.22
+        },
+        {
+          "row": 30,
+          "time": 4,
+          "status": "observed",
+          "value": 0.12
+        },
+        {
+          "row": 31,
+          "time": 5,
+          "status": "observed",
+          "value": 0.11
+        },
+        {
+          "row": 32,
+          "time": 6,
+          "status": "observed",
+          "value": 0.08
+        },
+        {
+          "row": 33,
+          "time": 8,
+          "status": "observed",
+          "value": 0.08
+        }
+      ],
+      "n_obs": 11,
+      "n_observed": 11,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "4": {
+      "n_rows": 11,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 25,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 34,
+          "time": 0.25,
+          "status": "observed",
+          "value": 1.85
+        },
+        {
+          "row": 35,
+          "time": 0.5,
+          "status": "observed",
+          "value": 1.39
+        },
+        {
+          "row": 36,
+          "time": 0.75,
+          "status": "observed",
+          "value": 1.02
+        },
+        {
+          "row": 37,
+          "time": 1,
+          "status": "observed",
+          "value": 0.89
+        },
+        {
+          "row": 38,
+          "time": 1.25,
+          "status": "observed",
+          "value": 0.59
+        },
+        {
+          "row": 39,
+          "time": 2,
+          "status": "observed",
+          "value": 0.4
+        },
+        {
+          "row": 40,
+          "time": 3,
+          "status": "observed",
+          "value": 0.16
+        },
+        {
+          "row": 41,
+          "time": 4,
+          "status": "observed",
+          "value": 0.11
+        },
+        {
+          "row": 42,
+          "time": 5,
+          "status": "observed",
+          "value": 0.1
+        },
+        {
+          "row": 43,
+          "time": 6,
+          "status": "observed",
+          "value": 0.07
+        },
+        {
+          "row": 44,
+          "time": 8,
+          "status": "observed",
+          "value": 0.07
+        }
+      ],
+      "n_obs": 11,
+      "n_observed": 11,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "5": {
+      "n_rows": 11,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 25,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 45,
+          "time": 0.25,
+          "status": "observed",
+          "value": 2.05
+        },
+        {
+          "row": 46,
+          "time": 0.5,
+          "status": "observed",
+          "value": 1.04
+        },
+        {
+          "row": 47,
+          "time": 0.75,
+          "status": "observed",
+          "value": 0.81
+        },
+        {
+          "row": 48,
+          "time": 1,
+          "status": "observed",
+          "value": 0.39
+        },
+        {
+          "row": 49,
+          "time": 1.25,
+          "status": "observed",
+          "value": 0.3
+        },
+        {
+          "row": 50,
+          "time": 2,
+          "status": "observed",
+          "value": 0.23
+        },
+        {
+          "row": 51,
+          "time": 3,
+          "status": "observed",
+          "value": 0.13
+        },
+        {
+          "row": 52,
+          "time": 4,
+          "status": "observed",
+          "value": 0.11
+        },
+        {
+          "row": 53,
+          "time": 5,
+          "status": "observed",
+          "value": 0.08
+        },
+        {
+          "row": 54,
+          "time": 6,
+          "status": "observed",
+          "value": 0.1
+        },
+        {
+          "row": 55,
+          "time": 8,
+          "status": "observed",
+          "value": 0.06
+        }
+      ],
+      "n_obs": 11,
+      "n_observed": 11,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "6": {
+      "n_rows": 11,
+      "doses": [
+        {
+          "row": null,
+          "time": 0,
+          "amount": 25,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 56,
+          "time": 0.25,
+          "status": "observed",
+          "value": 2.31
+        },
+        {
+          "row": 57,
+          "time": 0.5,
+          "status": "observed",
+          "value": 1.44
+        },
+        {
+          "row": 58,
+          "time": 0.75,
+          "status": "observed",
+          "value": 1.03
+        },
+        {
+          "row": 59,
+          "time": 1,
+          "status": "observed",
+          "value": 0.84
+        },
+        {
+          "row": 60,
+          "time": 1.25,
+          "status": "observed",
+          "value": 0.64
+        },
+        {
+          "row": 61,
+          "time": 2,
+          "status": "observed",
+          "value": 0.42
+        },
+        {
+          "row": 62,
+          "time": 3,
+          "status": "observed",
+          "value": 0.24
+        },
+        {
+          "row": 63,
+          "time": 4,
+          "status": "observed",
+          "value": 0.17
+        },
+        {
+          "row": 64,
+          "time": 5,
+          "status": "observed",
+          "value": 0.13
+        },
+        {
+          "row": 65,
+          "time": 6,
+          "status": "observed",
+          "value": 0.1
+        },
+        {
+          "row": 66,
+          "time": 8,
+          "status": "observed",
+          "value": 0.09
+        }
+      ],
+      "n_obs": 11,
+      "n_observed": 11,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    }
+  },
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "subjects": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+    ],
+    "group_sizes": [
+      11,
+      11,
+      11,
+      11,
+      11,
+      11
+    ],
+    "invariant_columns": []
+  }
+}

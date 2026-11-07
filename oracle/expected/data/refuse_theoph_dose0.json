@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "kind": "data_refusal",
+  "case": "refuse_theoph_dose0",
+  "file": "population/event_theoph_dose0.csv",
+  "od": "OD-05",
+  "rules": [
+    "DAT-ERR-06",
+    "DAT-TYP-02",
+    "DAT-USE-01"
+  ],
+  "generated_by": "oracle/scripts/data_population.R",
+  "options": {},
+  "delimiter": ",",
+  "decimal_comma": false,
+  "layout": "event",
+  "columns": [
+    "ID:subject",
+    "TIME:time",
+    "DV:conc",
+    "AMT:amt",
+    "EVID:event",
+    "WT:other"
+  ],
+  "error": {
+    "code": "non_positive_amount",
+    "row": 49,
+    "subject": "5",
+    "column": "AMT",
+    "words": [
+      "row 56 of subject 5",
+      "amt"
+    ]
+  },
+  "subjects": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12"
+  ],
+  "affected": [
+    "5"
+  ],
+  "unaffected": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12"
+  ],
+  "n_rows": 144,
+  "reference": {
+    "software": {
+      "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+      "nlme": "3.1.168",
+      "jsonlite": "2.0.0"
+    },
+    "problem_found_in_r": {
+      "row": 49,
+      "subject": "5"
+    }
+  }
+}

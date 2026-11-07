@@ -1,0 +1,9 @@
+subject,time (h),conc (ng/mL),amt (mg),event,wt (kg)
+1,0,,100,dose,70
+1,0.5,3.1,,obs,70
+1,2,5.8,,obs,70
+1,8,2.0,,obs,70
+2,0,,120,Dose,82
+2,0.5,2.7,,OBS,82
+2,2,5.2,,Observation,82
+2,8,<0.5,,obs,82
