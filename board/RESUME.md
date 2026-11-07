@@ -10,7 +10,7 @@
 - **Iteration 2 is open: T-130**, the interface stack chosen on measures. Waves 1 and 2 are done: T-131 (inventory), T-132 (three mockups, local files in `../notes/iteration-2-mockups/`), T-133 (the plot scene) and T-134 (the engine bridge).
 - **Code of the iteration** is on branches, pushed under Q-019: `iter2/base` (T-133 and T-134 merged), `iter2/scene` and `iter2/bridge`. Their worktrees are `C:\Users\abdou\caladrius-iter2\scene` (now on `iter2/base`) and `C:\Users\abdou\caladrius-iter2\bridge`. Only `docs/` and `board/` reach `main` before 2026-11-18.
 - **CI on the branches:** `iter2/base` adds a push trigger for `iter2/**` to `.github/workflows/ci.yml`. Remove it before the iteration is merged into `main`.
-- **Next:** wave 3 (T-135 egui 0.37 and T-136 Tauri + React 19, then T-137 Leptos) starts when Abdou has picked a mockup. Its brief adds what wave 2 found (T-130, thread of 2026-11-07).
+- **Wave 3 runs** without a visual direction (Abdou turned down the three mockups on 2026-11-07): T-135 (egui 0.37, worktree `C:\Users\abdou\caladrius-iter2\egui`, branch `iter2/egui`) and T-136 (React 19 + Tauri 2, worktree `C:\Users\abdou\caladrius-iter2\react`, branch `iter2/react`), then T-137 (Leptos). Shared brief: `board/messages/2026-11-07-orchestrator-interface-wave3-brief.md`.
 - Iteration 1 (T-124, done 2026-10-29): READMEs that do not drift. The site redesign (T-123) comes after iteration 2.
 - **First deadline:** the demo of 2026-11-17 stays on the current egui interface. If the quota runs short, demo prep comes before waves 3 to 5.
 
@@ -22,7 +22,7 @@
 
 ## Waiting for Abdou
 
-- **Iteration 2:** pick a mockup direction (A Workbench, B Paper, C Instrument). Later: decide the stack and the `AGENTS.md` amendment (T-138).
+- **Iteration 2:** a new visual direction (the three mockups were turned down on 2026-11-07); it is applied to the winning stack. Later: decide the stack and the `AGENTS.md` amendment (T-138).
 - Q-015, answered (delete): Abdou deletes `C:\Users\abdou\.claude\commands\onizuka.md` by hand.
 - Ideas that wait for Abdou:
   - the Fisher-information design, which needs an amendment of `AGENTS.md` section 1;
