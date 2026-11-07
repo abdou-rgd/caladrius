@@ -174,7 +174,22 @@ pub(crate) fn fit_data(
     })
 }
 
-fn run_fit(project: &Project, spec: &FitSpec) -> Result<AnalysisResult, CommandError> {
+/// What a fit says about its data besides the estimates.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct FitMeta {
+    pub(crate) subject: String,
+    pub(crate) dose: f64,
+    pub(crate) n_observations: usize,
+    pub(crate) n_missing: usize,
+    pub(crate) n_blq: usize,
+}
+
+/// Reads the observations of `spec` from the project and starts the fit (the initial estimates of
+/// FIT-INI-01 when `spec.initial` is empty). The iterations have not begun.
+pub(crate) fn start_fit(
+    project: &Project,
+    spec: &FitSpec,
+) -> Result<(caladrius_fit::FitRun<ModelId>, FitMeta), CommandError> {
     let ws = project.worksheet(spec.worksheet)?;
     let data = fit_data(ws, spec.subject.as_deref(), spec.dose)?;
     let input = FitInput {
@@ -186,16 +201,42 @@ fn run_fit(project: &Project, spec: &FitSpec) -> Result<AnalysisResult, CommandE
         initial: spec.initial.clone(),
         options: spec.options.clone(),
     };
-    let result =
-        caladrius_fit::run(&input).map_err(|e| CommandError::new("fit_error", e.to_string()))?;
-    Ok(AnalysisResult::Fit(FitRun {
+    let run =
+        caladrius_fit::start(&input).map_err(|e| CommandError::new("fit_error", e.to_string()))?;
+    let meta = FitMeta {
         subject: data.subject,
-        dose: Some(data.dose),
+        dose: data.dose,
         n_observations: data.time.len(),
         n_missing: data.n_missing,
         n_blq: data.n_blq,
+    };
+    Ok((run, meta))
+}
+
+/// The result of a fit that ended, as the project stores it.
+pub(crate) fn fit_analysis(meta: FitMeta, result: caladrius_fit::FitResult) -> AnalysisResult {
+    AnalysisResult::Fit(FitRun {
+        subject: meta.subject,
+        dose: Some(meta.dose),
+        n_observations: meta.n_observations,
+        n_missing: meta.n_missing,
+        n_blq: meta.n_blq,
         outcome: Outcome::Ok(result),
-    }))
+    })
+}
+
+fn run_fit(project: &Project, spec: &FitSpec) -> Result<AnalysisResult, CommandError> {
+    let (run, meta) = start_fit(project, spec)?;
+    match run.run(&mut crate::job::NeverCancel) {
+        caladrius_fit::Outcome::Done(result) => Ok(fit_analysis(meta, result)),
+        // An observer that never cancels cannot get here; a sentence all the same.
+        caladrius_fit::Outcome::Cancelled {
+            after_iteration, ..
+        } => Err(CommandError::new(
+            "fit_cancelled",
+            format!("fit cancelled after iteration {after_iteration}; nothing was stored"),
+        )),
+    }
 }
 
 fn run_simulation(spec: &SimulationSpec) -> Result<AnalysisResult, CommandError> {

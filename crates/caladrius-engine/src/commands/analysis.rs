@@ -221,10 +221,23 @@ struct FitRunParams {
     options: caladrius_fit::FitOptions,
 }
 
-fn fit_run(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
+/// What `fit.run` keeps from its parameters between `begin` and `finish`.
+pub(crate) struct FitJobData {
+    analysis: Option<AnalysisId>,
+    name: Option<String>,
+    spec: AnalysisSpec,
+    meta: run::FitMeta,
+}
+
+/// The first half of `fit.run`: the parameters, the target analysis, the observations and the
+/// initial estimates. Nothing is stored and the iterations have not begun.
+pub(crate) fn begin_fit(
+    engine: &Engine,
+    params: Value,
+) -> Result<(caladrius_fit::FitRun<ModelId>, FitJobData), CommandError> {
     let p: FitRunParams = parse("fit.run", params)?;
     check_target(&engine.project, p.analysis, "fit")?;
-    let spec = AnalysisSpec::Fit(FitSpec {
+    let spec = FitSpec {
         worksheet: p.worksheet,
         subject: p.subject,
         model: p.model,
@@ -232,16 +245,43 @@ fn fit_run(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
         weighting: p.weighting,
         initial: p.initial,
         options: p.options,
-    });
-    let result = run::run_spec(&engine.project, &spec)?;
+    };
+    let (run, meta) = run::start_fit(&engine.project, &spec)?;
+    Ok((
+        run,
+        FitJobData {
+            analysis: p.analysis,
+            name: p.name,
+            spec: AnalysisSpec::Fit(spec),
+            meta,
+        },
+    ))
+}
+
+/// The second half of `fit.run`: stores the finished fit and answers with the analysis.
+pub(crate) fn finish_fit(
+    engine: &mut Engine,
+    data: FitJobData,
+    result: caladrius_fit::FitResult,
+) -> Result<Value, CommandError> {
     let id = store(
         &mut engine.project,
-        p.analysis,
-        p.name.as_deref(),
-        spec,
-        result,
+        data.analysis,
+        data.name.as_deref(),
+        data.spec,
+        run::fit_analysis(data.meta, result),
     )?;
     view(&engine.project, id)
+}
+
+/// `execute("fit.run")`: begin, run with nobody watching, finish. `execute` records the entry.
+fn fit_run(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
+    let job = engine.begin_job(crate::job::FIT_RUN, params)?;
+    let completed = job.run(&mut crate::job::NeverCancel);
+    match engine.finish_job(completed) {
+        crate::job::Settled::Recorded(outcome) => outcome,
+        crate::job::Settled::Unrecorded(e) => Err(e),
+    }
 }
 
 fn initial_property() -> (&'static str, Value) {

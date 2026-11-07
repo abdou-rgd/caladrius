@@ -8,6 +8,7 @@ mod plot;
 mod project;
 mod units;
 
+pub(crate) use analysis::{FitJobData, begin_fit, finish_fit};
 pub(crate) use project::{document, read_saved};
 
 use serde::de::DeserializeOwned;
