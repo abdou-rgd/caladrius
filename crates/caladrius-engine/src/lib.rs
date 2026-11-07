@@ -25,6 +25,7 @@ mod commands;
 mod error;
 mod export;
 mod history;
+mod job;
 mod plot;
 pub mod replay;
 mod run;
@@ -37,6 +38,8 @@ mod tests;
 #[cfg(test)]
 mod tests_compare;
 #[cfg(test)]
+mod tests_job;
+#[cfg(test)]
 mod tests_pk2;
 #[cfg(test)]
 mod tests_plot;
@@ -47,9 +50,11 @@ mod tests_seal;
 #[cfg(test)]
 mod tests_units;
 
+pub use caladrius_fit::{Control, FitResult, Observer, Progress, Step, TraceRow};
 pub use caladrius_project::{self as project, Project};
 pub use error::CommandError;
 pub use history::{History, HistoryEntry, MAX_RECORDED_PARAMS_BYTES};
+pub use job::{Completed, FIT_RUN, Job};
 pub use seal::{Clock, Seal};
 pub use svg::{COLORS as SVG_COLORS, SvgColors};
 
@@ -99,7 +104,7 @@ pub fn command_ids() -> Vec<&'static str> {
 }
 
 /// A project and the history of the commands executed on it.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug)]
 pub struct Engine {
     pub(crate) project: Project,
     pub(crate) history: History,
@@ -109,6 +114,37 @@ pub struct Engine {
     pub(crate) clock: Option<Clock>,
     /// True when the seals leave out the version and the commit of this build.
     pub(crate) without_provenance: bool,
+    /// The job that is running, if one is (see [`Engine::begin`]).
+    pub(crate) running: Option<job::Running>,
+    /// How many jobs this engine has begun; the number of the next one is this plus one.
+    pub(crate) jobs_begun: u64,
+    /// Tells this engine from every other one in the process, so that a job begun by one engine
+    /// is never taken by another. Never in an answer, a seal or the history.
+    pub(crate) identity: u64,
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self::with_project(Project::default())
+    }
+}
+
+/// A copy of the project, the history and the settings. A job that is running is not copied: the
+/// copy has no running job and takes an identity of its own, so a job of the original cannot be
+/// finished on it.
+impl Clone for Engine {
+    fn clone(&self) -> Self {
+        Self {
+            project: self.project.clone(),
+            history: self.history.clone(),
+            revision: self.revision,
+            clock: self.clock,
+            without_provenance: self.without_provenance,
+            running: None,
+            jobs_begun: self.jobs_begun,
+            identity: job::new_identity(),
+        }
+    }
 }
 
 impl Engine {
@@ -125,6 +161,9 @@ impl Engine {
             revision: 0,
             clock: None,
             without_provenance: false,
+            running: None,
+            jobs_begun: 0,
+            identity: job::new_identity(),
         }
     }
 
@@ -164,6 +203,11 @@ impl Engine {
     /// history, whether it succeeds or not, with its seal. A failed command leaves the project
     /// unchanged.
     pub fn execute(&mut self, id: &str, params: Value) -> Result<Value, CommandError> {
+        // A job is running: a command that would change the project under it is refused, and
+        // nothing is recorded for it.
+        if let Some(refusal) = self.refuse_while_running(id, &params) {
+            return Err(refusal);
+        }
         let received = params.clone();
         // What the command is about to read, hashed before it can change it.
         let input = if seal::is_sealed(id) {

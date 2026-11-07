@@ -13,6 +13,7 @@
 //! caladrius-cli commands [--format text|json]
 //! caladrius-cli <command-id> [--json FILE|-] [--param KEY=VALUE]... [--csv FILE]
 //!               [--project FILE] [--format json|csv] [--table NAME] [--no-seal]
+//!               [--progress] [--cancel-after N]      (fit.run only)
 //! caladrius-cli compare A B [--param parameters=[...]] --project FILE [--format json|csv]
 //! ```
 //!
@@ -24,7 +25,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use caladrius_engine::seal::{csv_with_stamp, json_with_seal, stamp_line};
-use caladrius_engine::{CommandInfo, Engine, command_ids, describe};
+use caladrius_engine::{CommandInfo, Control, Engine, Observer, Progress, command_ids, describe};
 use serde_json::{Map, Value, json};
 
 /// Why the invocation failed. The message is exactly what the person reads.
@@ -80,6 +81,10 @@ struct RunArgs {
     table: Option<String>,
     /// Print the answer as it is, without the seal of the command.
     no_seal: bool,
+    /// `fit.run` only: one line per iteration on standard error.
+    progress: bool,
+    /// `fit.run` only: cancel after this iteration (0: before the first).
+    cancel_after: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -108,6 +113,12 @@ options for a command:
   --format json|csv   json (default): the command's result; csv: its table (an analysis
                       prints its main table, see --table)
   --table NAME        the table to print with --format csv (export.table names)
+  --progress          fit.run only: one line per iteration on standard error, such as
+                      `iteration 3, wrss 12.5`; the answer on standard output is unchanged
+  --cancel-after N    fit.run only: cancel after iteration N (for scripts and tests). Prints
+                      `error: fit cancelled after iteration N; nothing was stored` on standard error,
+                      stores nothing, prints no answer and exits with code 1. Ctrl-C does the
+                      same at the next iteration
   --no-seal           print the answer as it is. By default it carries the seal of the command:
                       a `seal` member in JSON, a first line `# caladrius engine=... seal=...` in
                       CSV (data.import skips that line; for other programs read with
@@ -168,6 +179,8 @@ fn parse_args(args: &[String]) -> Result<Action, CliError> {
         format: None,
         table: None,
         no_seal: false,
+        progress: false,
+        cancel_after: None,
     };
     while let Some(arg) = it.next() {
         let (flag, inline) = match arg.split_once('=') {
@@ -209,6 +222,20 @@ fn parse_args(args: &[String]) -> Result<Action, CliError> {
                     return fail("`--no-seal` takes no value");
                 }
                 run.no_seal = true;
+            }
+            "--progress" if !is_commands => {
+                if has_value {
+                    return fail("`--progress` takes no value");
+                }
+                run.progress = true;
+            }
+            "--cancel-after" if !is_commands => {
+                let text = value(&mut it)?;
+                run.cancel_after = Some(text.parse().map_err(|_| {
+                    CliError(format!(
+                        "`--cancel-after` needs a whole number of iterations (0 or more), not `{text}`"
+                    ))
+                })?);
             }
             "--format" => run.format = Some(parse_format(&value(&mut it)?)?),
             other => {
@@ -482,6 +509,12 @@ fn check_flags(args: &RunArgs) -> Result<(), CliError> {
     if format == Format::Text {
         return fail("`--format text` is only for `commands`; use json or csv");
     }
+    if (args.progress || args.cancel_after.is_some()) && args.command != "fit.run" {
+        return fail(format!(
+            "`--progress` and `--cancel-after` are for `fit.run`, not `{}`",
+            args.command
+        ));
+    }
     if args.table.is_some() && format != Format::Csv {
         return fail("--table needs --format csv");
     }
@@ -548,7 +581,80 @@ fn import_notes(imported: &Value) -> Vec<String> {
     notes
 }
 
-fn run_command(args: &RunArgs, stdin: &mut dyn Read) -> Result<Output, CliError> {
+/// What a fit asked to do between two iterations: print a line, stop after iteration N, stop when
+/// the person pressed Ctrl-C.
+struct FitWatch<'a> {
+    progress: bool,
+    cancel_after: Option<u32>,
+    sink: &'a mut dyn FnMut(&str),
+    interrupted: &'a dyn Fn() -> bool,
+}
+
+/// A number as the engine writes numbers in its answers (`12.5`, `1e-7`).
+fn engine_number(x: f64) -> String {
+    serde_json::Number::from_f64(x).map_or_else(|| format!("{x}"), |n| n.to_string())
+}
+
+impl FitWatch<'_> {
+    fn stop(&self, iteration: u32) -> Control {
+        if self.cancel_after.is_some_and(|n| iteration >= n) || (self.interrupted)() {
+            Control::Cancel
+        } else {
+            Control::Continue
+        }
+    }
+}
+
+impl Observer for FitWatch<'_> {
+    fn before_first_iteration(&mut self, progress: &Progress<'_>) -> Control {
+        self.stop(progress.iteration)
+    }
+
+    fn after_iteration(&mut self, progress: &Progress<'_>) -> Control {
+        if self.progress {
+            let line = format!(
+                "iteration {}, wrss {}",
+                progress.iteration,
+                engine_number(progress.objective)
+            );
+            (self.sink)(&line);
+        }
+        self.stop(progress.iteration)
+    }
+}
+
+/// How `fit.run` ended on the command line.
+enum FitEnd {
+    Answer(Value),
+    /// Cancelled: the sentence has been sent to the sink.
+    Cancelled,
+}
+
+/// `fit.run` as a job: one line per iteration when asked, a stop after iteration N, a stop on
+/// Ctrl-C. The answer, its seal and its entry are those of `execute` (the engine proves it).
+fn run_fit_job(
+    engine: &mut Engine,
+    params: &Value,
+    watch: &mut FitWatch<'_>,
+) -> Result<FitEnd, CliError> {
+    let job = engine.begin("fit.run", params.clone())?;
+    let completed = job.run(watch);
+    match engine.finish(completed) {
+        Ok(answer) => Ok(FitEnd::Answer(answer)),
+        Err(e) if e.code == "fit_cancelled" => {
+            (watch.sink)(&format!("error: {}", e.message));
+            Ok(FitEnd::Cancelled)
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+fn run_command(
+    args: &RunArgs,
+    stdin: &mut dyn Read,
+    sink: &mut dyn FnMut(&str),
+    interrupted: &dyn Fn() -> bool,
+) -> Result<Output, CliError> {
     let Some(info) = describe().into_iter().find(|c| c.id == args.command) else {
         // The engine's own message lists the commands.
         let mut engine = Engine::new();
@@ -641,7 +747,32 @@ fn run_command(args: &RunArgs, stdin: &mut dyn Read) -> Result<Output, CliError>
         }
     }
     let params = Value::Object(params);
-    let result = engine.execute(&args.command, params.clone())?;
+    let result = if args.command == "fit.run" {
+        // What the import said comes before the lines of the fit.
+        for note in notes.drain(..) {
+            sink(&note);
+        }
+        let mut watch = FitWatch {
+            progress: args.progress,
+            cancel_after: args.cancel_after,
+            sink,
+            interrupted,
+        };
+        match run_fit_job(&mut engine, &params, &mut watch)? {
+            FitEnd::Answer(answer) => answer,
+            // Nothing is stored and nothing is printed on standard output; with --project the
+            // file is left as it was.
+            FitEnd::Cancelled => {
+                return Ok(Output {
+                    stdout: String::new(),
+                    notes,
+                    exit_code: 1,
+                });
+            }
+        }
+    } else {
+        engine.execute(&args.command, params.clone())?
+    };
     if args.command == "data.import" {
         notes.extend(import_notes(&result));
     }
@@ -713,7 +844,29 @@ fn system_clock() -> Option<i64> {
 }
 
 /// Runs the command line `args` (without the program name). `stdin` is read only for `--json -`.
+/// The lines a fit prints on standard error while it runs (`--progress`, the sentence of a
+/// cancel) come back with the other notes.
 pub fn run(args: &[String], stdin: &mut dyn Read) -> Result<Output, CliError> {
+    let mut lines = Vec::new();
+    let mut output = run_with(
+        args,
+        stdin,
+        &mut |line| lines.push(line.to_owned()),
+        &|| false,
+    )?;
+    output.notes.extend(lines);
+    Ok(output)
+}
+
+/// As [`run`], for a program that shows the lines of a fit as they come: `sink` receives each
+/// one (they are not in `Output::notes`), and `interrupted` is asked between two iterations of a
+/// fit (Ctrl-C): when it says true the fit is cancelled like `--cancel-after`.
+pub fn run_with(
+    args: &[String],
+    stdin: &mut dyn Read,
+    sink: &mut dyn FnMut(&str),
+    interrupted: &dyn Fn() -> bool,
+) -> Result<Output, CliError> {
     match parse_args(args)? {
         Action::Help => Ok(Output {
             stdout: format!("{USAGE}\n"),
@@ -721,7 +874,7 @@ pub fn run(args: &[String], stdin: &mut dyn Read) -> Result<Output, CliError> {
             exit_code: 0,
         }),
         Action::Commands(format) => list_commands(format),
-        Action::Run(run) => run_command(&run, stdin),
+        Action::Run(run) => run_command(&run, stdin, sink, interrupted),
     }
 }
 

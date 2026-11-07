@@ -10,6 +10,7 @@ use crate::arith::sq;
 use crate::engine::{EXACT_FIT, Problem};
 use crate::flags::{self, FitFlag};
 use crate::linalg::{Mat, inverse_gram_from_r, least_squares, symmetric_eigenvalues};
+use crate::model::FitModel;
 use crate::stats::{f_quantile, student_t_quantile};
 use crate::{Derivatives, FitStatus};
 
@@ -174,8 +175,8 @@ impl Values {
 }
 
 /// Statistics at the solution (FIT-OUT-01 to 07, 09, 10).
-pub(crate) fn build(
-    problem: &Problem<'_>,
+pub(crate) fn build<M: FitModel>(
+    problem: &Problem<M>,
     theta: Vec<f64>,
     pred: Vec<f64>,
     trace: Vec<TraceRow>,
@@ -370,8 +371,8 @@ struct Scaled<'a> {
     norms: &'a [f64],
 }
 
-fn statistics(
-    problem: &Problem<'_>,
+fn statistics<M: FitModel>(
+    problem: &Problem<M>,
     names: &[String],
     theta: &[f64],
     theta_full: &[f64],
@@ -433,8 +434,8 @@ fn statistics(
 
 /// FIT-OUT-06: the secondary parameters the model defines ([`crate::FitModel::secondary`]), with
 /// standard errors by the delta method.
-fn secondary(
-    problem: &Problem<'_>,
+fn secondary<M: FitModel>(
+    problem: &Problem<M>,
     names: &[String],
     theta: &[f64],
     cov: &Mat,
@@ -468,7 +469,7 @@ fn secondary(
 }
 
 /// FIT-OUT-10: `n_curve` equally spaced times from the first to the last observation time.
-fn curve(problem: &Problem<'_>, theta: &[f64]) -> Vec<CurvePoint> {
+fn curve<M: FitModel>(problem: &Problem<M>, theta: &[f64]) -> Vec<CurvePoint> {
     let n = problem.options.n_curve;
     let lo = problem.time.iter().copied().fold(f64::INFINITY, f64::min);
     let hi = problem

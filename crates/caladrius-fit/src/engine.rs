@@ -7,17 +7,16 @@ use std::collections::BTreeMap;
 use crate::arith::{powi, sq};
 use crate::linalg::{Mat, least_squares};
 use crate::model::FitModel;
-use crate::result::{self, FitResult, TraceRow};
-use crate::{Criterion, Derivatives, FitError, FitInput, FitOptions, FitStatus, Weighting};
+use crate::{Derivatives, FitError, FitInput, FitOptions, Weighting};
 
 /// Canonical parameter order (MOD-VOC-01); other names follow in alphabetical order.
 const ORDER: [&str; 6] = ["v", "cl", "k", "ka", "dur", "tlag"];
 /// Smallest step factor of the halving (FIT-ALG-03).
-const MIN_STEP: f64 = 1.0 / 1024.0;
+pub(crate) const MIN_STEP: f64 = 1.0 / 1024.0;
 /// Damping: first value, factor, largest value (FIT-ALG-04).
-const LAMBDA_START: f64 = 1e-3;
-const LAMBDA_FACTOR: f64 = 10.0;
-const LAMBDA_MAX: f64 = 1e10;
+pub(crate) const LAMBDA_START: f64 = 1e-3;
+pub(crate) const LAMBDA_FACTOR: f64 = 10.0;
+pub(crate) const LAMBDA_MAX: f64 = 1e10;
 /// Bounds of the options (a value beyond them is refused, never allocated or run).
 const MAX_INCREMENT: f64 = 0.1;
 const MAX_CONVERGENCE: f64 = 0.1;
@@ -46,8 +45,8 @@ pub(crate) fn weight_of(x: f64, power: i32) -> Option<f64> {
 }
 
 /// A checked fitting problem.
-pub(crate) struct Problem<'a> {
-    pub model: &'a dyn FitModel,
+pub(crate) struct Problem<M: FitModel> {
+    pub model: M,
     pub model_id: String,
     pub dose: f64,
     pub time: Vec<f64>,
@@ -55,7 +54,7 @@ pub(crate) struct Problem<'a> {
     pub weighting: Weighting,
     /// Fitted parameters, in canonical order.
     pub names: Vec<String>,
-    theta0: Vec<f64>,
+    pub theta0: Vec<f64>,
     pub options: FitOptions,
     /// Parameters held at a value.
     pub fixed: BTreeMap<String, f64>,
@@ -71,9 +70,9 @@ fn invalid_option(option: &str, reason: &str) -> FitError {
     }
 }
 
-impl<'a> Problem<'a> {
+impl<M: FitModel> Problem<M> {
     /// Checks the input (FIT-ERR-01, WGT-02) and the initial estimates.
-    pub fn new(model: &'a dyn FitModel, input: &FitInput) -> Result<Self, FitError> {
+    pub fn new(model: M, input: &FitInput) -> Result<Self, FitError> {
         let o = &input.options;
         if !(o.increment > 0.0 && o.increment <= MAX_INCREMENT) {
             return Err(invalid_option(
@@ -436,7 +435,7 @@ impl<'a> Problem<'a> {
     /// The Gauss-Newton direction on the parameters `free` (indices), scattered back to all
     /// parameters (0 for the others), with the decrease it predicts (‖J·δ‖²); `lambda` > 0 gives
     /// the damped direction. `None` when the free system is singular.
-    fn direction(
+    pub fn direction(
         &self,
         columns: &[Vec<f64>],
         pred: &[f64],
@@ -470,229 +469,10 @@ impl<'a> Problem<'a> {
         Some((delta, predicted))
     }
 
-    /// The minimisation (FIT-ALG-02 to 04, CNV-01 to 03, BND-01), then the statistics (section 7).
-    pub fn solve(&self) -> FitResult {
-        let eps = self.options.convergence;
-        let mut theta = self.theta0.clone();
-        // Checked in `new`: the initial prediction exists and its weights are defined.
-        let mut pred = self.predict(&theta).unwrap_or_default();
-        let ss_weighted_start = self.weights(&pred).map_or(0.0, |w| {
-            self.y.iter().zip(&w).map(|(y, w)| w * y * y).sum::<f64>()
-        });
-        let wrss_own = |pred: &[f64]| self.weights(pred).map_or(f64::NAN, |w| self.wrss(pred, &w));
-        let mut trace = vec![TraceRow {
-            iteration: 0,
-            wrss: wrss_own(&pred),
-            estimates: theta.clone(),
-            step: None,
-            lambda: 0.0,
-            halvings: 0,
-            relative_decrease: None,
-        }];
-        // FIT-CNV-01 (a): below this predicted relative gain a point from which no step decreases
-        // the WRSS is the minimum. With forward differences of increment h the Jacobian is only
-        // good to O(h), so the gain it predicts at the true minimum is O(h²)·WRSS: a smaller
-        // predicted gain that no step can realise is the error of the derivatives, not a failure
-        // (T-030b). The floor is h² only when it exceeds ε (never with the presets: 1e-6 < 1e-4 for
-        // the reference conventions, 1e-10 = ε for the default's forward-difference fallback).
-        let gain_floor = match self.options.derivatives {
-            Derivatives::ForwardDifference => eps.max(sq(self.options.increment)),
-            // `auto` is resolved in `new`; it cannot reach here.
-            Derivatives::Analytic | Derivatives::Auto => eps,
-        };
-        let p = theta.len();
-        let mut lambda = 0.0;
-        let mut previous_decrease: Option<f64> = None;
-        let mut status = FitStatus::MaxIterations;
-        for iteration in 1..=self.options.max_iterations {
-            // FIT-WGT-03: weights of this iteration, constants in the derivatives.
-            let Some(w) = self.weights(&pred) else {
-                status = FitStatus::NonFinite;
-                break;
-            };
-            let s_cur = self.wrss(&pred, &w);
-            // An exact fit (residuals at rounding level) cannot decrease any further.
-            if s_cur <= EXACT_FIT * ss_weighted_start {
-                status = FitStatus::Converged;
-                break;
-            }
-            let Some(columns) = self.jacobian(&theta, &pred) else {
-                status = FitStatus::NonFinite;
-                break;
-            };
-            // FIT-BND-01 active set: a parameter on a bound whose Gauss-Newton direction points
-            // outward is held there for this iteration.
-            let all: Vec<usize> = (0..p).collect();
-            let full = self.direction(&columns, &pred, &w, &all, 0.0);
-            let on_bound = self.on_bound(&theta);
-            let free: Vec<usize> = match &full {
-                Some((delta, _)) => all
-                    .iter()
-                    .copied()
-                    .filter(|&j| {
-                        let d = delta.get(j).copied().unwrap_or(0.0);
-                        let x = theta.get(j).copied().unwrap_or(0.0);
-                        let lo = self.lower.get(j).copied().unwrap_or(f64::NEG_INFINITY);
-                        let held = on_bound.get(j).copied().unwrap_or(false)
-                            && ((x <= lo && d < 0.0) || (x > lo && d > 0.0));
-                        !held
-                    })
-                    .collect(),
-                None => all.clone(),
-            };
-            if free.is_empty() {
-                // Every parameter is held on a bound: nothing can move.
-                status = FitStatus::Converged;
-                break;
-            }
-            let gn = if free.len() == p {
-                full
-            } else {
-                self.direction(&columns, &pred, &w, &free, 0.0)
-            };
-            if gn.is_none() && self.scaled_system(&columns, &pred, &w).is_none() {
-                status = FitStatus::Singular;
-                break;
-            }
-            let predicted = gn.as_ref().map(|(_, q)| *q);
-            if self.options.criterion == Criterion::RelativeOffset {
-                let (n, pf) = (self.y.len(), free.len());
-                if let Some(q) = predicted {
-                    if n > pf {
-                        let offset =
-                            ((q / pf as f64) / ((s_cur - q).max(0.0) / (n - pf) as f64)).sqrt();
-                        if offset <= eps {
-                            status = FitStatus::Converged;
-                            break;
-                        }
-                    }
-                }
-            }
-            let mut accepted = None;
-            let mut lam = lambda;
-            let mut at_minimum = false;
-            loop {
-                let direction = if lam == 0.0 {
-                    gn.as_ref().map(|(d, _)| d.clone())
-                } else {
-                    self.direction(&columns, &pred, &w, &free, lam)
-                        .map(|(d, _)| d)
-                };
-                if let Some(delta) = direction {
-                    let mut nu = 1.0;
-                    let mut halvings = 0;
-                    while nu >= MIN_STEP {
-                        // FIT-ALG-03 with the trial point projected on the bounds.
-                        let trial = self.clamp(
-                            &theta
-                                .iter()
-                                .zip(&delta)
-                                .map(|(t, d)| t + nu * d)
-                                .collect::<Vec<f64>>(),
-                        );
-                        if let Some(pt) = self.predict(&trial) {
-                            let weights_ok =
-                                !self.weighting.uses_predictions() || self.weights(&pt).is_some();
-                            let s_trial = self.wrss(&pt, &w);
-                            if weights_ok && s_trial < s_cur {
-                                accepted = Some((trial, pt, s_trial, nu, halvings));
-                                break;
-                            }
-                        }
-                        nu /= 2.0;
-                        halvings += 1;
-                    }
-                    if accepted.is_some() {
-                        break;
-                    }
-                    if lam == 0.0
-                        && trace.len() > 1
-                        && predicted.is_some_and(|q| q <= gain_floor * s_cur)
-                    {
-                        // Nothing measurable is left to gain: the current point is the minimum. Only
-                        // after an accepted step: at the initial estimates a tiny predicted gain can
-                        // come from a few huge weights far from the solution (1/ŷ with ŷ ~ 1e-17).
-                        at_minimum = true;
-                        break;
-                    }
-                }
-                lam = if lam == 0.0 {
-                    LAMBDA_START
-                } else {
-                    lam * LAMBDA_FACTOR
-                };
-                if lam > LAMBDA_MAX {
-                    break;
-                }
-            }
-            if at_minimum {
-                status = FitStatus::Converged;
-                break;
-            }
-            let Some((new_theta, new_pred, s_new, nu, halvings)) = accepted else {
-                status = FitStatus::NoDecrease;
-                break;
-            };
-            lambda = if lam <= LAMBDA_START {
-                0.0
-            } else {
-                lam / LAMBDA_FACTOR
-            };
-            theta = new_theta;
-            pred = new_pred;
-            let decrease = s_cur - s_new;
-            trace.push(TraceRow {
-                iteration,
-                wrss: wrss_own(&pred),
-                estimates: theta.clone(),
-                step: Some(nu),
-                lambda: lam,
-                halvings,
-                relative_decrease: Some(decrease / s_new).filter(|x| x.is_finite()),
-            });
-            let relative = decrease / s_new;
-            let met = if self.weighting.uses_predictions() {
-                // Reweighted iterations converge linearly: each step is a fraction ρ of the one
-                // before (decreases scale as the square of the step), so the WRSS still to gain is
-                // about the last decrease / (1 − ρ)². Require that to be below ε; a cycle (ρ ≈ 1)
-                // never converges (FIT-WGT-03, no fixed point).
-                relative == 0.0
-                    || previous_decrease.is_some_and(|prev| {
-                        let rho = (relative / prev).sqrt();
-                        prev > 0.0 && rho < 1.0 && relative <= eps * sq(1.0 - rho)
-                    })
-            } else {
-                decrease <= eps * s_new
-            };
-            previous_decrease = Some(relative);
-            if self.options.criterion == Criterion::RelativeDecrease && met {
-                status = FitStatus::Converged;
-                break;
-            }
-        }
-        // With predicted-value weights each step lowers the WRSS of its own (frozen) weights, which
-        // does not guarantee that the WRSS with the weights of the new estimates falls: from a far
-        // start it can explode. A fit worse than its start is not converged: return the best
-        // iterate with `no_decrease`.
-        if self.weighting.uses_predictions() {
-            let start = trace.first().map_or(f64::NAN, |row| row.wrss);
-            let end = wrss_own(&pred);
-            if !end.is_finite() || end > start {
-                let best = trace
-                    .iter()
-                    .filter(|row| row.wrss.is_finite())
-                    .min_by(|a, b| a.wrss.total_cmp(&b.wrss))
-                    .map(|row| row.estimates.clone());
-                if let Some(best) = best {
-                    if let Some(best_pred) = self.predict(&best) {
-                        theta = best;
-                        pred = best_pred;
-                    }
-                }
-                status = FitStatus::NoDecrease;
-            }
-        }
-        result::build(self, theta, pred, trace, status)
+    /// WRSS with the weights of the predictions themselves (the trace column); NaN when they are
+    /// undefined.
+    pub fn wrss_own(&self, pred: &[f64]) -> f64 {
+        self.weights(pred).map_or(f64::NAN, |w| self.wrss(pred, &w))
     }
 }
 
