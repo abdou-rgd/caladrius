@@ -14,8 +14,11 @@
 #
 # The rule that results (what the engine must refuse before fitting, code unbounded_likelihood), on a
 # route with a lag and under combined, combined_sd or proportional: a row with y = 0 at a time t0 > 0 such
-# that (1) every observation at a time <= t0 is also 0, and (2) the domain of tlag reaches t0 (no upper
-# bound, or an upper bound >= t0).
+# that (1) every observation at a time <= t0 is also 0, and (2) the domain of tlag meets [t0, t_nz), where
+# t_nz is the time of the first nonzero observation (infinity if there is none): upper bound >= t0 and
+# lower bound < t_nz, a fixed tlag counting as both bounds, the default lower bound being 0. With tlag at
+# or above t_nz the nonzero sample is predicted 0 and -2LL goes to +infinity as a -> 0 (kind
+# tlag_above_first_nonzero below), so a fixed tlag or a lower bound >= t_nz does not make it unbounded.
 
 LAG_TIMES <- c(0.5, 1, 2, 4, 6, 8, 12, 24)  # the times of the oral_s1 profile (generator of ML4)
 LAG_TRUTH <- list(v = 10, k = 0.2, ka = 1, dur = 2, tlag = 0.5, a = 0.05, b = 0.10, dose = 100)
@@ -119,6 +122,32 @@ lag_paths <- function(prof) {
       r50 <- Filter(function(r) r$kind == "upper_bound_below_t0" && r$error_model == em && r$j == 50, recs)[[1]]
       if (abs(r50$m2ll - r20$m2ll) > 1e-9 * max(1, abs(r20$m2ll)))
         stop(sprintf("%s %s: -2LL is not bounded when tlag <= 0.4", m, em), call. = FALSE)
+    }
+    # the domain of tlag above the first nonzero sample (t_nz = 1): a fixed tlag of 1, or a lower bound of 1 (tlag = 1
+    # and tlag = 1.5 below). The rows at t0 = 0.5 and t_nz = 1 are then both predicted 0 for every theta, the zero
+    # contributes ln(2 pi a^2) but the nonzero one contributes ln(2 pi a^2) + y^2 / a^2 with y = 3.79...: together
+    # they are at least 2 ln(pi y^2) + 2 whatever a is (minimum over sigma^2 = a^2 at y^2 / 2), and along a -> 0
+    # -2LL increases without limit. The likelihood is not unbounded through the zero.
+    if (em != "proportional") {
+      y2 <- mp(prof$base[2])
+      floor12 <- 2 * log(Const("pi", PREC) * y2^2) + 2
+      for (tl in c(1, 1.5)) {
+        prev <- NULL
+        for (j in js) {
+          a <- one_over(j)
+          terms <- lag_terms(m, em, t, prof$base, D, th, mp(tl), a, b)
+          rows12 <- terms[1] + terms[2]
+          if (!(rows12 >= floor12))
+            stop(sprintf("%s %s: rows 1 and 2 are below their lower bound at tlag = %g", m, em, tl), call. = FALSE)
+          cur <- as.numeric(asNumeric(sum(terms)))
+          if (!is.null(prev) && !(cur > prev))
+            stop(sprintf("%s %s: -2LL does not increase as a -> 0 at tlag = %g (j = %g)", m, em, tl, j), call. = FALSE)
+          prev <- cur
+          add("tlag_above_first_nonzero", em, sprintf("tlag = %g, a = 10^-j", tl), j, mp(tl), a, terms, 1L)
+          recs[[length(recs)]]$rows_1_2 <- as.numeric(asNumeric(rows12))
+          recs[[length(recs)]]$rows_1_2_lower_bound <- as.numeric(asNumeric(floor12))
+        }
+      }
     }
   }
   recs

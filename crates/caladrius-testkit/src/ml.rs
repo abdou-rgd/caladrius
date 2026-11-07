@@ -442,6 +442,9 @@ pub struct MlControl {
     pub time: Option<Vec<f64>>,
     #[serde(default)]
     pub conc: Option<Vec<f64>>,
+    /// Replaces the initial estimates of the row when present (a lower bound above the row's start).
+    #[serde(default)]
+    pub initial: Option<BTreeMap<String, f64>>,
     pub options: BTreeMap<String, Value>,
     pub expect: String,
 }
@@ -982,7 +985,7 @@ mod tests {
             .iter()
             .filter(|c| c.case.starts_with("ml6f_leading_zero_"))
         {
-            assert_eq!(c.controls.len(), 2, "{}", c.case);
+            assert!(c.controls.len() >= 2, "{}", c.case);
             assert!(
                 c.controls[0].options.contains_key("bounds"),
                 "{}: the first control has no bound",

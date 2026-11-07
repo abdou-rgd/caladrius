@@ -879,12 +879,17 @@ lag_row <- function(case, what, m, em, bounds = NULL, fixed = NULL, controls = N
 }
 lag_controls <- function(m, em) {
   prof <- lag_profiles[[m]]
-  list(
+  ctl <- list(
     list(description = "the same data with an upper bound of 0.4 on tlag, below the time of the zero (0.5): the prediction of that row stays above 0",
          options = lag_opts(m, em, list(tlag = list(upper = 0.4))), expect = "not_unbounded_likelihood"),
     list(description = "the first two samples swapped: the zero is at time 1 and is preceded by a nonzero sample (tlag at 1 would predict that sample as 0)",
          time = I(prof$time), conc = I(prof$ctrl), options = lag_opts(m, em), expect = "not_unbounded_likelihood")
   )
+  if (m == "pk1.oral_1_lag" && em == "combined")
+    ctl[[3L]] <- list(description = "a lower bound of 1 on tlag, at the first nonzero sample (time 1): the rows at 0.5 and 1 are predicted 0 whatever tlag is, the nonzero one keeps -2LL bounded below (ml6f_lag_paths.json, tlag_above_first_nonzero)",
+                      initial = list(v = 10, k = 0.2, ka = 1, tlag = 1.5),
+                      options = lag_opts(m, em, list(tlag = list(lower = 1))), expect = "not_unbounded_likelihood")
+  ctl
 }
 for (m in LAG_MODELS) {
   short <- if (m == "pk1.oral_1_lag") "oral_1_lag" else "oral_0_lag"
@@ -907,11 +912,13 @@ errs[[length(errs) + 1L]] <- lag_row("ml6f_fixed_at_time_combined_oral_1_lag",
   "pk1.oral_1_lag, tlag fixed at 0.5, the time of the zero: a fixed parameter counts as both bounds (combined)",
   "pk1.oral_1_lag", "combined", fixed = list(tlag = 0.5),
   controls = list(list(description = "tlag fixed at 0.3, below the time of the zero: the prediction of that row stays above 0",
-                       options = lag_opts("pk1.oral_1_lag", "combined", NULL, list(tlag = 0.3)), expect = "not_unbounded_likelihood")))
+                       options = lag_opts("pk1.oral_1_lag", "combined", NULL, list(tlag = 0.3)), expect = "not_unbounded_likelihood"),
+    list(description = "tlag fixed at 1, the time of the first nonzero sample: the rows at 0.5 and 1 are predicted 0, the nonzero one keeps -2LL bounded below (ml6f_lag_paths.json, tlag_above_first_nonzero)",
+         options = lag_opts("pk1.oral_1_lag", "combined", NULL, list(tlag = 1)), expect = "not_unbounded_likelihood")))
 if (is.null(only)) {
   write_lines_lf(toJSON(list(schema = 1L, kind = "fit_ml_lag_paths", generated_by = "oracle/scripts/fit_ml.R",
                              note = paste("-2LL at 256 bits along the paths of ML6f (ml_lag_unbounded.R); leading_zero decreases without limit,",
-                                          "zero_after_nonzero increases without limit, upper_bound_below_t0 converges; j is the exponent of 10^-j"),
+                                          "zero_after_nonzero and tlag_above_first_nonzero increase without limit, upper_bound_below_t0 converges; j is the exponent of 10^-j"),
                              truth = LAG_TRUTH, times = I(LAG_TIMES), records = lag_records),
                         auto_unbox = TRUE, pretty = TRUE, digits = NA),
                  file.path(exp_dir, "ml6f_lag_paths.json"))

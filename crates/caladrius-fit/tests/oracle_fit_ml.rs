@@ -496,7 +496,7 @@ fn check_refusal(name: &str) {
             k.time.as_deref().unwrap_or(&case.time),
             k.conc.as_deref().unwrap_or(&case.conc),
             &case.weighting,
-            &case.initial,
+            k.initial.as_ref().unwrap_or(&case.initial),
             Value::Object(k.options.clone().into_iter().collect()),
         );
         let input = parse_input(&control).unwrap_or_else(|e| {
@@ -1121,8 +1121,11 @@ fn every_subject_left_out_of_a_case_has_its_refusal() {
 /// FIT-ML-13c on a route with a lag (decision on the review of T-149), written down without the engine.
 /// On a route whose model name ends in `_lag`, under `combined`, `combined_sd` or `proportional`, a row
 /// with y = 0 at a time t0 > 0 is refused when (1) every observation at a time <= t0 is also 0 and
-/// (2) the domain of `tlag` reaches t0: no upper bound, or an upper bound >= t0, a fixed `tlag` counting
-/// as both bounds. Returns the times of the rows that the rule refuses.
+/// (2) the domain of `tlag` meets [t0, t_nz), where t_nz is the time of the first nonzero observation
+/// (infinity if there is none): upper bound >= t0 and lower bound < t_nz, a fixed `tlag` counting as both
+/// bounds, the default lower bound being 0. With `tlag` at or above t_nz the nonzero sample is predicted 0
+/// and -2LL goes to +infinity, so such a domain does not make the likelihood unbounded. Returns the times
+/// of the rows that the rule refuses.
 fn lag_rule_rows(
     model: &str,
     options: &BTreeMap<String, Value>,
@@ -1142,18 +1145,26 @@ fn lag_rule_rows(
         .get("fixed")
         .and_then(|f| f.get("tlag"))
         .and_then(Value::as_f64);
-    let upper = fixed.or_else(|| {
+    let bound = |side: &str| {
         options
             .get("bounds")
             .and_then(|b| b.get("tlag"))
-            .and_then(|t| t.get("upper"))
+            .and_then(|t| t.get(side))
             .and_then(Value::as_f64)
-    });
+    };
+    let upper = fixed.or_else(|| bound("upper"));
+    let lower = fixed.or_else(|| bound("lower")).unwrap_or(0.0);
+    let first_nonzero = time
+        .iter()
+        .zip(conc)
+        .filter(|&(_, &c)| c != 0.0)
+        .map(|(&t, _)| t)
+        .fold(f64::INFINITY, f64::min);
     let mut rows = Vec::new();
     for (&t0, &y) in time.iter().zip(conc) {
         let leading =
             y == 0.0 && t0 > 0.0 && time.iter().zip(conc).all(|(&t, &c)| t > t0 || c == 0.0);
-        if leading && upper.is_none_or(|u| u >= t0) {
+        if leading && upper.is_none_or(|u| u >= t0) && lower < first_nonzero {
             rows.push(t0);
         }
     }
@@ -1198,8 +1209,9 @@ fn the_lagged_rows_follow_the_rule() {
             );
         }
     }
-    // six base rows with two controls each, the fixed-parameter row with one (ten rows in all)
-    assert_eq!(controls, 13);
+    // six base rows with two controls each (three for the combined oral_1_lag row: a lower bound of 1), the
+    // fixed-parameter row with two (tlag fixed at 0.3 and at 1); ten rows in all
+    assert_eq!(controls, 15);
     // the zero after a nonzero sample, and a zero beyond a nonzero sample, are not leading zeros
     let options: BTreeMap<String, Value> = [("error_model".to_string(), json!("combined"))].into();
     assert!(lag_rule_rows("pk1.oral_1_lag", &options, &[0.5, 1.0], &[1.0, 0.0]).is_empty());
@@ -1217,4 +1229,22 @@ fn the_lagged_rows_follow_the_rule() {
     ]
     .into();
     assert!(lag_rule_rows("pk1.oral_1_lag", &bounded, &[0.5], &[0.0]).is_empty());
+    // the domain must meet [t0, t_nz) = [0.5, 1): a fixed tlag or a lower bound at t_nz or above does not
+    // refuse, one below t_nz does; a fixed value counts as both bounds
+    let on = |extra: Value| -> Vec<f64> {
+        let mut o: BTreeMap<String, Value> =
+            [("error_model".to_string(), json!("combined"))].into();
+        if let Value::Object(m) = extra {
+            o.extend(m);
+        }
+        lag_rule_rows("pk1.oral_1_lag", &o, &[0.5, 1.0, 2.0], &[0.0, 3.8, 5.9])
+    };
+    assert_eq!(on(json!({})), vec![0.5]);
+    assert!(on(json!({"fixed": {"tlag": 1.0}})).is_empty());
+    assert!(on(json!({"bounds": {"tlag": {"lower": 1.0}}})).is_empty());
+    assert!(on(json!({"bounds": {"tlag": {"lower": 1.5}}})).is_empty());
+    assert_eq!(on(json!({"bounds": {"tlag": {"lower": 0.9}}})), vec![0.5]);
+    assert_eq!(on(json!({"fixed": {"tlag": 0.5}})), vec![0.5]);
+    assert_eq!(on(json!({"fixed": {"tlag": 0.75}})), vec![0.5]);
+    assert!(on(json!({"fixed": {"tlag": 0.3}})).is_empty());
 }

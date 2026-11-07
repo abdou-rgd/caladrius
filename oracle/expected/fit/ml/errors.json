@@ -861,6 +861,25 @@
             "error_model": "combined"
           },
           "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "a lower bound of 1 on tlag, at the first nonzero sample (time 1): the rows at 0.5 and 1 are predicted 0 whatever tlag is, the nonzero one keeps -2LL bounded below (ml6f_lag_paths.json, tlag_above_first_nonzero)",
+          "initial": {
+            "v": 10,
+            "k": 0.2,
+            "ka": 1,
+            "tlag": 1.5
+          },
+          "options": {
+            "objective": "ml",
+            "error_model": "combined",
+            "bounds": {
+              "tlag": {
+                "lower": 1
+              }
+            }
+          },
+          "expect": "not_unbounded_likelihood"
         }
       ]
     },
@@ -1292,6 +1311,17 @@
             "error_model": "combined",
             "fixed": {
               "tlag": 0.3
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "tlag fixed at 1, the time of the first nonzero sample: the rows at 0.5 and 1 are predicted 0, the nonzero one keeps -2LL bounded below (ml6f_lag_paths.json, tlag_above_first_nonzero)",
+          "options": {
+            "objective": "ml",
+            "error_model": "combined",
+            "fixed": {
+              "tlag": 1
             }
           },
           "expect": "not_unbounded_likelihood"
