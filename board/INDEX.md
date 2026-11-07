@@ -154,3 +154,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | in progress | T-140 |
 | T-143 | Progress and cancel in caladrius-fit, one stepper under solve | engine | done | T-141 |
 | T-146 | Progress and cancel in the engine and the CLI (Engine::begin and finish, one running job) | interface | done | T-143 |
+| T-147 | Specs for brick 2: maximum-likelihood fit with an estimated error model, IWRES, the population dataset | reader | in progress | T-139 |
