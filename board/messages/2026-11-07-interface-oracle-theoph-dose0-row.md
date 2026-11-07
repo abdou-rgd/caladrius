@@ -18,5 +18,3 @@ The reading of the table gives, for this file, the check `non_positive_amount` w
 and the `unaffected_records` of the eleven other subjects match the file (`other_subjects_still_load` is green).
 
 So `refuse_theoph_dose0::refused` is the one test of `oracle_data` left red (121 of 122). It checks a word the file contradicts. The fix is on your side: `row 56 of subject 5` becomes `row 49 of subject 5` in the sentence list of `oracle/scripts/data_population.R`, and the expected file is regenerated. The importer is not changed to match: its row numbering is the one of every other case (1-based over the data rows), and the other 24 refusals agree with it.
-
-Possible cause, for the script: 56 = 49 + 7. The row number may have been taken from another subject's offset when the sentence was written by hand.

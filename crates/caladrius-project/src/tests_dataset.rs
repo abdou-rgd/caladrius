@@ -71,7 +71,10 @@ fn two_observations_at_one_time_are_still_duplicate_times() {
     let r = read("ID,TIME,DV,AMT,EVID\n1,0,,10,1\n1,0,1,,0\n1,2,3,,0\n1,2,4,,0\n");
     assert_eq!(codes(&r), ["duplicate_times"]);
     assert_eq!(
-        r.dataset.subjects.first().and_then(|s| s.refusal.as_deref()),
+        r.dataset
+            .subjects
+            .first()
+            .and_then(|s| s.refusal.as_deref()),
         Some("duplicate_times")
     );
 }
