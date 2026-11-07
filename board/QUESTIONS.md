@@ -254,3 +254,27 @@ Also open, with no choice needed from you now:
 - **OP-13:** the design of the sealed simulate-then-fit tests.
 
 T-152 proposes each value in its report, and each comes back here as its own question.
+
+Decision taken meanwhile (2026-11-08): Abdou wrote in chat "oublie les deux agents en mêmes temps fais ce que tu veux tu as tout les droits, à la fin éteint le pc stp". This is read as a delegation of the open choices for this iteration. So the orchestrator's column above applies:
+- the spec's proposal for OP-01, OP-03, OP-05, OP-07, OP-08, OP-09 and OP-10;
+- the review's for OP-04, OP-06 and OP-14.
+
+Every one is reversible by Abdou. T-166 writes them into `specs/population.md` before T-153 codes from it. Two points that the table leaves open are also decided meanwhile:
+- **OP-13, design B** (`limits`, sparse data and a large ω): recorded only, until T-153 has measured it. The orchestrator then proposes a bound here.
+- **The σ point of plain FOCE** (T-152, question 1): T-166 settles it from an open source. Until then, T-153 builds FOCEI (with interaction) and FO only. The switch to FOCE without interaction follows the spec sentence.
+
+## Q-026 (2026-11-08, orchestrator): the tolerances of the population fit
+
+T-152, the population oracle, proposed five absolute constants. They are defined in `crates/caladrius-testkit/src/pop.rs` on `iter3/pop` (c0a4a1d), and only the new tests use them. No existing constant is loosened, and each value comes with its measurement:
+
+| constant | value | for | the measurement behind it |
+|---|---|---|---|
+| `POP_OFV` | 1e-7 absolute | the OFV total and per subject, AIC, BIC | as `FIT_M2LL` (Q-023); the OFV crosses zero; the independent naive code is within 2.9e-12 of the 256-bit totals |
+| `POP_ETA` | 1e-10 absolute | the conditional modes η̂ | the linearised OFV is not stationary in η, with a measured slope of up to 37.4 per subject on Theoph (12 subjects); holding `POP_OFV` needs 2.2e-10 or less |
+| `POP_DIAGNOSTIC` | 1e-5 absolute | IPRED, IWRES, the three CWRES | as `FIT_IWRES`; the amplification from η stays below 1e3 in these cases |
+| `POP_DERIVED` | 1e-7 absolute | η- and ε-shrinkage | the smallest ω in the cases is 0.04 |
+| `NAIVE_POP_OFV` | 1e-9 absolute | the testkit's naive code against the stored values | measured at 2.9e-12 at worst |
+
+The method tolerance of the population estimates (POP-EST-06, OP-12) has no number yet. With no engine to measure it, a number would come from nothing. The proposal is to measure bias and coverage on the sealed design `accurate` (200 replicates) after T-153, and to come back here with that measurement.
+
+Decision taken meanwhile: the constants stand in the testkit for the new tests, and T-153 uses them as they are and reports the worst error it reaches for each. Nothing is written in `AGENTS.md` without a yes here.

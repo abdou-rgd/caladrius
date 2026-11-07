@@ -162,7 +162,9 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-150 | caladrius-project population dataset, the event table (DAT-*) | interface | done | T-148 |
 | T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | done | T-149, T-150 |
 | T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | to review | T-162 |
+| T-157 | specs/simulation.md, population simulation (brick 4) | reader | in progress | T-162 |
 | T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | done | T-151 |
-| T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | todo | T-150, T-149, T-151 |
+| T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | in progress | T-150, T-149, T-151 |
 | T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | in progress | T-142 |
 | T-165 | pk3 oracle round 5: the F1 case, flags measured, pole claims asserted, round 4 nits | oracle | todo | T-164 |
+| T-166 | Spec sync for the population fit: the Q-025 decisions and the questions of T-152 into specs/population.md | reader | in progress | T-152 |
