@@ -739,77 +739,163 @@ fn additive_standard_errors_are_least_squares_times_sqrt_df_over_n() {
     }
 }
 
-/// A combined model that ends with one component at 0 is the one-parameter model of the other
-/// component (FIT-ML-13c, FIT-ML-15): same -2LL, same theta, status `at_bound`, and the component
-/// that is not 0 equals the estimate of the one-parameter fit. The collapse pattern is the
-/// reference's (`at_bound` in the options file).
-#[test]
-fn a_collapsed_combined_model_equals_the_one_parameter_model() {
-    let mut checked = 0usize;
-    for name in list_fit_ml_cases().unwrap() {
-        let case = load_fit_ml_case(&name).unwrap();
+/// The one-parameter case that a collapsed combined fit is compared with (FIT-ML-13c): the same
+/// dataset, model and `observations` rule, no user bound and no `error_init`, the one-parameter error
+/// model that the collapse leaves, and a reference for the subject. There must be exactly one: a
+/// comparison of two fits made on different rows would measure the rows, not the collapse (the first
+/// version paired the 10-row combined Theoph fits with the 11-row additive ones).
+fn collapse_partner(all: &[MlCase], case: &MlCase, alone: &str, subject: &str) -> MlCase {
+    let found: Vec<&MlCase> = all
+        .iter()
+        .filter(|c| {
+            c.error_model == alone
+                && c.dataset.name == case.dataset.name
+                && c.model == case.model
+                && c.observations == case.observations
+                && c.bounds.is_empty()
+                && c.error_init.is_none()
+                && c.subjects.iter().any(|s| s == subject)
+        })
+        .collect();
+    assert_eq!(
+        found.len(),
+        1,
+        "{} subject {subject}: {} {alone} case(s) on the same rows ({:?}): {:?}",
+        case.name,
+        found.len(),
+        case.observations,
+        found.iter().map(|c| c.name.as_str()).collect::<Vec<_>>()
+    );
+    let partner = found[0].clone();
+    assert_eq!(
+        partner.observations, case.observations,
+        "{}: compared with {} on other rows",
+        case.name, partner.name
+    );
+    partner
+}
+
+/// Every combined case without a user bound, with the subjects that end with one component on its
+/// bound, and the one-parameter component that the collapse leaves: `(case, subject, alone, bound)`.
+fn collapsed_subjects(all: &[MlCase]) -> Vec<(MlCase, String, &'static str, String)> {
+    let mut out = Vec::new();
+    for case in all {
         if !matches!(case.error_model.as_str(), "combined" | "combined_sd")
             || !case.bounds.is_empty()
         {
             continue;
         }
-        let prefix = name
-            .strip_prefix("ml_")
-            .and_then(|n| n.strip_suffix(&format!("_{}", case.error_model)));
-        let Some(prefix) = prefix else { continue };
-        // the `_t0` cases keep the sample at time 0 (all rows): the one-parameter fit to compare with
-        // is the additive case of the same data (a proportional fit refuses the row at time 0)
-        let with_t0 = prefix.ends_with("_t0");
-        let prefix = prefix.strip_suffix("_t0").unwrap_or(prefix);
         for subject in &case.subjects {
             let Some(bound) = case.at_bound.get(subject).filter(|b| !b.is_empty()) else {
                 continue;
             };
-            let (alone, par) = if bound[0] == "error_a" {
-                ("proportional", "error_b")
+            assert_eq!(bound.len(), 1, "{} subject {subject}", case.name);
+            let alone = if bound[0] == "error_a" {
+                "proportional"
             } else {
-                ("additive", "error_a")
+                "additive"
             };
-            assert_eq!(bound.len(), 1, "{name} subject {subject}");
-            assert!(
-                !with_t0 || alone == "additive",
-                "{name} subject {subject}: a fit with the row at time 0 cannot collapse onto {alone}"
-            );
-            let simple = hand_case(prefix, alone);
-            let combined = fit_case(&case, subject);
-            let one = fit_case(&simple, subject);
-            assert_eq!(status_id(&combined), "at_bound", "{name} subject {subject}");
-            assert!(
-                AbsoluteTolerance::FIT_M2LL.accepts(need(&combined, "m2ll"), need(&one, "m2ll")),
-                "{name} subject {subject}: -2LL {} against the {alone} fit {}",
-                need(&combined, "m2ll"),
-                need(&one, "m2ll")
-            );
-            for p in simple.parameter_names() {
-                let key = format!("estimate.{p}");
-                let reference = case.value(subject, &key).unwrap_or(0.0);
-                assert!(
-                    rel_tolerance(&case).accepts(need(&combined, &key), need(&one, &key)),
-                    "{name} subject {subject}: {key} {} against the {alone} fit {} (reference {reference})",
-                    need(&combined, &key),
-                    need(&one, &key)
-                );
-            }
-            assert_eq!(
-                need(&combined, &format!("estimate.{}", bound[0])),
-                0.0,
-                "{name} subject {subject}: {} must be exactly 0",
-                bound[0]
-            );
-            // a combined model costs one more parameter in the criteria (FIT-ML-15): AIC differs by 2
-            assert!(
-                AbsoluteTolerance::FIT_M2LL
-                    .accepts(need(&combined, "aic_ml") - need(&one, "aic_ml"), 2.0),
-                "{name} subject {subject}: AIC_ML must be larger by 2 (P + Q counts both)"
-            );
-            let _ = par;
-            checked += 1;
+            out.push((case.clone(), subject.clone(), alone, bound[0].clone()));
         }
+    }
+    out
+}
+
+fn all_ml_cases() -> Vec<MlCase> {
+    list_fit_ml_cases()
+        .unwrap()
+        .iter()
+        .map(|name| load_fit_ml_case(name).unwrap())
+        .collect()
+}
+
+/// Guard of the oracle itself (green today, needs no engine): every collapsed subject has one
+/// one-parameter case on the same rows, and the two references agree (the property that R checks in
+/// `oracle/scripts/ml_collapse_check.R`, at the tolerances of the test below).
+#[test]
+fn every_collapsed_reference_equals_its_one_parameter_reference_on_the_same_rows() {
+    let all = all_ml_cases();
+    let collapsed = collapsed_subjects(&all);
+    assert!(
+        collapsed.len() >= 10,
+        "{} collapsed subjects",
+        collapsed.len()
+    );
+    for (case, subject, alone, bound) in &collapsed {
+        let simple = collapse_partner(&all, case, alone, subject);
+        let name = &case.name;
+        assert!(
+            AbsoluteTolerance::FIT_M2LL.accepts(
+                case.value(subject, "m2ll").unwrap(),
+                simple.value(subject, "m2ll").unwrap()
+            ),
+            "{name} subject {subject}: -2LL {:?} against {} {:?}",
+            case.value(subject, "m2ll"),
+            simple.name,
+            simple.value(subject, "m2ll")
+        );
+        for p in simple.parameter_names() {
+            let key = format!("estimate.{p}");
+            let (a, b) = (
+                case.value(subject, &key).unwrap(),
+                simple.value(subject, &key).unwrap(),
+            );
+            assert!(
+                rel_tolerance(case).accepts(a, b),
+                "{name} subject {subject}: {key} {a} against {} {b}",
+                simple.name
+            );
+        }
+        assert_eq!(
+            case.value(subject, &format!("estimate.{bound}")),
+            Some(0.0),
+            "{name} subject {subject}"
+        );
+    }
+}
+
+/// A combined model that ends with one component at 0 is the one-parameter model of the other
+/// component (FIT-ML-13c, FIT-ML-15): same -2LL, same theta, status `at_bound`, and the component
+/// that is not 0 equals the estimate of the one-parameter fit, fitted to the same rows. The collapse
+/// pattern is the reference's (`at_bound` in the options file).
+#[test]
+fn a_collapsed_combined_model_equals_the_one_parameter_model() {
+    let all = all_ml_cases();
+    let mut checked = 0usize;
+    for (case, subject, alone, bound) in collapsed_subjects(&all) {
+        let name = case.name.clone();
+        let simple = collapse_partner(&all, &case, alone, &subject);
+        let combined = fit_case(&case, &subject);
+        let one = fit_case(&simple, &subject);
+        assert_eq!(status_id(&combined), "at_bound", "{name} subject {subject}");
+        assert!(
+            AbsoluteTolerance::FIT_M2LL.accepts(need(&combined, "m2ll"), need(&one, "m2ll")),
+            "{name} subject {subject}: -2LL {} against the {alone} fit {}",
+            need(&combined, "m2ll"),
+            need(&one, "m2ll")
+        );
+        for p in simple.parameter_names() {
+            let key = format!("estimate.{p}");
+            let reference = case.value(&subject, &key).unwrap_or(0.0);
+            assert!(
+                rel_tolerance(&case).accepts(need(&combined, &key), need(&one, &key)),
+                "{name} subject {subject}: {key} {} against the {alone} fit {} (reference {reference})",
+                need(&combined, &key),
+                need(&one, &key)
+            );
+        }
+        assert_eq!(
+            need(&combined, &format!("estimate.{bound}")),
+            0.0,
+            "{name} subject {subject}: {bound} must be exactly 0"
+        );
+        // a combined model costs one more parameter in the criteria (FIT-ML-15): AIC differs by 2
+        assert!(
+            AbsoluteTolerance::FIT_M2LL
+                .accepts(need(&combined, "aic_ml") - need(&one, "aic_ml"), 2.0),
+            "{name} subject {subject}: AIC_ML must be larger by 2 (P + Q counts both)"
+        );
+        checked += 1;
     }
     assert!(checked >= 10, "{checked} collapsed fits checked");
 }

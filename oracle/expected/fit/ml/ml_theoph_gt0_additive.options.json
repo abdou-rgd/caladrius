@@ -1,0 +1,308 @@
+{
+  "schema": 1,
+  "kind": "fit_ml",
+  "case": "ml_theoph_gt0_additive",
+  "generated_by": "oracle/scripts/fit_ml.R",
+  "dataset": "theoph",
+  "data_file": "data/theoph.csv",
+  "model": "pk1.oral_1",
+  "objective": "ml",
+  "error_model": "additive",
+  "weighting": "uniform",
+  "note": "Theoph, additive error, on the rows with time > 0 (10 per subject): the one-parameter fit that a collapsed combined fit of ml_theoph_combined and ml_theoph_combined_sd is compared with (same rows)",
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "observations": {
+    "use": "time_greater_than",
+    "time": 0
+  },
+  "initial_estimates": {
+    "1": {
+      "v": 36.7,
+      "k": 0.043,
+      "ka": 1.24
+    },
+    "2": {
+      "v": 39.9,
+      "k": 0.081,
+      "ka": 1.36
+    },
+    "3": {
+      "v": 42.8,
+      "k": 0.065,
+      "ka": 1.72
+    },
+    "4": {
+      "v": 38.9,
+      "k": 0.07,
+      "ka": 0.82
+    },
+    "5": {
+      "v": 33.7,
+      "k": 0.071,
+      "ka": 1.03
+    },
+    "6": {
+      "v": 51.4,
+      "k": 0.08,
+      "ka": 0.81
+    },
+    "7": {
+      "v": 40.7,
+      "k": 0.082,
+      "ka": 0.48
+    },
+    "8": {
+      "v": 44.5,
+      "k": 0.074,
+      "ka": 0.96
+    },
+    "9": {
+      "v": 40.7,
+      "k": 0.069,
+      "ka": 6.21
+    },
+    "10": {
+      "v": 31.9,
+      "k": 0.059,
+      "ka": 0.49
+    },
+    "11": {
+      "v": 47.4,
+      "k": 0.078,
+      "ka": 2.69
+    },
+    "12": {
+      "v": 30.1,
+      "k": 0.084,
+      "ka": 0.58
+    }
+  },
+  "fit_options": {
+    "convergence": 1e-10,
+    "criterion": "decrement",
+    "max_iterations": 500,
+    "confidence_level": 0.95,
+    "information": "expected"
+  },
+  "subjects": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
+  "status": {
+    "1": "converged",
+    "2": "converged",
+    "3": "converged",
+    "4": "converged",
+    "5": "converged",
+    "6": "converged",
+    "7": "converged",
+    "8": "converged",
+    "9": "converged",
+    "10": "converged",
+    "11": "converged",
+    "12": "converged"
+  },
+  "at_bound": {
+    "1": [],
+    "2": [],
+    "3": [],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "9": [],
+    "10": [],
+    "11": [],
+    "12": []
+  },
+  "method": {
+    "reference": "stats::optim L-BFGS-B (analytic gradient) then Nelder-Mead from seeded starts, lowest -2LL kept; Newton polish at 256 bits (Rmpfr) with active set and KKT test",
+    "precision_bits": 256,
+    "hessian_step": "1e-25 times max(|z_j|, scale_j), central differences of the analytic gradient",
+    "expected_information": "sum_i (u_i u_i' + 2 l_i l_i') on the moved variables, inverse over the free block, delta method to user units (FIT-ML-06, FIT-ML-17)",
+    "observed_information": "half the Hessian of -2LL at 256 bits on the moved variables, inverse over the free block, delta method to user units",
+    "flip_flop": "pk1.oral_1: the point with ka > k is reported (V, k, ka) == (V k / ka, ka, k)",
+    "gnls": "nlme::gnls, informational only (OF-14): see <case>.gnls.csv"
+  },
+  "checks": {
+    "1": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.91846538655227e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.51775173127502e-14,
+      "rel_gradient_at_polished_point": 1.13330054627018e-76,
+      "rel_gradient_at_written_point": 3.29554986609192e-14,
+      "m2ll_written_minus_polished": 1.90562557954732e-27,
+      "rel_gradient_vs_central_difference": 3.71739342967506e-47
+    },
+    "2": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 5.32907051820075e-14,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.33565010283859e-14,
+      "rel_gradient_at_polished_point": 9.30946624015935e-77,
+      "rel_gradient_at_written_point": 9.59105072429105e-15,
+      "m2ll_written_minus_polished": 4.33829131223614e-28,
+      "rel_gradient_vs_central_difference": 6.81660136063339e-47
+    },
+    "3": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 3.26849658449646e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -4.18364915453805e-14,
+      "rel_gradient_at_polished_point": 2.07099854895727e-75,
+      "rel_gradient_at_written_point": 1.12146823071582e-13,
+      "m2ll_written_minus_polished": 1.00452519775835e-26,
+      "rel_gradient_vs_central_difference": 2.32419876529656e-47
+    },
+    "4": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.4210854715202e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.07961502272794e-14,
+      "rel_gradient_at_polished_point": 9.73391876926319e-77,
+      "rel_gradient_at_written_point": 1.22690878017291e-14,
+      "m2ll_written_minus_polished": 1.10255475539459e-27,
+      "rel_gradient_vs_central_difference": 2.73040927214476e-47
+    },
+    "5": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 3.94351218346856e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.19413963630658e-14,
+      "rel_gradient_at_polished_point": 1.15699444478856e-76,
+      "rel_gradient_at_written_point": 3.64211749404486e-14,
+      "m2ll_written_minus_polished": 1.25981887740408e-27,
+      "rel_gradient_vs_central_difference": 6.61392967403814e-48
+    },
+    "6": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.49213974509621e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.72277942750222e-14,
+      "rel_gradient_at_polished_point": 3.72391986726193e-76,
+      "rel_gradient_at_written_point": 4.84466048207211e-15,
+      "m2ll_written_minus_polished": 1.75315815736634e-28,
+      "rel_gradient_vs_central_difference": 1.27190043493354e-47
+    },
+    "7": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.4122036873232e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -3.66767952329951e-14,
+      "rel_gradient_at_polished_point": 5.32323439901636e-76,
+      "rel_gradient_at_written_point": 1.03560061506262e-14,
+      "m2ll_written_minus_polished": 5.18354168254313e-28,
+      "rel_gradient_vs_central_difference": 2.32241582023818e-47
+    },
+    "8": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.45661260830821e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.16311551133608e-14,
+      "rel_gradient_at_polished_point": 1.20269823903792e-76,
+      "rel_gradient_at_written_point": 1.27529260550443e-14,
+      "m2ll_written_minus_polished": 1.3405548268034e-27,
+      "rel_gradient_vs_central_difference": 3.65744797740474e-47
+    },
+    "9": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 27,
+      "starts_within_1e3_of_best": 27,
+      "distinct_optima_gap_1e3": 2,
+      "worst_start_minus_best": 1.15313165268188,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.24090090973583e-14,
+      "rel_gradient_at_polished_point": 9.00910064441144e-77,
+      "rel_gradient_at_written_point": 2.02728255944123e-15,
+      "m2ll_written_minus_polished": 1.092384314146e-29,
+      "rel_gradient_vs_central_difference": 5.83125626046321e-47
+    },
+    "10": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.4033219031262e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -4.56142021856069e-14,
+      "rel_gradient_at_polished_point": 4.55495180190134e-76,
+      "rel_gradient_at_written_point": 6.49776056849306e-14,
+      "m2ll_written_minus_polished": 7.53421057727486e-27,
+      "rel_gradient_vs_central_difference": 2.38977025441372e-47
+    },
+    "11": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.80300219199125e-13,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -4.36424305737999e-14,
+      "rel_gradient_at_polished_point": 3.72071486444557e-76,
+      "rel_gradient_at_written_point": 3.13441022766372e-14,
+      "m2ll_written_minus_polished": 5.64858614519348e-27,
+      "rel_gradient_vs_central_difference": 3.88873044662862e-47
+    },
+    "12": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 30,
+      "starts_within_1e3_of_best": 30,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 5.11768405431212e-12,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -2.09008343530522e-14,
+      "rel_gradient_at_polished_point": 2.14325846363655e-76,
+      "rel_gradient_at_written_point": 2.00421780680719e-14,
+      "m2ll_written_minus_polished": 1.41777184341362e-27,
+      "rel_gradient_vs_central_difference": 8.65835403271552e-48
+    }
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "gmp": "0.7.5.1",
+    "nlme": "3.1.168",
+    "jsonlite": "2.0.0",
+    "rng": "Mersenne-Twister/Inversion/Rejection"
+  },
+  "n_values": 720
+}

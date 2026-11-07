@@ -650,6 +650,14 @@ extra_cases[[length(extra_cases) + 1L]] <- list(
   case = "ml_f_combined_start_at_collapse", base = "f", em = "combined",
   error_init = c(1e-9, 0.0325), init = list("1" = c(v = 10.08, k = 0.196)),
   note = "F data, combined: theta started at the proportional optimum and error_init a = 1e-9, so the start already sits at the collapse of ML3")
+# The one-parameter fit that the collapsed Theoph combined fits are compared with: the combined cases of
+# Theoph fit the rows with time > 0 (the sample at time 0 is a 0 observed where the prediction is 0), so
+# the additive model must be fitted to the same rows (ml_theoph_additive uses all 11). The proportional
+# case of Theoph already uses time > 0. Checked in R by ml_collapse_check.R.
+extra_cases[[length(extra_cases) + 1L]] <- list(
+  case = "ml_theoph_gt0_additive", base = "theoph", em = "additive", init = NULL,
+  rule = list(use = "time_greater_than", time = 0),
+  note = "Theoph, additive error, on the rows with time > 0 (10 per subject): the one-parameter fit that a collapsed combined fit of ml_theoph_combined and ml_theoph_combined_sd is compared with (same rows)")
 for (em in c("combined", "combined_sd")) {
   extra_cases[[length(extra_cases) + 1L]] <- list(
     case = paste0("ml_theoph_t0_", em), base = "theoph", em = em, init = NULL,
@@ -753,7 +761,7 @@ for (ds in dataset_list) for (em in ds$ems) {
 }
 for (ex in extra_cases) {
   ds <- Filter(function(d) d$name == ex$base, dataset_list)[[1]]
-  run_case(ex$case, ds, ex$em, if (is.null(ex$init)) ds$init else ex$init, list(use = "all"), bounds = ex$bounds, error_init = ex$error_init, note = ex$note)
+  run_case(ex$case, ds, ex$em, if (is.null(ex$init)) ds$init else ex$init, if (is.null(ex$rule)) list(use = "all") else ex$rule, bounds = ex$bounds, error_init = ex$error_init, note = ex$note)
 }
 
 # ---------------------------------------------------------------- refusals (ML6, OF-18)
@@ -848,3 +856,11 @@ write_lines_lf(c(
   "ml_case_tests!(", sprintf("    %s,", case_names), ");",
   "ml_refusal_tests!(", sprintf("    %s,", refusal_names), ");"
 ), cases_path)
+
+# ---------------------------------------------------------------- the collapse property, in R
+# Every combined subject with a component on its bound must equal the one-parameter fit on the same
+# rows (-2LL, estimates, AIC_ML + 2); the script stops otherwise. Not run with a case filter.
+if (is.null(only)) {
+  source(file.path(root, "oracle", "scripts", "ml_collapse_check.R"), local = TRUE)
+  collapse_check(exp_dir)
+}
