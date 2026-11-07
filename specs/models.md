@@ -1,12 +1,12 @@
 # One-compartment models: behaviour specification
 
-Card T-008, synced with the model oracle and the engine by card T-017. Written by the `reader` agent on 2026-10-08, in its own words and formulas. Section 12 (multiple dosing and steady state) and section 13 (later) were added by card T-046 on 2026-10-09, which also added page citations from S-36 (Bertrand and Mentré 2008, `specs/sources.md` section 12) as a second source to the rules it covers. Sources are cited by the keys of `specs/sources.md` (S-01 …; the keys added for this file are in its section 7); `D` is a derivation shown here, `H` a hand or scripted check by the reader (section 9). Section 12 was synced with the multiple-dosing oracle (T-047) and the engine (T-049) by card T-050 on 2026-10-10.
+Card T-008, synced with the model oracle and the engine by card T-017. Written by the `reader` agent on 2026-10-08, in its own words and formulas. Section 12 (multiple dosing and steady state) and section 13 (later) were added by card T-046 on 2026-10-09, which also added page citations from S-36 (Bertrand and Mentré 2008, `specs/sources.md` section 12) as a second source to the rules it covers. Sources are cited by the keys of `specs/sources.md` (S-01 …; the keys added for this file are in its section 7); `D` is a derivation shown here, `H` a hand or scripted check by the reader (section 9). Section 12 was synced with the multiple-dosing oracle (T-047) and the engine (T-049) by card T-050 on 2026-10-10. Section 14 (three compartments, `MOD-3C-*`) was added by card T-140 on 2026-11-07.
 
 ## 0. How to read this file
 
 **Status tags** (see `specs/README.md`): `confirmed by oracle`, `documented, untested`, `assumed`. The model oracle (card T-009) now exists: 21 cases and 886 expected values, produced by an independent implementation in 256-bit arithmetic rounded once to double, cross-checked within 1e-8 against a matrix exponential and an adaptive ODE solution that also integrates the AUC and the first moment; the tolerance is 1e-12 relative, an expected zero must be exact. 73 oracle tests pass against the engine (card T-010). A rule is `confirmed by oracle` when those cases exercise it; the cases are named in the line `Oracle:` of the rule. A choice made for Caladrius (names, validation, numerical safeguards the oracle does not exercise) is `assumed`.
 
-**Rule ids.** `MOD-<AREA>-<nn>`. Areas: GEN (conventions and domains), IVB (intravenous bolus), IVI (intravenous infusion), AB1 (first-order absorption), AB0 (zero-order absorption), SEC (secondary parameters), NUM (numerics), MD (multiple dosing and steady state, section 12), LT (later: three compartments, saturable elimination, effect compartment, section 13), VOC (vocabulary), 2C (two compartments, section 11).
+**Rule ids.** `MOD-<AREA>-<nn>`. Areas: GEN (conventions and domains), IVB (intravenous bolus), IVI (intravenous infusion), AB1 (first-order absorption), AB0 (zero-order absorption), SEC (secondary parameters), NUM (numerics), MD (multiple dosing and steady state, section 12), LT (later: three compartments, saturable elimination, effect compartment, section 13), VOC (vocabulary), 2C (two compartments, section 11), 3C (three compartments, section 14).
 
 **Clean room.** Vendor documentation was not used (`specs/sources.md` section 2). The textbooks cannot be read by the reader (S-17, S-18 are cited at book level only). The equations below are therefore derived (D) from the linear differential equations of the compartment diagram, which is how the textbooks obtain them, and compared with the model catalogue and the CL/V convention of two open packages (S-20, S-21). Where a rule is a design choice it says so. Card T-046 added a paper source, S-36 (Bertrand and Mentré 2008, the closed forms of the Monolix library: read page by page, mathematics only), cited by printed page and equation number as a second source. It writes down the concentration functions of one, two and three compartments for a single dose, several doses and steady state; it gives no areas, moments, half-lives, Cmax or Tmax, no derivatives, no limits at equal rate constants, no parameter domains and no numerical example, so the rules about those keep their old sources only.
 
@@ -69,7 +69,7 @@ Models are chosen by route and number of compartments (AGENTS.md section 7, fric
 | `pk1.oral_0` | extravascular | zero-order, no lag | V/F, CL/F (or k), T | MOD-AB0-01 |
 | `pk1.oral_0_lag` | extravascular | zero-order with lag | V/F, CL/F (or k), T, tlag | MOD-AB0-02 |
 
-The prefix `pk1` means one compartment; `pk2` (two compartments) is specified in section 11 (MOD-2C-20). The six ids coincide one to one with the six single-dose functions of S-20.
+The prefix `pk1` means one compartment; `pk2` (two compartments) is specified in section 11 (MOD-2C-20); `pk3` (three compartments) in section 14 (MOD-3C-25). The six ids coincide one to one with the six single-dose functions of S-20.
 - Status: `confirmed by oracle`
 - Oracle: the six ids are the model ids of the 21 cases (`pk1.iv_bolus`, `pk1.iv_infusion`, `pk1.oral_1`, `pk1.oral_1_lag`, `pk1.oral_0`, `pk1.oral_0_lag`), E-08.
 - Sources: S-20 (catalogue); `AGENTS.md` sections 4 and 7. Second source: S-36 pp. 5, 6, 8, 9, 12, 13 (the six linear single-dose functions) and appendix I p. 62 (models 1 to 18: the same six inputs, each as a (V, k) and a (V, Cl) variant, plus saturable variants; the lagged variants are separate models, as here).
@@ -657,7 +657,9 @@ Common case D = 100, V = 10, CL = 2, k = 0.2 (as sections 9 and 11.6). Values to
 
 What S-36 offers for the user-written-model step of the later work in `AGENTS.md` section 1, listed so that a later card does not have to read the document again. Out of the v1 scope; nothing here is specified, no oracle exists, no engine work is planned. Rule ids `MOD-LT-nn`, status `later`. The document's pharmacodynamic chapter (response models driven by the concentration, pp. 54-60, appendix III pp. 67-68) is outside `AGENTS.md` section 1 and is not listed as a rule.
 
-#### MOD-LT-01 Three compartments
+#### MOD-LT-01 Three compartments (now specified in section 14, card T-140)
+Superseded by section 14 (`MOD-3C-01` to `MOD-3C-27`, card T-140): the three-compartment models are specified there. The text below is the page map of card T-046, kept because section 14 cites it for the pages of the infusion and absorption functions. The status stays `later` for this note only.
+
 S-36 pp. 37-53 and appendix I p. 64 (models 49 to 78). Structure: a central compartment with two peripheral compartments each attached to it (a star, not a chain), elimination from the central one (p. 37, figure 1.2). Three parameter sets, as for two compartments: micro-constants (V, k, k12, k21, k13, k31), clearances and volumes (Cl, V1, Q2, V2, Q3, V3) and macro (α, β, γ, A, B, C) (p. 38). The three exponents are the roots of a cubic whose coefficients are symmetric functions of the micro-constants (sum of the five rate constants, sum of their pairwise products of the relevant pairs, and k·k21·k31), which the document solves by the trigonometric formula for three real roots (p. 39); the per-unit-dose coefficients are products of two quotients of differences (p. 39 for the bolus, p. 41 infusion, p. 44 first-order absorption, p. 47 zero-order). The single-dose, multiple-dose and steady-state functions are the three-term analogue of section 11 (sums of three exponentials, the same branches and lags; bolus pp. 40, infusion pp. 42-43, first-order absorption pp. 44-45, zero-order pp. 48-51), so MOD-2C-06 (superposition of one-compartment functions with positive weights) and MOD-MD-03 extend term by term. Points for a later card: the trigonometric solution has the same cancellation hazard as the textbook two-compartment discriminant (MOD-2C-21), so exponents and weights would need a stable arrangement or an eigenvalue solver; the three coefficients and exponents must be checked against an ODE solution as in T-032. The document offers no effect compartment for three compartments (p. 54).
 - Status: `later`
 - Sources: S-36 as listed; D (what the later card has to check).
@@ -671,3 +673,244 @@ S-36 gives the saturable models as differential equations only, in concentration
 An extra compartment driven by the central concentration, dCe/dt = ke0·(C − Ce), with the equilibrium rate constant ke0 as one more parameter (p. 4, eq. 1.4 on p. 5); the document gives Ce next to C for every linear model of one and two compartments, single dose, several doses and steady state (for example p. 5 eq. 1.1 to 1.3 for the one-compartment bolus, p. 19 eq. 1.31 to 1.33 for the two-compartment bolus, p. 25 eq. 1.41 to 1.43 for first-order absorption, with lag pp. 25-26, 31-34). Ce is a sum of the exponentials of C plus one exponential in ke0, with the coefficients of C multiplied by ke0/(ke0 − exponent) (p. 19: A^e = ke0·A/(ke0 − α) and so on), so it is undefined when ke0 equals one of the exponents, as the first-order absorption function is when ka = k (MOD-AB1-02, MOD-AB1-03 give the limit and the stable form for ka; the document gives neither for ke0). For the one-compartment IV bolus Ce has the shape of the first-order absorption function with ka replaced by ke0 (D), so the limit and the stable evaluation carry over. The library lists the matching models for one and two compartments only (appendix II, pp. 65-66); the document states that the effect compartment is not available for three compartments (p. 54).
 - Status: `later`
 - Sources: S-36 as listed; D.
+
+## 14. Three-compartment models (card T-140)
+
+Written by the `reader` agent on 2026-11-07, in its own words and formulas, before any oracle or engine work for three compartments (`AGENTS.md` section 1 lists them since Q-020). The card asked for "section 12"; sections 12 and 13 already exist, so this is section 14 and the ids keep the requested prefix `MOD-3C-nn`. It replaces the placeholder `MOD-LT-01` (section 13), which now points here. Status tags: `documented, untested` is a result found in an allowed source (S-36 pages 37 to 40, the textbooks at book level, S-17 and S-18) or derived (D) from the linear differential equations and checked by the reader (hand checks H18 to H23, section 14.7), with no oracle yet; `assumed` is a choice made for Caladrius or a numerical safeguard. There is no `confirmed by oracle` rule in this section: the oracle is card T-142 (open items OM-19 to OM-29). Vendor documentation was not used. S-36 gives the three-compartment bolus, infusion and oral functions for one dose, several doses and steady state, and the conversions of the three parameter sets, but no limits at equal exponents, no area, moment, half-life, Cmax or Tmax, no derivative and no domain; the rules about those rest on D and on the textbooks at book level.
+
+**Notation of this section.** Central compartment 1 (volume V1 = `vc`), peripheral compartments 2 and 3, both attached to the central one only (a star), elimination from the central compartment only. k = k10, k12, k21, k13, k31 are first-order rate constants. λ1 = α > λ2 = β > λ3 = γ > 0 are the three exponents; wα, wβ, wγ the weights (MOD-3C-03). Φ(λ, t) is the one-compartment kernel of MOD-2C-06 (volume 1, elimination rate constant λ, same dose, same input). `d_min` = min(k21, k31), `d_max` = max(k21, k31) are the two poles of the secular function (MOD-3C-03).
+
+### 14.1 System, parameterisations, conversions
+
+#### MOD-3C-01 The system
+A dose enters compartment 1 (directly for an intravenous input, through a depot or a zero-order input for an extravascular one). With amounts A1, A2, A3: dA1/dt = −(k + k12 + k13)·A1 + k21·A2 + k31·A3 + input, dA2/dt = k12·A1 − k21·A2, dA3/dt = k13·A1 − k31·A3, and the observed concentration is C = A1/V1. All five rate constants and V1 are positive (domains: MOD-3C-06). Elimination from a peripheral compartment, an exchange between the peripherals and saturable elimination are not in this model (the last is MOD-LT-02, `later`). When k12 = 0 or k13 = 0 the model is a two-compartment one and is refused with advice to use `pk2` (MOD-3C-06).
+- Status: `documented, untested`
+- Sources: S-36 p. 37 (figure 1.2: central compartment, two peripherals each attached to it, elimination from the central one), p. 38 (the equations); S-17, S-18 (mammillary models, book level); D (mass balance above).
+
+#### MOD-3C-02 The three parameterisations and the conversions between the first two
+(a) Micro-constants with volume: (V1, k10, k12, k21, k13, k31). (b) Clearances and volumes, the default: (CL, V1, Q2, V2, Q3, V3) with k10 = CL/V1, k12 = Q2/V1, k21 = Q2/V2, k13 = Q3/V1, k31 = Q3/V3; in the other direction CL = k10·V1, Q2 = k12·V1, V2 = V1·k12/k21, Q3 = k13·V1, V3 = V1·k13/k31 (the same flow Q leaves the central compartment and returns from the peripheral one at equilibrium). (c) Macro-constants: the three intravenous-bolus coefficients and exponents (A, B, C, α, β, γ) with C(t) = A·e^(−α·t) + B·e^(−β·t) + C·e^(−γ·t) after a bolus of D; C(0) = A + B + C = D/V1 so V1 = D/(A + B + C), and the weights are wα = A/(A + B + C), wβ = B/(A + B + C), wγ = C/(A + B + C). As in MOD-2C-02 the macro coefficients are the intravenous ones for every id, so that one definition serves all six ids (an oral id never divides by ka − λ in a conversion). The macro set needs the dose D (a missing or zero dose is an error). The conversions (a) ↔ (b) are exact products and quotients. Conversions (a) → (c) are MOD-3C-03, (c) → (a) is MOD-3C-04. A letter clash: the macro coefficient C is not the concentration; the engine's names are `a`, `b`, `c`, `alpha`, `beta`, `gamma` and the concentration is never called `c` (MOD-3C-25).
+- Status: `documented, untested`
+- Sources: S-36 p. 38 (the three sets and their relations, in the paper's names Cl, V1, Q2, V2, Q3, V3, k, k12, k21, k13, k31, A, B, C, α, β, γ); S-35 (the clearance-set convention for two compartments, extended); D.
+
+#### MOD-3C-03 Micro-constants to exponents and weights
+The exponents are the three roots of P(x) = x³ − a2·x² + a1·x − a0 with
+- a2 = k + k12 + k13 + k21 + k31,
+- a1 = k·k21 + k·k31 + k21·k13 + k31·k12 + k21·k31,
+- a0 = k·k21·k31
+(the characteristic polynomial of the 3 × 3 rate matrix, from its principal minors and its determinant). The roots are real, positive and simple, and they interlace the poles: with F(x) = k − x + k12·x/(x − k21) + k13·x/(x − k31) one has P(x) = −(x − k21)(x − k31)·F(x) (D); F is strictly decreasing on each interval between its poles, hence α > d_max ≥ β ≥ d_min > γ > 0, and β = k21 = k31 exactly when the two poles are equal (MOD-3C-22). The weights come from the partial fractions of the bolus transfer function (s + k21)(s + k31)/((s + α)(s + β)(s + γ)) = Σ wi/(s + λi):
+- wi = (k21 − λi)(k31 − λi) / Π over j ≠ i of (λj − λi),
+- equivalently wi = 1 / [1 + k12·k21/(λi − k21)² + k13·k31/(λi − k31)²].
+The second form is a sum of positive terms: every weight is strictly positive (zero only at the tie of MOD-3C-22) and wα + wβ + wγ = 1. Two further identities used below: Σ wi/λi = 1/k and the area under the i-th term of the bolus profile is D·wi/(V1·λi). The weights are never taken from the first form when two exponents are close (MOD-3C-07).
+- Status: `documented, untested`
+- Sources: S-36 p. 39 (the cubic and its coefficients; the paper writes the three roots with the trigonometric form, MOD-3C-07; the bolus coefficients as products of two quotients of differences) and p. 40 (eq. 1.61 to 1.63); S-17, S-18 (the polyexponential solution of the mammillary model, book level); D (interlacing from F, the second weight form from the derivative of F at a root; H18 checks both forms at 80 digits and the base case to the printed digits).
+
+#### MOD-3C-04 Exponents and weights to micro-constants (the reverse conversion)
+Given V1 and the macro set (λi, wi): with S = α + β + γ,
+- n1 = Σ wi·(S − λi) and n0 = Σ wi·λj·λk (j, k the two other indices); then k21 and k31 are the two roots of s² − n1·s + n0 = 0 (coefficients of the numerator of the transfer function of MOD-3C-03);
+- k = α·β·γ / (k21·k31);
+- k12 = −P(k21) / [(k21 − k31)·k21] and k13 = −P(k31) / [(k31 − k21)·k31], P as in MOD-3C-03 (from k12·k21 = lim of −P(x)/(x − k31) at x = k21);
+- then the clearances by MOD-3C-02.
+The two roots of the quadratic are computed with the stable quadratic formula (no subtraction of nearly equal quantities: the root of larger modulus first, the other as n0 over it). The result is a valid three-compartment model whenever the weights are positive and the exponents strictly ordered (D; H23 found no counter-example in 200 000 random sets; this is not a written proof), but the engine checks the results anyway (MOD-3C-06). The macro set is symmetric in the two peripherals, so the reverse conversion cannot tell which is compartment 2: MOD-3C-05. The round trip micro → macro → micro returns the original constants up to that labelling, and macro → micro → macro returns the macro set, up to the conditioning of MOD-3C-08.
+- Status: `documented, untested`
+- Sources: D (partial fractions, the secular function of MOD-3C-03; H18 round trip on the base case); S-36 p. 38 states the relations between the sets for three compartments but gives no inverse in closed form (a gap, not a disagreement).
+
+#### MOD-3C-05 Labelling of the two peripheral compartments
+The curve, the exponents and the weights are unchanged by swapping (k12, k21) with (k13, k31). Convention for outputs of the reverse conversion and for the default sorted form: compartment 2 is the one with the larger k21 (k21 ≥ k31); when they are equal compartment 2 is the one with the larger k12 (and, if still equal, the model is symmetric and the choice is free). A user-supplied micro or clearance set is never reordered silently; it is reported as supplied, together with `k21_ge_k31` as a flag (MOD-3C-25).
+- Status: `assumed`
+- Sources: design choice; D (invariance under the swap). Settled only with OM-23.
+
+#### MOD-3C-06 Parameter domains and errors
+Required: `cl`, `vc`, `q2`, `vp2`, `q3`, `vp3` > 0 (or `k10`, `k12`, `k21`, `k13`, `k31`, `vc` > 0; or `a`, `b`, `c` > 0 with `alpha` > `beta` > `gamma` > 0 and a dose D > 0), all finite; `ka`, `dur` > 0, `tlag` ≥ 0 and D ≥ 0 as in MOD-GEN-04. Refused with a readable error naming the parameter and its value:
+1. `q2` = 0, `vp2` = 0, `k12` = 0, or the same for `q3`, `vp3`, `k13`: one peripheral compartment is missing and the model is a two-compartment one; the message says to use `pk2.*` (and `pk1.*` when both are missing). A negative value is the usual domain error.
+2. Macro set: `alpha` ≤ `beta`, `beta` ≤ `gamma` (the exponents must be named in decreasing order; no silent sort), `a`, `b` or `c` ≤ 0, or a dose that is 0 or missing.
+3. A derived micro-constant, volume, exponent or weight that is not finite and positive, or a product k12·k21, k13·k31 or a0 that underflows to 0 or overflows (error code `DegenerateExponents`, as MOD-2C-05 item 3), or a macro set for which MOD-3C-04 gives a non-real or non-positive k21, k31, k12, k13 (the same code, naming the quantity).
+4. A parameter of another parameterisation or of another model id, a missing one, or two sets together (the kinds of MOD-2C-05 item 4).
+5. The roots cannot be returned strictly ordered with their offsets to the poles defined (MOD-3C-08).
+Not refused: k21 = k31 (the tie, MOD-3C-22), exponents close to each other (MOD-3C-08), ka equal or close to α, β or γ (MOD-3C-12), a dose of 0 (all concentrations 0).
+- Status: `assumed`
+- Sources: MOD-GEN-04, MOD-2C-05 (same style, the error kinds are reused); D (positivity of the weights, MOD-3C-03, which decides what the macro set must satisfy). Settled only with OM-26.
+
+### 14.2 The exponents: stable computation, conditioning, refusal
+
+#### MOD-3C-07 Computing the three roots using only libm operations
+Rule 10 allows `sqrt`, `acos`, `cos` of the libm port, sums, products and quotients, nothing else. Stable procedure (the structure is `assumed`; the formulas are D):
+1. Seed by the trigonometric form of S-36. With m = √((a2²/3 − a1)/3), c3 = (2·a2³/27 − a1·a2/3 + a0)/(2·m³) clamped to [−1, 1], θ = acos(c3): α0 = a2/3 + 2m·cos(θ/3), β0 = a2/3 + 2m·cos(θ/3 − 2π/3), γ0 = a2/3 + 2m·cos(θ/3 + 2π/3). A tiny m (three nearly equal roots) cannot occur for this model unless the couplings underflow (then MOD-3C-08 refuses).
+2. Refine each root with a safeguarded Newton iteration on the secular equation F(x) = 0 (MOD-3C-03), written in offset coordinates: the root is the nearest pole plus an offset (for α: d_max + o, o > 0; for γ: d_min − o, o > 0; for β: one of the two poles ± o, inside the interval (d_min, d_max)), and every difference x − k21, x − k31 is evaluated as a difference of offsets, never as a subtraction of two rounded numbers. F is convex and decreasing for x > d_max and concave and decreasing for x < d_min, so Newton from the correct side converges monotonically; whenever a step leaves the bracket given by the interlacing the step is replaced by bisection inside the bracket. β is solved on its bracket (d_min, d_max) the same way.
+3. The weights are computed from the second form of MOD-3C-03 with the converged offsets (the differences λi − k21, λi − k31 are the offsets, exact to rounding).
+Alternative forms and why they are not used: the closed-form roots alone (step 1) lose digits when two roots are close (MOD-3C-08); a deflation (divide P by (x − α0), then solve the quadratic with p = a0/α and s = (a1 − p)/α, no cancellation because βγ < a1/3) gives good β and γ unless those two are close; the weights from the first form of MOD-3C-03 with computed roots are the worst (MOD-3C-08). The iteration limits and tolerances are the engine's (an unconverged root is an error, not a result).
+- Status: `assumed`
+- Sources: S-36 p. 39 (the trigonometric form, three real roots); D (convexity of F, offsets, deflation); H21 (conditioning measured against 80-digit roots). Settled only with OM-19, OM-22.
+
+#### MOD-3C-08 Conditioning when roots are close, and what the engine refuses
+Measured by the reader (H21), relative errors in doubles against 80-digit values, on five hand-built near-degenerate micro sets (k21 and k31 differing by a relative 1e-2 down to 1e-8 and a pair with k12 or k13 tiny): the trigonometric seed alone gives roots wrong by 1e-14 up to 1e-8 relative, the trigonometric form with the deflation of MOD-3C-07 is fine unless two roots are very close, the secular offset iteration keeps about 1e-16 on every root, and the weights from the product-of-differences form computed from the computed roots are wrong by 1e-8 up to 4e-3 near the tie, whereas the second form with offsets keeps about 1e-16 for wα, wγ. The weight wβ is the exception: near a tie it is of order δ² (D, H22: wβ/δ² = 0.1214 to four digits for δ = 1e-2 … 1e-8 in one family, δ = k21 − k31), so it is tiny and is determined only to a relative 1e-7 or worse at the closest ties; this is the true conditioning of the quantity (the curve itself changes by O(wβ), far below 1e-12), not a defect of the method. The general cause: the root map from the polynomial coefficients has condition about 1/(gap between roots), so coefficients rounded to 1e-16 give roots known to about the square root of that when roots coincide; the offset form recovers the digits because the gaps are computed, not subtracted. The engine refuses (`DegenerateExponents` or the code of MOD-3C-06 item 5) exactly when it cannot return α > β > γ > 0 as doubles with the offsets to the nearest poles nonzero and the weights positive, apart from the exact tie of MOD-3C-22; this happens only when a coupling product (k12·k21, k13·k31) is so small that α rounds onto d_max or γ onto d_min. It never returns NaN, a negative weight or two equal exponents silently.
+- Status: `assumed`
+- Sources: D (condition number of a root, secular offsets); H21, H22 (scripted by the reader, not versioned; the oracle cases of OM-22 replace them). The five test sets are listed in OM-22, not here, so that the numbers can be reproduced.
+
+### 14.3 Closed forms
+
+#### MOD-3C-09 Superposition of three one-compartment functions
+For every input of this file: C(t) = (1/V1)·[ wα·Φ(α, t) + wβ·Φ(β, t) + wγ·Φ(γ, t) ], with Φ(λ, t) the stable one-compartment kernel (MOD-AB1-03, MOD-IVB-01, MOD-IVI-01, MOD-AB0-01, MOD-AB0-02 with V = 1, k = λ, dose D, the input parameters ka, dur, tlag). The same holds as for two compartments (MOD-2C-06), for the same reason: the input enters through a linear transfer function and the transfer function of the concentration is the sum of three simple fractions with the positive weights of MOD-3C-03. Consequences: every pk3 function is a positive combination of one-compartment functions (no cancellation for any ka, dur, tlag); the AUC, the AUMC, the Cmax bracket and the derivatives are the same combinations; the engine can build the six ids from its stable one-compartment kernels. This is a derived answer to the question of the card: three weights, same structure.
+- Status: `documented, untested`
+- Sources: S-17, S-18 (superposition and Laplace-domain solutions, book level); S-36 p. 40 eq. 1.61 to 1.63 (the bolus), and the pages of the other inputs as mapped by T-046 in MOD-LT-01 (infusion pp. 42-43, first-order absorption pp. 44-45, zero-order absorption pp. 48-51), which are the three-term analogue of the two-compartment functions of S-36; the reader of T-140 read pp. 37 to 40 itself and takes the structure of the other pages from that map, so no equation number beyond eq. 1.63 is cited; D (partial fractions; H20 compares the combination with an ODE solution in double precision).
+
+#### MOD-3C-10 IV bolus
+C(t) = (D/V1)·[ wα·e^(−α·t) + wβ·e^(−β·t) + wγ·e^(−γ·t) ] for t ≥ 0, 0 before the dose, C(0) = D/V1. In macro form C(t) = A·e^(−α·t) + B·e^(−β·t) + C·e^(−γ·t) with A = D·wα/V1 and so on.
+- Status: `documented, untested`
+- Sources: S-36 p. 40 eq. 1.61 (with eq. 1.62, 1.63 for several doses and steady state); S-17, S-18; D. Worked example Q1.
+
+#### MOD-3C-11 IV infusion, during and after
+With the infusion rate D/T over [0, T]: for 0 ≤ t ≤ T, C(t) = (D/(V1·T))·Σ wi·(1 − e^(−λi·t))/λi; for t > T, C(t) = (D/(V1·T))·Σ wi·(e^(−λi·(t − T)) − e^(−λi·t))/λi (equivalently the first expression times e^(−λi·(t − T)) with the amount at T). Each term is evaluated as the one-compartment infusion kernel (MOD-IVI-01) with V = 1, k = λi, through `expm1` for small λi·t. At t = T both forms agree.
+- Status: `documented, untested`
+- Sources: S-36 pp. 42-43 (the three-compartment infusion function; map of MOD-LT-01, equation numbers not cited, MOD-3C-09); MOD-IVI-01; D. Worked example Q3.
+
+#### MOD-3C-12 First-order absorption, and the limits ka = α, β, γ
+For ka not equal to any exponent and t ≥ 0 (the dose is the effective dose F·D, volumes and clearances apparent, V1/F and so on): C(t) = (D·ka/V1)·Σ wi·(e^(−λi·t) − e^(−ka·t))/(ka − λi). The stable form for every ka is, term by term, the one-compartment one of MOD-AB1-03: with a = min(ka, λi), δ = |ka − λi|, (e^(−λi·t) − e^(−ka·t))/(ka − λi) = t·e^(−a·t)·g(δ·t), g(z) = (1 − e^(−z))/z through `expm1`, g(0) = 1. Every term is non-negative, the weights are positive, so no cancellation occurs for any ka/λi, the exact limits ka = λi included, and no sum is negative by rounding. The limits are the continuous ones: for ka = λi the i-th term is wi·t·e^(−λi·t) (times D·ka/V1), the two others stay regular unless ka also equals another exponent (the exponents are distinct, MOD-3C-08). Evaluating at ka equal to α, β or γ is not an error. A ka that differs from an exponent by one unit in the last place is not special either.
+- Status: `documented, untested`
+- Sources: S-36 pp. 44-45 (the three-compartment first-order function; map of MOD-LT-01, equation numbers not cited, MOD-3C-09; for two compartments the paper divides by ka − α and ka − β and gives no limit, and the three-term analogue is assumed to do the same: a gap to confirm, not a disagreement); MOD-AB1-03, MOD-2C-10; D (confluent partial fractions). Worked example Q2 (ka between exponents) and Q5 (ka = α).
+
+#### MOD-3C-13 Lag time
+For every id with a lag, C(t) = 0 for t < tlag and the no-lag function at t − tlag for t ≥ tlag, as MOD-AB1-05 and MOD-2C-11. No lag-specific stability issue exists; the kernels take t − tlag.
+- Status: `documented, untested`
+- Sources: S-36 pp. 44-51 (map of MOD-LT-01; lagged variants are separate functions, as in the one-compartment case; not individually cited); MOD-AB1-05, MOD-2C-11.
+
+#### MOD-3C-14 Zero-order absorption
+The infusion function of MOD-3C-11 with the apparent volume V1/F and CL/F and so on, T the absorption duration `dur`, with or without lag. Tmax = T (+ tlag) exactly and Cmax = C(T), because the concentration increases strictly during a zero-order input and decreases after it (the weights are positive).
+- Status: `documented, untested`
+- Sources: S-36 pp. 48-51 (map of MOD-LT-01; not individually cited); MOD-AB0-01, MOD-AB0-02, MOD-2C-12; D.
+
+### 14.4 Derived quantities
+
+#### MOD-3C-15 Disposition quantities
+- Half-lives t½,i = ln 2 / λi (i = α, β, γ); the terminal half-life is the γ one. Clearance CL = k10·V1.
+- Vss = V1·(1 + k12/k21 + k13/k31) = V1 + V2 + V3, with V2 = V1·k12/k21 and V3 = V1·k13/k31.
+- Vz = CL/γ and V_extrap = V1/wγ (the volume from the back-extrapolated terminal line: C_term(0) = D·wγ/V1).
+- Order: V1 < Vss < Vz < V_extrap, all strict (D): Vss < Vz because MRT = Σ wi/λi² / Σ wi/λi is a weighted mean of the 1/λi, hence below 1/γ; Vz < V_extrap because wγ/γ < Σ wi/λi = 1/k, that is wγ < γ/k10.
+- Time scale of distribution: the exponents α and β and the weights show which phase dominates; no other secondary parameter is defined.
+Outputs and names are those of MOD-3C-25.
+- Status: `documented, untested`
+- Sources: S-17, S-18 (Vss, Vz, MRT, book level); S-13, S-14, S-15 (moments, steady-state volume; papers not read, as in MOD-SEC); D (order of the volumes; H18 checks it on the base case).
+
+#### MOD-3C-16 AUC, AUMC, MRT
+For a bolus of D: AUC∞ = (D/V1)·Σ wi/λi = D/CL and AUMC∞ = (D/V1)·Σ wi/λi² = D·Vss/CL² (D; both identities are exact, not fitted, and H18 checks them to 12 digits). MRT_system = AUMC/AUC = Vss/CL. For an extravascular input with the apparent clearance CL/F: AUC∞ = F·D/CL (with the effective dose in the formulas, D/CL_apparent), and MRT = Vss/CL + the mean input time (1/ka for first-order input, T/2 for zero-order input, plus tlag), as in MOD-2C-14. For an infusion of duration T: MRT_system + T/2. The area up to a finite time uses the same sums with the closed forms of the integrals of the kernels (MOD-AB1-04). Each of AUC, AUMC is a positive combination: no cancellation.
+- Status: `documented, untested`
+- Sources: S-17, S-18 (AUC and moments of a polyexponential, book level); S-13 (statistical moments, paper not read); MOD-2C-14 (same structure); D. Worked example Q1.
+
+#### MOD-3C-17 Cmax and Tmax
+For an IV bolus, Cmax = C(0) = D/V1 at Tmax = 0 (extrapolated). For zero-order absorption and for an infusion Tmax = T (+ tlag). For first-order absorption, Tmax is the unique positive zero of C′(t) = (D·ka/V1)·[ Σ ci·e^(−λi·t) + c0·e^(−ka·t) ] with ci = −wi·λi/(ka − λi) and c0 = ka·Σ wi/(ka − λi) (D). Uniqueness: C′(0) = D·ka/V1 > 0 and C′ < 0 for large t; by the generalised Descartes rule for sums of exponentials (the number of real zeros is at most the number of sign changes of the coefficients ordered by the exponent), the sign pattern of (ci, c0), whatever the position of ka among α, β, γ, has at most one change, so there is exactly one zero. The limits ka = λi follow by continuity (the coefficient pattern of the confluent form has the same sign structure; this step is argued, not proved). A bracket: Tmax lies between the smallest and the largest of the one-compartment values xi = ln(ka/λi)/(ka − λi) (1/ka when ka = λi), because each term of C is unimodal and C′ is a positive combination of the term derivatives. The engine finds the zero by a safeguarded method inside this bracket (no closed form exists), with Cmax = C(Tmax); the tolerance is the engine's. At steady state the same holds (MOD-MD-10 for the argument with one-compartment sums, extended by the same sign argument).
+- Status: `documented, untested`
+- Sources: Pólya G, Szegő G. Problems and Theorems in Analysis II (the rule for sums of exponentials; book level, S-37, not read by the reader: the statement above is the one the reader derived and must be confirmed by the oracle); MOD-AB1-04, MOD-2C-15 (same structure); D. Settled only with OM-24.
+
+#### MOD-3C-18 Consistency with NCA
+A noncompartmental analysis of an error-free pk3 profile that is long enough (the terminal phase reached, γ-phase log-linear) gives AUC∞, MRT, CL, Vss, Vz and the terminal half-life of MOD-3C-15 and MOD-3C-16 up to the NCA's own extrapolation error, which is not a model error: the engine's pk3 values are the exact references. A pk3 profile on a short grid (observations to a few half-lives of α only) shows a terminal phase that is not γ: the NCA half-life then estimates β or a mixture, and the NCA Vz, Vss differ from the model values; this is the usual caveat and the reason for the comparison test (OM-27) to use dense grids to many half-lives of γ.
+- Status: `documented, untested`
+- Sources: S-17, S-18 (NCA and compartmental analysis, book level); MOD-SEC-03, MOD-2C-16 (same rule); D.
+
+### 14.5 Parameters of the fit and partial derivatives
+
+#### MOD-3C-19 Internal parameters and the choice of parameterisation
+Define ψ = (V, α, β, γ, wα, wβ) with V = V1 and wγ = 1 − wα − wβ. With Φ of MOD-3C-09, C = (1/V)·[ wα·Φ(α, t) + wβ·Φ(β, t) + (1 − wα − wβ)·Φ(γ, t) ]. Every derivative with respect to ψ and to an input parameter is a combination of the one-compartment derivatives (MOD-2C-17 argument). The default parameterisation of the fit is the clearance set (cl, vc, q2, vp2, q3, vp3), for the reason of MOD-2C-17 (parameters with a physiological reading, all positive, estimable on a log scale). The macro set has the simplest derivatives (linear in A, B, C) but its exponents are ill-conditioned when the roots are close.
+- Status: `assumed`
+- Sources: D (calculus); MOD-2C-17 (same reasoning); `specs/fit.md` FIT-JAC-01, FIT-JAC-02.
+
+#### MOD-3C-20 Derivatives of the exponents and weights
+Write o21 = λ − k21, o31 = λ − k31 for a root λ with weight w, and g = 1 + k12·k21/o21² + k13·k31/o31² = 1/w. Implicit differentiation of F(λ) = 0 gives ∂λ/∂θ = w·∂F/∂θ evaluated at λ (D), that is:
+- ∂λ/∂k = w; ∂λ/∂k12 = w·λ/o21; ∂λ/∂k13 = w·λ/o31;
+- ∂λ/∂k21 = w·k12·λ/o21²; ∂λ/∂k31 = w·k13·λ/o31².
+Check: Σ over the three roots of ∂λ/∂θ = ∂a2/∂θ (1 for each of the five rate constants), which the reader verified for the base case. For the weights, ∂w/∂θ = −w²·[ g_θ + g_λ·∂λ/∂θ ] with
+- g_λ = −2·k12·k21/o21³ − 2·k13·k31/o31³;
+- g_k = 0; g_k12 = k21/o21²; g_k13 = k31/o31²;
+- g_k21 = k12/o21² + 2·k12·k21/o21³; g_k31 = k13/o31² + 2·k13·k31/o31³.
+The offsets o21, o31 are the offsets of MOD-3C-07, never a subtraction of rounded numbers. All derivatives grow like 1/o and 1/o³ near a tie (the real sensitivity, MOD-3C-22).
+- Status: `documented, untested`
+- Sources: D (implicit differentiation of the secular equation, the derivative of the second weight form); H19 (the formulas, chained as in MOD-3C-23, reproduce 80-digit central differences, relative error below 1e-46 on all six clearance-set parameters at t = 1 and t = 12 for the base case). Not a textbook result; S-36 gives no derivatives.
+
+#### MOD-3C-21 Derivatives of C with respect to ψ and the input parameters
+With Φ_i = Φ(λi, t), Φ_λ = ∂Φ/∂λ (the one-compartment derivative with respect to k at V = 1) and D fixed:
+- ∂C/∂V = −C/V; ∂C/∂wα = (Φ_α − Φ_γ)/V; ∂C/∂wβ = (Φ_β − Φ_γ)/V;
+- ∂C/∂λi = (wi/V)·Φ_λ(λi, t) for λi ∈ {α, β, γ};
+- for η ∈ {ka, dur, tlag}: ∂C/∂η = (1/V)·Σ wi·∂Φ/∂η(λi, t); the derivative with respect to tlag is zero before the lag and has a kink at t = tlag, as MOD-2C-18.
+For the IV bolus Φ = D·e^(−λ·t) and Φ_λ = −t·Φ. With the macro set: ∂C/∂A = Φ_α/D and so on, ∂C/∂α = (A/D)·Φ_λ(α, t).
+- Status: `documented, untested`
+- Sources: D (derivative of a sum of three terms); MOD-2C-18 (same form).
+
+#### MOD-3C-22 The tie k21 = k31, near ties, and the limits of the derivatives
+If k21 and k31 are equal in doubles, β = k21 exactly and wβ = 0 exactly (D: the factor (k21 − β)(k31 − β) of the weight vanishes with the two poles; H22 checks the trend wβ → 0 as δ² on one family). The model is then a two-compartment one in disguise: the peripheral compartments merge into one with the inflow rate k12 + k13 and the outflow rate k21. The engine evaluates this case with two exponents α and γ, the roots of s² − (k + k12 + k13 + k21)·s + k·k21 = 0 and the weights of MOD-2C-03 with k12 replaced by k12 + k13; the β term has weight 0 and is skipped. The derivative formulas of MOD-3C-20 are 0 × ∞ at the tie and are replaced by their limits (D): ∂β/∂k21 = k13/(k12 + k13), ∂β/∂k31 = k12/(k12 + k13), ∂β/∂k = ∂β/∂k12 = ∂β/∂k13 = 0, and ∂wβ/∂θ = 0 for every θ (wβ is of order δ²). For k21 and k31 within a few units in the last place but not equal, β is solved on its bracket and wβ is below the rounding level of any sum (wβ ~ δ², MOD-3C-08): the engine may set it to 0 and must not return NaN. Every quantity is finite and positive on both sides of the tie; the curve is a smooth function of the parameters across it.
+- Status: `assumed`
+- Sources: D (secular function at a double pole; limit of the derivatives from the formulas of MOD-3C-20; MOD-2C-03 for the merged compartment); H22. Settled only with OM-21, OM-22.
+
+#### MOD-3C-23 Chain rule to the user parameterisations
+Write C_θ for the derivative of C with respect to a micro-constant θ at fixed V: C_θ = Σ over the three roots of [ ∂C/∂wi·∂wi/∂θ + ∂C/∂λi·∂λi/∂θ ] (MOD-3C-20, 21; with wγ eliminated as in MOD-3C-19). Then (all quantities at the evaluation point):
+- Clearance set: ∂C/∂cl = C_k/vc; ∂C/∂q2 = C_k12/vc + C_k21/vp2; ∂C/∂vp2 = −k21·C_k21/vp2; ∂C/∂q3 = C_k13/vc + C_k31/vp3; ∂C/∂vp3 = −k31·C_k31/vp3; ∂C/∂vc = ∂C/∂V − [k·C_k + k12·C_k12 + k13·C_k13]/vc, with ∂C/∂V = −C/V.
+- Micro set: ∂C/∂k10 = C_k, ∂C/∂k12 = C_k12, and so on; ∂C/∂vc = ∂C/∂V.
+- Macro set: V = D/(A + B + C), wα = A/(A + B + C), and so on; ∂C/∂A, ∂C/∂B, ∂C/∂C are direct (MOD-3C-21); α, β, γ are parameters.
+Known sensitivity: the derivatives with respect to the micro-constants grow like 1/gap at close roots and are reported as such.
+- Status: `documented, untested`
+- Sources: D (chain rule); H19 (the formulas above reproduce 80-digit central differences, step 1e-30 relative: relative difference between 1e-47 and 1e-49 for the six clearance-set derivatives at t = 1 and t = 12 in the base case, bolus). Not a textbook result.
+
+### 14.6 Multiple dosing, steady state, ids, numerics
+
+#### MOD-3C-24 Multiple dosing and steady state
+The superposition of single-dose profiles (MOD-MD-01) and the exponential rule at steady state (MOD-MD-03) apply unchanged, with λ ∈ {α, β, γ, ka}: at steady state with equal doses at interval τ each decaying exponential e^(−λ·s) of the single-dose function is divided by 1 − e^(−λ·τ) (computed with `expm1`), and the three one-compartment steady-state functions are combined with the weights wα, wβ, wγ (as MOD-MD-06 for two). The lag shift (MOD-MD-05), the accumulation ratios (MOD-MD-08), the area over an interval and the average concentration (MOD-MD-09, with the AUC identity of MOD-3C-16) hold with the three exponents; the accumulation ratio of the terminal phase is 1/(1 − e^(−γ·τ)). The regimens of T-049 need from a pk3 function only the single-dose kernel f(s) and the three exponents with weights; no new input is required. The domain assumptions of MOD-MD-02 (gap between doses longer than the infusion or absorption duration) and the refusals of MOD-MD-12 and MOD-MD-17 are unchanged. Cmax,ss and Tmax,ss for first-order input: one maximum per interval, by the argument of MOD-3C-17 on the steady-state sum (the three-exponential sum has the same sign pattern); the engine finds it as in MOD-MD-10.
+- Status: `documented, untested`
+- Sources: S-36 p. 40 eq. 1.62, 1.63 (several doses and steady state for the three-compartment bolus; the other inputs, pp. 42-51 by the map of MOD-LT-01, follow the same pattern, not individually cited); MOD-MD-01, 03, 05, 06, 08, 09, 10; D (the steady-state geometric sum is term by term). Settled only with OM-28.
+
+#### MOD-3C-25 Model ids, defaults and outputs
+Added to the table of MOD-GEN-05 (the prefix `pk3` is new here); the six ids coincide one to one with the six of `pk1` and `pk2`.
+
+| model id | route | input | parameters (default set) | equation |
+|---|---|---|---|---|
+| `pk3.iv_bolus` | IV | bolus | cl, vc, q2, vp2, q3, vp3 | MOD-3C-10 |
+| `pk3.iv_infusion` | IV | zero-order, duration T | cl, vc, q2, vp2, q3, vp3, dur | MOD-3C-11 |
+| `pk3.oral_1` | extravascular | first-order, no lag | cl, vc, q2, vp2, q3, vp3 (all /F), ka | MOD-3C-12 |
+| `pk3.oral_1_lag` | extravascular | first-order with lag | cl, vc, q2, vp2, q3, vp3, ka, tlag | MOD-3C-13 |
+| `pk3.oral_0` | extravascular | zero-order, no lag | cl, vc, q2, vp2, q3, vp3, dur | MOD-3C-14 |
+| `pk3.oral_0_lag` | extravascular | zero-order with lag | cl, vc, q2, vp2, q3, vp3, dur, tlag | MOD-3C-14 |
+
+The default is the clearance set; the micro set (`k10, k12, k21, k13, k31, vc`) and the macro set (`a, b, c, alpha, beta, gamma`, with the dose) are selected by supplying their parameters instead (MOD-3C-02). Outputs: all three sets, `w_alpha`, `w_beta`, `w_gamma`, `half_life` (terminal, γ), `half_life_alpha`, `half_life_beta`, `half_life_gamma`, `vss`, `vz`, `v_extrap`, `auc_inf`, `aumc_inf`, `mrt_system`, `mrt`, `c0` (bolus), `cmax_pred`, `tmax_pred`, `k21_ge_k31`. The macro coefficient is named `c` only as a parameter of the macro set; it is never an output called `c` that could be mistaken for the concentration `conc` (an `assumed` naming, settled with OM-26).
+- Status: `assumed`
+- Sources: S-20 (catalogue); S-35 (cl, vc, q, vp, extended by the numbered names q2, vp2, q3, vp3: the naming of the third compartment is the reader's choice); design choice (MOD-GEN-05 style). Second source: S-36 p. 37 (parameter list; the names Cl, V1, Q2, V2, Q3, V3 are the paper's, the extravascular inputs add ka, Tlag, Tk0 as for two compartments on p. 17) and appendix I p. 64 (models 49 to 78: the same six inputs in the three parameterisations plus saturable variants; one to one with our ids).
+
+#### MOD-3C-26 Numerics, overflow, underflow and refusals
+Every exponent is positive, so e^(−λ·t) underflows to 0 and is correct as 0; the products t·e^(−a·t) are formed as in MOD-NUM-01. A concentration, area or derived quantity that is not finite (tiny vc with a large dose, a0 underflow, the sum a + b + c) is an `Overflow` error as in MOD-NUM-02. Because all terms of the combined forms are non-negative, no clamp to 0 is needed except before the lag. The complete list of refusals is MOD-3C-06 and MOD-3C-08 together with MOD-GEN-04. Times are accepted unsorted (MOD-GEN-02). Evaluation cost is three one-compartment kernels; the derivatives cost one more evaluation of each kernel derivative. The Newton iteration of MOD-3C-07 has a fixed iteration cap: an unconverged root is an error (`DegenerateExponents`), never a partial result.
+- Status: `assumed`
+- Sources: MOD-NUM-01, MOD-NUM-02, MOD-2C-22 (precedent); D. Settled only with OM-26.
+
+#### MOD-3C-27 Identifiability and ambiguity (for the fit)
+(a) The labelling of the two peripherals is not identifiable (MOD-3C-05); the fit must either constrain k21 ≥ k31 (or the equivalent in the clearance set, for example V2 ≤ V3 or Q2/V2 ≥ Q3/V3) or accept two symmetric optima. (b) When two exponents are close the data cannot separate them: the Jacobian columns of the micro-constants become nearly dependent (MOD-3C-23) and the covariance estimate is ill-conditioned; the fit reports this rather than dropping a parameter. (c) The six parameters of a three-compartment model need data across all three phases (an intravenous profile that is long enough); with fewer informative phases the model is over-parameterised. (d) A fit of a three-compartment model to two-phase data tends to the tie of MOD-3C-22 or to a vanishing coupling (MOD-3C-06 item 1 or 3). The engine does not choose the number of compartments; model comparison belongs to the fit specification.
+- Status: `assumed`
+- Sources: D; MOD-2C-23 (same reasoning); `specs/fit.md` FIT-BND-*. Settled only with OM-29.
+
+### 14.7 Worked examples, hand checks, open items
+
+#### Worked examples (three compartments)
+The base case Q1 is built so that the exponents are exact: cl = 3, vc = 8, q2 = 9.5, vp2 = 9.5, q3 = 6.3, vp3 = 31.5, so k10 = 0.375, k12 = 1.1875, k21 = 1, k13 = 0.7875, k31 = 0.2, and a2 = 3.55, a1 = 1.675, a0 = 0.075, whose cubic has the roots α = 3, β = 0.5, γ = 0.05 (a2 = 3 + 0.5 + 0.05, a1 = 1.5 + 0.15 + 0.025, a0 = 3·0.5·0.05). All values below are from 80-digit evaluation of the formulas of this section by the reader (H18), rounded to the digits shown; D = 100 unless stated.
+- **Q1 (conversions, bolus, derived quantities).** Weights wα = 0.759322033898, wβ = 0.133333333333, wγ = 0.107344632768 (sum 1). Half-lives ln 2/α = 0.2310490602, ln 2/β = 1.3862943611, ln 2/γ = 13.8629436112. Vss = 8·(1 + 1.1875 + 3.9375) = 49; Vz = CL/γ = 60; V_extrap = 8/wγ = 74.526315789474; the order 8 < 49 < 60 < 74.53 holds. AUC∞ = D/CL = 33.3333…; AUMC∞ = D·Vss/CL² = 544.4444…; MRT_system = 49/3 = 16.3333…. Bolus: C(1) = 2.759806823685 and C(12) = 0.740531047822.
+- **Q2 (first-order absorption, ka between exponents).** Same parameters, ka = 1.5, between β = 0.5 and α = 3, F = 1: C(1) = 3.614449561800 and C(12) = 0.767989856328.
+- **Q3 (infusion).** Same parameters, dur = 2: C(1) = 2.813351373178 (during) and C(12) = 0.781577082298 (after).
+- **Q5 (ka = α).** Same parameters, ka = 3 = α exactly: C(1) = 3.761216400803, by the limit form of MOD-3C-12.
+- **Q4 and Q6 to Q8** (zero-order and lagged variants, a near tie, a macro-set round trip) are not computed in this card; they are cases of OM-19 to OM-23.
+The reader's double-precision Runge-Kutta integration of the three differential equations of MOD-3C-01 agrees with Q1 to Q3 to about 1e-11 relative (H20).
+
+#### Hand checks of section 14
+- **H18** (80-digit evaluation, scripted, not versioned). The roots of Q1 by bisection on the cubic, both weight forms of MOD-3C-03 (they agree exactly), the round trip of MOD-3C-04 (k21 = 1, k31 = 0.2, k = 0.375, k12 = 1.1875, k13 = 0.7875 recovered), AUC∞ = D/CL and AUMC∞ = D·Vss/CL² to 12 digits, the order of the volumes, and the values of Q1 to Q5.
+- **H19** (derivatives). The formulas of MOD-3C-20, 21 and 23 against central differences of the 80-digit bolus function (step 1e-30 relative): six clearance-set derivatives at t = 1 and 12, relative difference 1e-47 to 1e-49.
+- **H20** (ODE). Runge-Kutta fourth order in double precision on MOD-3C-01, bolus, first-order and infusion inputs of Q1 to Q3: relative difference about 1e-11 or less.
+- **H21** (conditioning, MOD-3C-08). Five near-degenerate sets and the base case in double precision against 80 digits: trigonometric seed alone 1e-14 to 1e-8; secular offsets about 1e-16 on roots; product-of-differences weights 1e-8 to 4e-3 near ties; wβ at the closest ties known to about 1e-7 relative.
+- **H22** (weight at a near tie). Family k21 = 1, k31 = 1 − δ, k = 0.375, k12 = 1.1875, k13 = 0.7875: wβ/δ² = 0.1214 (to four digits) for δ = 1e-2, 1e-4, 1e-6, 1e-8, with 1 − β = 0.6013·δ (to four digits, equal to k12/(k12 + k13)·δ), supporting wβ = O(δ²) and ∂β/∂k21 = k13/(k12 + k13).
+- **H23** (validity of the reverse conversion). 200 000 random positive weight sets and exponents between 1e-3 and 1e3 in double precision: k21, k31 real and positive and k12, k13 positive in every case.
+
+#### Open items (three compartments)
+
+| id | item | rule | who and how |
+|---|---|---|---|
+| OM-19 | Closed-form grids at 256 bits for the six `pk3` ids, each in the three parameter sets where it matters (card T-142): the base case Q1; fast distribution; slow terminal phase (α/γ = 1e3 and 1e6); a small exchange (k12 or k13 from 1e-3 to 1e-12, with the other normal); the tie k21 = k31 and near ties at relative gaps 1e-2, 1e-4, 1e-6, 1e-9, 1e-12; three well-separated and three very close exponents; ka = α, β and γ exactly (reached from the macro set) and ka ± 1e-3, 1e-6, 1e-9 of each; ka between each pair, below γ (flip-flop) and ka/α = 500; lag; dur; times from 0 to 800 mean lives of γ (exact zero where it underflows) and a dose of 0. Values at the printed digits of Q1 to Q5 are the first cases. | MOD-3C-09 to 14 | oracle author (`oracle` role), independent implementation in 256-bit arithmetic rounded once, tolerance 1e-12 relative, an expected zero exact |
+| OM-20 | ODE cross-check with `deSolve` (the three equations of MOD-3C-01, tight tolerances) and a matrix exponential, for every case of OM-19, within 1e-8; the AUC and the first moment integrated alongside the ODE (an extra state) against MOD-3C-16. | MOD-3C-09, 16 | same oracle card |
+| OM-21 | Derivatives against central differences at 256 bits (step 1e-25 relative) as H14/H19: clearance, micro and macro sets, six ids, `ka`, `tlag`, `dur`, the limit cases ka = α, β, γ, the near ties and the exact tie (the limits of MOD-3C-22), and the entries with condition number above 1e3 listed and excluded as in MOD-2C-19. | MOD-3C-19 to 23 | same oracle card |
+| OM-22 | The conditioning study of MOD-3C-08 as versioned cases: the exponents and weights of at least the five near-degenerate sets of H21, written out in the oracle with their 80-digit or 256-bit values, so that the engine's root solver is tested directly (roots, weights, offsets), including the tie, the neighbours of the tie and the sets where a coupling product is so small that the engine must refuse. | MOD-3C-07, 08, 22 | same oracle card |
+| OM-23 | Conversions: micro → clearance → macro → micro round trips in all three sets on at least ten sets (well separated, near tie, small exchange, α/γ = 1e6); the labelling convention of MOD-3C-05 (output `k21_ge_k31`); the reverse conversion with weights of very different sizes; whether a macro set with any positive weights is always valid (H23 suggests it; a proof or a counter-example is wanted). | MOD-3C-02, 04, 05 | same oracle card and a reader follow-up for the proof |
+| OM-24 | Cmax and Tmax for first-order input: the bracket and the uniqueness of MOD-3C-17 on a grid including ka = α, β, γ, ka below γ and above α, and random sets; the check that exactly one sign change of C′ is found in every case; the confluent case. The uniqueness argument rests on a book-level statement (S-37) that the reader could not read. | MOD-3C-17 | oracle author; reader for the source |
+| OM-25 | Disposition and moments: vss, vz, v_extrap, auc_inf, aumc_inf, mrt for every base case against independent evaluation; the strict order of the volumes MOD-3C-15 on random sets. | MOD-3C-15, 16 | same oracle card |
+| OM-26 | Refusals: every item of MOD-3C-06 (one peripheral missing, in each of the three sets and for each peripheral; macro exponents not decreasing; macro set with non-positive coefficient; missing dose; sets mixed; unknown names; non-finite and negative values; underflow of k12·k21 and of a0; the error codes and the words each message must contain), and the outputs and names of MOD-3C-25. | MOD-3C-06, 25, 26 | oracle author for the cases; orchestrator for the error kinds |
+| OM-27 | NCA run on pk3-simulated profiles (dense grids to many half-lives of γ, and a short grid showing the caveat of MOD-3C-18) compared with the model's AUC, MRT, Vss, Vz and half-life. | MOD-3C-18 | same oracle card; NCA oracle |
+| OM-28 | Multiple dosing and steady state for the six pk3 ids: schedules of n = 1, 3, 10, 40 doses and regular regimens against the sums of the single-dose forms at 256 bits; steady state against the periodic solution of the ODE; the AUC over one interval at steady state against D/CL; Cmax,ss and Tmax,ss. | MOD-3C-24 | same oracle card (as OM-16 for pk1, pk2) |
+| OM-29 | Fit-facing items left open: the choice between a constraint k21 ≥ k31 and symmetric optima; the behaviour of the fit at the tie; initial estimates for the three phases (a heuristic belongs to `specs/fit.md`). | MOD-3C-27 | fit specification card |
