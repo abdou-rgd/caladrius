@@ -131,3 +131,56 @@ Answer (2026-10-29, human, in chat): "il faut retirer mon nom de famille", optio
 Iteration 2 (T-130) builds three prototypes of the NCA screen on branches (`iter2/base`, then one branch per stack). Q-013 covers pushes of this repository after a closed task; these branches are pushed before any card closes, so that CI can render them on Linux. Nothing of them merges into `main` before 2026-11-18.
 
 Answer (2026-11-06, human, in chat): "oui pour pousser les branches". The branches of T-133 to T-137 may be pushed. Merging into `main` still waits for the decision of T-138.
+
+## Q-020 (2026-11-07, orchestrator): amend `AGENTS.md` for iteration 3 (T-139): the interface target and the population scope
+
+Iteration 3 brings three compartments, population fitting and population simulation into the engine, and records the stack verdict of T-130 (`board/messages/2026-11-07-fable-stack-investigation.md`). Without points 3 and 4 the contract forbids bricks 1, 3 and 4: line 21 puts NLME out of scope "not even to prepare", and line 11 says the contract wins over any task. Each point is today's text, then the proposed text; answer per point (yes, no, or your wording).
+
+1. **Line 5, what Caladrius is and its interface.**
+   Today: "Caladrius is an open-source pharmacokinetic analysis application written in **Rust only**: non-compartmental analysis (NCA), individual compartmental models, least-squares fitting, plots. Native UI in egui (eframe on wgpu); the same code compiles to WebAssembly for the demo. **No Tauri, Electron or webview.** License: MIT OR Apache-2.0."
+   Proposed: "Caladrius is an open-source pharmacokinetic analysis application written in **Rust only** (a web front adds HTML, CSS and the JavaScript glue that wasm-bindgen generates, no JavaScript framework): non-compartmental analysis (NCA), compartmental models, individual and population fitting, simulation, plots. The reference interface is egui (eframe on wgpu), native and in WebAssembly, until its successor does everything it does. The successor is Leptos 0.8 in Tauri 2, under the three conditions of `board/messages/2026-11-07-fable-stack-investigation.md`: the engine never runs on the display thread; long commands report progress and can be cancelled (`docs/long-running-commands.md`); Leptos's maintenance is re-read at each of its releases, with Dioxus as the named fallback and nothing Leptos-specific outside the view layer. The browser without Tauri stays a target: the engine in WebAssembly in a Web Worker. **No Electron.** License: MIT OR Apache-2.0."
+   Consequence: the TypeScript client of T-134 (branch `iter2/base`) does not reach `main` under this wording; the Leptos front gets a Rust client.
+
+2. **Line 71, the layers.**
+   Today: "A crate depends only on lower layers. Nothing below `caladrius-ui` knows egui, eframe or winit. `cargo xtask layers` checks this; every new crate is registered there."
+   Proposed: "A crate depends only on lower layers. Nothing below the interface layer (L3: `caladrius-ui` today, the Leptos front and the Tauri shell later) knows egui, eframe, winit, Leptos, Tauri, `wasm-bindgen`, `web-sys`, `js-sys` or a webview; the fronts, the shell and the bridge live in `apps/`. `cargo xtask layers` checks this; every new crate is registered there."
+   Consequence: `cargo xtask layers` learns the new names, on an `iter3/*` branch (code, so not on `main` before 2026-11-18).
+
+3. **Section 1, lines 19 and 21, the scope.**
+   Today, line 19: "Only afterwards, in this order: two compartments, user-written models (ODEs), several subjects. Start an item only when `docs/conformance.md` is green for everything before it."
+   Proposed: "Then, in this order: two compartments (done), three compartments, several subjects with their own doses, population modelling (NLME: FOCE with interaction and its diagnostics), population simulation, user-written models (ODEs). Start an item only when `docs/conformance.md` is green for everything before it."
+   Today, line 21: "Out of scope: population modelling (NLME), bioequivalence, IVIVC. Do not start them, not even "to prepare"."
+   Proposed: "Out of scope: bioequivalence, IVIVC, and any population estimator other than the one named above until it is green. Do not start them, not even "to prepare"."
+   If brick 2 keeps Michaelis-Menten elimination, it joins line 19 before population modelling as "one built-in ODE model (Michaelis-Menten elimination)".
+
+4. **Rule 10 (line 43), a seeded stream for simulation.**
+   Today: "...so an answer is a function of the parameters and of the project alone: no clock, no random number, no path and no fact about the machine in it..."
+   Proposed: "...so an answer is a function of the parameters and of the project alone: no clock, no random number except a stream drawn from a seed that is one of the parameters, by a generator written in the engine and specified in `specs/`, no path and no fact about the machine in it..."
+
+5. **Sections 4 and 5, the map and the tolerances.**
+   Line 50, today "closed-form solutions: 1 then 2 compartments, bolus, ...", proposed "closed-form solutions: 1, 2 and 3 compartments, bolus, ...".
+   Line 53, after "minimization trace", add "; population fitting (FOCE with interaction), its diagnostics, population simulation".
+   Line 77, after the PKNCA sentence, add "population fits by nlmixr2, with saemix and `nlme` as second looks, from versioned R scripts; never a commercial program."
+   After line 83, add one line: "- Population fitting: the tolerances are set in `caladrius-testkit` by the oracle card of iteration 3 from what it measures, asked in this file before any engine card uses them, then written here."
+
+6. **`README.md` line 3, the interface sentence.**
+   Today: "...with a native desktop UI (egui) and the same interface in a browser page (WebAssembly)."
+   Proposed: "...with a native desktop UI (egui) and the same interface in a browser page (WebAssembly); egui stays the interface until its planned successor, Leptos in Tauri 2, does everything it does."
+   The scope words of the same sentence ("individual compartmental models, weighted least-squares fitting") change only when population fitting reaches `main`, after 2026-11-18.
+
+Decision taken meanwhile: nothing applied. On a yes, the orchestrator applies the agreed points in one commit on `main` (contract and README text, no code: the demo of 2026-11-17 is unaffected), with `cargo xtask lint` and `review` green and `AGENTS.md` under 200 lines (179 today; the points add about two). The roles table (section 8) is unchanged: the model of each card is chosen on the card of T-139.
+
+## Q-021 (2026-11-07, orchestrator): install Rtools 4.5 for the nlmixr2 oracle
+
+nlmixr2 is the open oracle of the population fit (T-139, brick 3). It compiles each model to C through rxode2, which on Windows needs Rtools 4.5 (free, distributed by CRAN, with its own installer). Section 11 forbids installing software outside the package managers without written agreement here; the R packages themselves install through `install.packages`, which is allowed. On this PC (2026-11-07): R 4.5.2 with `nlme` 3.1.168; no nlmixr2, rxode2, saemix or Rtools. Options:
+1. Install Rtools 4.5 on this PC; the oracle scripts run here like the PKNCA ones.
+2. Run the nlmixr2 scripts in a cloud session (Linux has a compiler) and commit only their versioned outputs.
+3. No nlmixr2: saemix and `nlme` only. The OFV at fixed parameters would then have no external oracle, only our naive implementation and the cases where the Laplace approximation is exact.
+
+Decision taken meanwhile: option 1 is recommended; until the answer, the oracle card installs saemix with `install.packages` and writes the nlmixr2 scripts without running them.
+
+## Q-022 (2026-11-07, orchestrator): push the branches of iteration 3
+
+Iteration 3 (T-139) keeps its code on branches `iter3/*` until 2026-11-18. CI checks them on Linux, Windows, macOS and wasm32 only once they are pushed, as Q-019 allowed for `iter2/*`. Q-013 covers pushes after a closed task only.
+
+Decision taken meanwhile: the `iter3/*` branches stay local; `main` receives only `docs/` and `board/`, pushed under Q-013.

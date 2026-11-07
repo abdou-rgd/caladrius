@@ -140,7 +140,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-127 | OptChat README short; the bench history in BENCH.md | interface (optchat) | done | |
 | T-128 | Umbrella README, profile and the rule written once | orchestrator | done | T-125, T-126, T-127 |
 | T-129 | Remove vendor-derived material (private comparison, screen-only rules, vendor-export guard) | orchestrator | done | |
-| T-130 | Iteration 2: the interface stack, chosen on measures | orchestrator | in progress | T-124 |
+| T-130 | Iteration 2: the interface stack, chosen on measures (paused until population PK) | orchestrator | blocked | T-124 |
 | T-131 | Inventory of the current interface, screen by screen | interface | done | |
 | T-132 | Three visual directions of the NCA screen (mockups) | interface | done | |
 | T-133 | One plot scene for the screen and the export (`plot.scene`) | interface | done | T-131 |
@@ -148,3 +148,6 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-135 | NCA screen prototype in egui 0.37 | interface | done | T-133, T-134 |
 | T-136 | NCA screen prototype in React 19 with Tauri 2 | interface | done | T-133, T-134 |
 | T-137 | NCA screen prototype in Leptos 0.8 with Tauri 2 | interface | done | T-133, T-134, T-136 |
+| T-139 | Iteration 3: the missing PK bricks of the engine | orchestrator | todo | Q-020 |
+| T-140 | specs/models.md, three-compartment models | reader | todo | Q-020 |
+| T-141 | docs/long-running-commands.md, the protocol of a long computation over the bridge | interface | todo | T-134 |
