@@ -278,3 +278,10 @@ T-152, the population oracle, proposed five absolute constants. They are defined
 The method tolerance of the population estimates (POP-EST-06, OP-12) has no number yet. With no engine to measure it, a number would come from nothing. The proposal is to measure bias and coverage on the sealed design `accurate` (200 replicates) after T-153, and to come back here with that measurement.
 
 Decision taken meanwhile: the constants stand in the testkit for the new tests, and T-153 uses them as they are and reports the worst error it reaches for each. Nothing is written in `AGENTS.md` without a yes here.
+
+Measured since (T-152 fix round A, 2026-11-08):
+- **`POP_DIAGNOSTIC`:** the amplification max |∂ŷ/∂η|/σ is 3.24e2 over the stored cases, so an η within 1e-10 moves a diagnostic by at most 3.2e-8.
+- **`POP_ETA`:** in the fully pessimistic sum for q = 3 on `theoph_proportional`, 1e-10 on η allows 1.3e-7 on the OFV, which is 1.3 times `POP_OFV`. The power-of-ten margin holds for q = 1 and 2 only. The OFV is compared directly in every case, so a wrong η that moves the OFV is caught there.
+  - Option (a), the proposal: keep 1e-10.
+  - Option (b): 3e-11, which restores the margin. It is stricter for the inner solver.
+  - Decision meanwhile: (a), with T-153 reporting its worst η error.
