@@ -430,6 +430,16 @@ fn refused(group: &str) {
         match result {
             Ok(_) => failures.push(format!("{}: accepted ({})", c.id, c.reason)),
             Err(e) => {
+                // the oracle names the error variant in the reason of the rows it decides by the variant
+                // (ModelError is public): assert it, not only the words of the message
+                if c.reason.contains("DegenerateExponents")
+                    && !format!("{e:?}").starts_with("DegenerateExponents")
+                {
+                    failures.push(format!(
+                        "{}: refused with {e:?}, expected DegenerateExponents ({})",
+                        c.id, c.reason
+                    ));
+                }
                 let message = e.to_string().to_lowercase();
                 for alternatives in &c.message_contains {
                     if !alternatives.iter().any(|w| message.contains(w.as_str())) {

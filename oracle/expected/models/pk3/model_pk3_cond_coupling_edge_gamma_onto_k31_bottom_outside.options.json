@@ -66,13 +66,15 @@
   "scalar_ill_names": [],
   "method": {
     "closed_form": "independent implementation of the explicit sums of exponentials (MOD-3C-10 to 14), 256-bit arithmetic (Rmpfr); the exponents are the roots of the cubic found by Newton inside the brackets given by the critical points of the cubic, the weights the product-of-differences form (checked against the sum-of-positive-terms form), AUC and AUMC exact integrals of the terms; the confluent limit is used when |ka - lambda| is below 2^-150",
-    "cross_checks": ["matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha and gamma always, beta when the gaps exceed 1e-3)"],
+    "cross_checks": ["matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha always; beta and gamma where the solver's absolute error, eig_abs_tol, is below the tolerance), and for beta and gamma, when they are apart, the stable identities alpha beta gamma = k10 k21 k31 and the sum of products of pairs (no subtraction of like numbers); a 256-bit scaling-and-squaring matrix exponential for the times that neither double precision check covers"],
     "cross_check_tolerance": 1e-08,
-    "cross_check_floor": "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case; the floors actually used are in cross_check_results",
+    "cross_check_floor": "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case. The search order is: all times first, then (if that fails) only the times with ||A|| t <= 1e8; for each of the two the floors in increasing order (expm: 1e-9, 1e-8, 1e-7, 1e-6; ODE: 1e-9 up to 1e-3); the first that holds is used and written in cross_check_results (floor, number of times checked, limit). ODE to infinity (AUC, AUMC, MRT): 1e-8, or 1e-7 when times were dropped (ode_inf_tol, with the measured ode_inf_gap). Times covered by neither: expm256_times_checked, held to 1e-20",
+    "cross_check_tolerance_to_infinity": "see ode_inf_tol of cross_check_results",
     "kappa_max": 1000
   },
   "cross_check_results": {
-    "none": "dose 0 or no time: nothing to integrate"
+    "eig_abs_tol": 7.5e-14,
+    "eig_checks": "alpha; gamma; beta; beta and gamma by identities"
   },
   "versions": {
     "R": "R version 4.5.2 (2025-10-31 ucrt)",

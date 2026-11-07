@@ -3830,6 +3830,23 @@
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
       "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
     }, {
+      "id": "numeric_beta_onto_k21_p02_1e18",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 1e-18,
+        "k21": 0.2,
+        "k13": 0.7875,
+        "k31": 1,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
+    }, {
       "id": "macro_weight_a_1e17",
       "group": "macro",
       "spec": "MOD-3C-06 item 3 MOD-3C-08",
@@ -4347,5 +4364,5 @@
     "deSolve": "1.42",
     "gmp": "0.7.5.1"
   },
-  "n_values": 253
+  "n_values": 254
 }

@@ -171,11 +171,29 @@ add_cond("close_exp", "micro", points$close_exp$p, 100, "three very close expone
 # kappa about 1 for the exponents, so the engine must keep 1e-12 relative on beta and on gamma next to its pole
 # (the first three are the sets measured by the reviewer against a 300-bit reference). Value cases with a
 # time grid: the bolus for every set, the two other inputs for the reviewer sets and the deep compartment.
-LC <- list()
-add_lc <- function(name, p, note, ids = "pk3.iv_bolus") {
+# A case whose name has _pole_ claims that one root sits within a stated relative distance of one pole; the
+# generator checks that claim at 256 bits (the claimed root is the one nearest to that pole, and within the stated
+# distance), and that the note says it in these words: "<root> within a relative <distance> of its pole <k21|k31>".
+check_pole_claim <- function(name, p, note, root, pole, maxrel) {
+  q <- derive_q3("micro", p, 100, list())
+  pv <- if (pole == "k21") q$k21 else q$k31
+  d <- sapply(1:3, function(i) asNumeric(abs(q$l[i] - pv) / pv))
+  want <- match(root, c("alpha", "beta", "gamma"))
+  check(which.min(d) == want, name, ": the root nearest to the pole ", pole, " is not ", root, " (relative distances ", paste(signif(d, 3), collapse = ", "), ")")
+  check(d[want] <= maxrel, name, ": ", root, " is ", signif(d[want], 3), " from the pole ", pole, ", not within ", maxrel)
+  check(grepl(sprintf("%s within a relative %g of its pole %s", root, maxrel, pole), note, fixed = TRUE), name, ": the note does not state the claim")
+  cat(sprintf("  pole claim %s: %s is %.2g (relative) from %s
+", name, root, d[want], pole))
+}
+add_lc <- function(name, p, note, ids = "pk3.iv_bolus", pole = NULL) {
   pn <- paste0("lc_", name)
+  if (grepl("_pole_", name, fixed = TRUE)) {
+    check(!is.null(pole), name, ": a case named _pole_ states the root, the pole and the distance it claims")
+    check_pole_claim(name, p, note, pole$root, pole$pole, pole$maxrel)
+  }
   points[[pn]] <<- list(set = "micro", p = p, dose = 100)
-  for (id in ids) add_case(id, pn, pn, note = paste("large coupling:", note))
+  for (id in ids) # the textbook forms in doubles lose digits with large couplings (naive AUC off by 1e-6 or more): not ok
+  add_case(id, pn, pn, note = paste("large coupling:", note), textbook_ok = FALSE)
 }
 EXTRA_IDS <- c("pk3.iv_bolus", "pk3.oral_1_lag", "pk3.oral_0", "pk3.iv_infusion")
 add_lc("rev1", mic(7.83e-1, 4.52e5, 1.27e10, 1.69e-4, 1.08e-1, 2), "k12 = 4.5e5, k21 = 1.3e10 (reviewer set 1)", EXTRA_IDS)
@@ -189,8 +207,14 @@ for (e in c(3, 5, 8)) {
 }
 add_lc("both_1e4_1e6", mic(0.4, 1e4, 1, 1e6, 0.2, 5), "k12 = 1e4 and k13 = 1e6")
 add_lc("both_1e7_1e5", mic(0.4, 1e7, 1, 1e5, 0.2, 5), "k12 = 1e7 and k13 = 1e5")
-add_lc("gamma_pole_a", mic(0.4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large and gamma within a relative 1e-9 of its pole k31")
-add_lc("gamma_pole_b", mic(0.4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large and gamma within a relative 1e-9 of its pole k21")
+# with k10 = 0.4 the rest of the secular function is negative at the pole, so the root next to the tiny coupling lies
+# ABOVE it and is beta (gamma is then 4e-6, far from any pole): these two are beta cases, named so
+add_lc("beta_pole_a", mic(0.4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large; beta within a relative 1e-12 of its pole k31 (above it); gamma is far from both poles", pole = list(root = "beta", pole = "k31", maxrel = 1e-12))
+add_lc("beta_pole_b", mic(0.4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large; beta within a relative 1e-12 of its pole k21 (above it); gamma is far from both poles", pole = list(root = "beta", pole = "k21", maxrel = 1e-12))
+# with a large k10 the rest of the function is positive at the pole: the root next to the tiny coupling lies BELOW
+# it and is gamma (k10 = 3e4, reviewer proposal of round 4)
+add_lc("gamma_pole_a", mic(3e4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large; gamma within a relative 3e-12 of its pole k31 (below it); beta 0.2308 and alpha 1.3e5", EXTRA_IDS, pole = list(root = "gamma", pole = "k31", maxrel = 3e-12))
+add_lc("gamma_pole_b", mic(3e4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large; gamma within a relative 3e-12 of its pole k21 (below it); beta 0.2308 and alpha 1.3e5", EXTRA_IDS, pole = list(root = "gamma", pole = "k21", maxrel = 3e-12))
 add_lc("deep_a", mic(0.3, 10, 5, 0.01, 1e-3, 10), "realistic deep compartment: k31 = 1e-3, k12 = 10", EXTRA_IDS)
 add_lc("deep_b", mic(0.3, 0.01, 1e-3, 10, 5, 10), "realistic deep compartment, peripherals swapped")
 # END-LARGE-COUPLING

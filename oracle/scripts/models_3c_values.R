@@ -83,6 +83,58 @@ expm_solution <- function(model, nq, times) {
     c(s[2] / nq$V, s[5], t * s[5] - s[6])
   })
 }
+# The same system in 256-bit arithmetic: scaling and squaring (Taylor series of the scaled matrix to 2^-260, then
+# squarings), written for the late times of the stiff cases that neither double precision check can hold
+# (T-142 round 4). It shares nothing with the closed form: no root, no weight, only the matrix of the system.
+expm_mp <- function(A) {
+  nrm <- max(colSums(abs(asNumeric(A))))
+  s <- max(0L, as.integer(ceiling(log2(max(nrm, 1e-300)))) + 1L)
+  B <- A / mpfr(2, PREC)^s
+  I7 <- mpfr(diag(dim(A)[1]), PREC)
+  term <- I7; total <- I7
+  for (k in 1:50) { term <- (term %*% B) / as.numeric(k); total <- total + term }
+  for (i in seq_len(s)) total <- total %*% total
+  total
+}
+expm_solution_mp <- function(model, q, times) {
+  kd <- model_kind(model)
+  nq <- double_params(q)
+  bp <- breakpoints(model, nq)
+  start <- bp[1]
+  rate_in <- if (kd$zero_order) mp(q$D) / mp(q$dur) else mp(0)
+  mat <- function(rate) {
+    M <- mpfr(matrix(0, 7, 7), PREC)
+    if (kd$first_order) { M[1, 1] <- -mp(q$ka); M[2, 1] <- mp(q$ka) }
+    M[2, 2] <- -(mp(q$k10) + mp(q$k12) + mp(q$k13)); M[2, 3] <- mp(q$k21); M[2, 4] <- mp(q$k31)
+    M[3, 2] <- mp(q$k12); M[3, 3] <- -mp(q$k21)
+    M[4, 2] <- mp(q$k13); M[4, 4] <- -mp(q$k31)
+    M[5, 2] <- 1 / mp(q$V); M[6, 5] <- mp(1); M[2, 7] <- rate
+    M
+  }
+  y0 <- mpfr(c(if (kd$first_order) mp(q$D) else mp(0), if (kd$bolus) mp(q$D) else mp(0), 0, 0, 0, 0, 1), PREC)
+  dim(y0) <- c(7L, 1L)
+  key <- function(t) sprintf("%.17g", t)
+  edges <- sort(unique(c(start, bp, times[times > start])))
+  states <- list()
+  states[[key(start)]] <- y0
+  y <- y0
+  for (i in seq_len(length(edges) - 1L)) {
+    a <- edges[i]; b <- edges[i + 1L]
+    inside <- kd$zero_order && a >= bp[1] && b <= bp[2]
+    y <- expm_mp(mat(if (inside) rate_in else mp(0)) * (mp(b) - mp(a))) %*% y
+    states[[key(b)]] <- y
+  }
+  out <- lapply(times, function(t) {
+    if (t < start || (t == start && !kd$bolus)) return(list(mp(0), mp(0), mp(0)))
+    s <- states[[key(t)]]
+    list(s[2] / mp(q$V), s[5], mp(t) * s[5] - s[6])
+  })
+  list(conc = Reduce(c, lapply(out, `[[`, 1)), auc = Reduce(c, lapply(out, `[[`, 2)), aumc = Reduce(c, lapply(out, `[[`, 3)))
+}
+# largest relative difference of two 256-bit vectors (absolute where the reference is 0)
+mp_rel_gap <- function(x, y) {
+  max(vapply(seq_along(y), function(i) if (y[i] == 0) asNumeric(abs(x[i])) else asNumeric(abs(x[i] - y[i]) / abs(y[i])), 0))
+}
 # Settings of the adaptive solver (T-142 review): relative 1e-13, absolute 1e-18 of the natural scale of
 # each state, so that the tail of a profile is held to a relative error and not to an absolute one.
 ODE_RTOL <- 1e-13
@@ -193,9 +245,10 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
   conc <- auc <- aumc <- numeric(0)
   if (length(times) > 0) {
     tm <- mp(times)
-    conc <- sapply(conc_vec(segs, tm, bolus), tonum)
-    auc <- sapply(area_vec(segs, tm, 0), tonum)
-    aumc <- sapply(area_vec(segs, tm, 1), tonum)
+    cm <- conc_vec(segs, tm, bolus); am <- area_vec(segs, tm, 0); mm <- area_vec(segs, tm, 1)
+    conc <- sapply(cm, tonum)
+    auc <- sapply(am, tonum)
+    aumc <- sapply(mm, tonum)
   }
   sc <- scalars_of(model, q, segs)
   kap <- scalar_conditions(model, set, p, dose, extra, core_scalars(model, q))
@@ -217,7 +270,7 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
       nrm <- max(colSums(abs(matrix(c(-(nq$k10 + nq$k12 + nq$k13), nq$k12, nq$k13, nq$k21, -nq$k21, 0, nq$k31, 0, -nq$k31), 3, 3))))
       expm_floor <- FLOOR_EXPM; expm_limit <- Inf; ixe <- seq_along(times)
       done <- FALSE
-      for (lim in c(Inf, 1e8, 1e6, 1e4, 1e3, 1e2)) {
+      for (lim in c(Inf, 1e8)) {
         ixe <- which(times * nrm <= lim)
         if (length(ixe) == 0L) next
         for (fl in c(FLOOR_EXPM, 1e-8, 1e-7, 1e-6)) {
@@ -242,7 +295,7 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
       # a case the solver cannot hold to the common floor gets its own, stated and recorded (never silent); a stiff
       # case (T-142 round 3) is also checked only at the times with ||A|| * t below a stated limit, as for expm
       done <- FALSE
-      for (lim in c(Inf, 1e8, 1e6, 1e4, 1e3, 1e2)) {
+      for (lim in c(Inf, 1e8)) {
         ixo <- which(times * nrm <= lim)
         if (length(ixo) == 0L) next
         for (fl in c(FLOOR_ODE, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)) {
@@ -255,18 +308,35 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
         cat(sprintf("  NOTE %s: ODE solver holds 1e-8 only down to %g of the scale and at %d of %d times (||A|| t <= %g; common floor %g, all times)",
                     name, ode_floor, length(ixo), length(times), ode_limit, FLOOR_ODE), "\n")
       check(max(og(ode_floor, ixo)) <= 1e-8, name, ": ODE solver, gap ", max(og(ode_floor, ixo)), " at the floor ", ode_floor)
-      GAPS[[name]] <<- list(expm_floor = expm_floor, expm_times_checked = length(ixe), expm_norm_t_limit = if (is.finite(expm_limit)) expm_limit else "none", expm_max_rel_gap = signif(max(eg), 3),
-                            ode_floor = ode_floor, ode_times_checked = length(ixo), ode_norm_t_limit = if (is.finite(ode_limit)) ode_limit else "none", ode_max_rel_gap = signif(max(og(ode_floor, ixo)), 3), ode_inf_tol = if (is.finite(ode_limit)) 1e-6 else 1e-8,
-                            ode_gap_at_common_floor = signif(max(og(FLOOR_ODE)), 3))
-      fin <- ds$final
-      # to infinity the solver integrates the whole horizon in one go: for a stiff case (a time limit was needed above)
-      # its accumulated error is looser; the allowance is then 1e-6, stated and recorded, otherwise 1e-8
-      inf_tol <- if (is.finite(ode_limit)) 1e-6 else 1e-8
-      if (is.finite(ode_limit)) cat(sprintf("  NOTE %s: ODE solver to infinity (AUC, AUMC, MRT) held to %g instead of 1e-8", name, inf_tol), "
+      # the times that neither the matrix exponential nor the ODE solver above checks (a stiff case): an independent
+      # scaling-and-squaring matrix exponential in 256 bits, held to 1e-20 relative, nothing else is needed
+      uncov <- setdiff(seq_along(times), union(ixe, ixo))
+      mp_res <- list(expm256_times_checked = 0L)
+      if (length(uncov) > 0L) {
+        emp <- expm_solution_mp(model, q, times[uncov])
+        gq <- c(conc = mp_rel_gap(emp$conc, cm[uncov]), auc = mp_rel_gap(emp$auc, am[uncov]), aumc = mp_rel_gap(emp$aumc, mm[uncov]))
+        check(max(gq) <= 1e-20, name, ": 256-bit expm at the ", length(uncov), " times without a double check, gap ", max(gq))
+        cat(sprintf("  NOTE %s: %d times have no double precision check (expm and ODE); checked by a 256-bit matrix exponential, gap %.2g", name, length(uncov), max(gq)), "
 ")
-      check(abs(fin[5] - scn[["auc_inf"]]) <= inf_tol * scn[["auc_inf"]], name, ": ODE solver AUC to infinity, relative gap ", abs(fin[5] - scn[["auc_inf"]]) / scn[["auc_inf"]])
-      check(abs(fin[6] - scn[["aumc_inf"]]) <= inf_tol * scn[["aumc_inf"]], name, ": ODE solver AUMC to infinity, relative gap ", abs(fin[6] - scn[["aumc_inf"]]) / scn[["aumc_inf"]])
-      check(abs(fin[6] / fin[5] - scn[["mrt"]]) <= inf_tol * scn[["mrt"]], name, ": ODE solver MRT, relative gap ", abs(fin[6] / fin[5] - scn[["mrt"]]) / scn[["mrt"]])
+        mp_res <- list(expm256_times_checked = length(uncov), expm256_max_rel_gap = signif(max(gq), 3))
+      }
+      GAPS[[name]] <<- c(list(expm_floor = expm_floor, expm_times_checked = length(ixe), expm_norm_t_limit = if (is.finite(expm_limit)) expm_limit else "none", expm_max_rel_gap = signif(max(eg), 3),
+                            ode_floor = ode_floor, ode_times_checked = length(ixo), ode_norm_t_limit = if (is.finite(ode_limit)) ode_limit else "none", ode_max_rel_gap = signif(max(og(ode_floor, ixo)), 3),
+                            ode_gap_at_common_floor = signif(max(og(FLOOR_ODE)), 3)), mp_res)
+      fin <- ds$final
+      # to infinity the solver integrates the whole horizon in one go. A case from which times were dropped above
+      # (a stiff case) has a looser accumulated error: the allowance is then 1e-7, measured gap recorded
+      # (ode_inf_gap), otherwise 1e-8. The exact AUC(0, inf) = D / CL and AUMC(0, inf) are pinned at 2^-180 by the
+      # closed form itself (scalars_of); this only checks the solver's long integration.
+      inf_gaps <- c(auc = abs(fin[5] - scn[["auc_inf"]]) / scn[["auc_inf"]], aumc = abs(fin[6] - scn[["aumc_inf"]]) / scn[["aumc_inf"]],
+                    mrt = abs(fin[6] / fin[5] - scn[["mrt"]]) / scn[["mrt"]])
+      inf_tol <- if (length(ixo) < length(times)) 1e-7 else 1e-8
+      if (inf_tol > 1e-8) cat(sprintf("  NOTE %s: ODE solver to infinity (AUC, AUMC, MRT) held to %g instead of 1e-8 (measured gap %.2g, times were dropped)", name, inf_tol, max(inf_gaps)), "
+")
+      check(inf_gaps[["auc"]] <= inf_tol, name, ": ODE solver AUC to infinity, relative gap ", inf_gaps[["auc"]])
+      check(inf_gaps[["aumc"]] <= inf_tol, name, ": ODE solver AUMC to infinity, relative gap ", inf_gaps[["aumc"]])
+      check(inf_gaps[["mrt"]] <= inf_tol, name, ": ODE solver MRT, relative gap ", inf_gaps[["mrt"]])
+      GAPS[[name]] <<- c(GAPS[[name]], list(ode_inf_tol = inf_tol, ode_inf_gap = signif(max(inf_gaps), 3)))
       if (!is.null(extra$ka)) {
         f <- function(t) num(conc_vec(segs, mp(t), FALSE))
         lo <- extra$tlag %||% 0
@@ -277,19 +347,41 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
       }
       if (!bolus) check(all(conc <= scn[["cmax_pred"]] * (1 + 1e-12)), name, ": a grid value above Cmax")
     }
-    # Exponents against the eigenvalues of the 3 x 3 system: alpha and gamma always, beta when the
-    # gaps are wide enough for double precision.
+    # Exponents against the eigenvalues of the 3 x 3 system. A double precision eigenvalue solver is backward
+    # stable: its absolute error is about 1e-16 times the largest entry of the matrix, which for a matrix with
+    # an entry of 1e8 is larger than gamma. So:
+    #  - alpha (the dominant eigenvalue, relative error about 1e-16) by the eigenvalue solver, 1e-9 relative;
+    #  - beta and gamma by the eigenvalue solver only where its absolute allowance eig_abs_tol (1e-14 of the largest
+    #    entry) is below the 1e-9 relative tolerance; otherwise (and, when the gaps allow, always) by a stable route
+    #    in doubles that has no subtraction of like numbers: with alpha from above, the product alpha beta gamma =
+    #    k10 k21 k31 and the sum of products of pairs = k10 k21 + k10 k31 + k21 k31 + k12 k31 + k13 k21 (both sums
+    #    of positive terms) give beta + gamma and beta gamma, then the quadratic by its stable formula, 1e-9 relative.
     M <- matrix(c(-(nq$k10 + nq$k12 + nq$k13), nq$k12, nq$k13, nq$k21, -nq$k21, 0, nq$k31, 0, -nq$k31), 3, 3)
     ev <- sort(-Re(eigen(M, only.values = TRUE)$values))
     l <- num(q$l)
-    # a double precision eigenvalue solver is backward stable: its absolute error is about 1e-16 times the
-    # norm of the matrix, so a matrix with a very large entry (T-142 round 3) gets that allowance, 1e-14 of its
-    # largest entry, on top of 1e-9 relative; with entries of the size of the exponents it adds nothing
-    ev_tol <- function(x) 1e-9 * x + 1e-14 * max(abs(M))
-    check(abs(ev[3] - l[1]) <= ev_tol(l[1]) && abs(ev[1] - l[3]) <= ev_tol(l[3]), name, ": eigenvalues alpha, gamma")
+    eig_abs_tol <- 1e-14 * max(abs(M))
+    check(abs(ev[3] - l[1]) <= 1e-9 * l[1] + eig_abs_tol, name, ": eigenvalue alpha")
     gap <- min((l[1] - l[2]) / l[1], (l[2] - l[3]) / l[2])
-    if (gap > 1e-3 && abs(nq$k21 - nq$k31) / nq$k21 > 1e-3)
-      check(abs(ev[2] - l[2]) <= ev_tol(l[2]), name, ": eigenvalue beta")
+    eig_used <- "alpha"
+    if (eig_abs_tol <= 1e-9 * l[3]) {
+      check(abs(ev[1] - l[3]) <= 1e-9 * l[3] + eig_abs_tol, name, ": eigenvalue gamma")
+      eig_used <- c(eig_used, "gamma")
+      if (gap > 1e-3 && abs(nq$k21 - nq$k31) / nq$k21 > 1e-3 && eig_abs_tol <= 1e-9 * l[2]) {
+        check(abs(ev[2] - l[2]) <= 1e-9 * l[2] + eig_abs_tol, name, ": eigenvalue beta")
+        eig_used <- c(eig_used, "beta")
+      }
+    }
+    if ((l[2] - l[3]) / l[2] > 1e-3) {
+      al <- ev[3]
+      c0 <- nq$k10 * nq$k21 * nq$k31
+      c1 <- nq$k10 * nq$k21 + nq$k10 * nq$k31 + nq$k21 * nq$k31 + nq$k12 * nq$k31 + nq$k13 * nq$k21
+      pp <- c0 / al; ss <- (c1 - pp) / al
+      bb <- (ss + sqrt(ss^2 - 4 * pp)) / 2; gg <- pp / bb
+      check(abs(bb - l[2]) <= 1e-9 * l[2], name, ": beta by the product and pair-sum identities, ", abs(bb - l[2]) / l[2])
+      check(abs(gg - l[3]) <= 1e-9 * l[3], name, ": gamma by the product and pair-sum identities, ", abs(gg - l[3]) / l[3])
+      eig_used <- c(eig_used, "beta and gamma by identities")
+    }
+    GAPS[[name]] <<- c(GAPS[[name]], list(eig_abs_tol = signif(eig_abs_tol, 3), eig_checks = paste(eig_used, collapse = "; ")))
   }
 
   groups <- rep("scalar", length(scn))
@@ -327,9 +419,10 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
     scalar_ill_names = arr(ill),
     method = list(
       closed_form = "independent implementation of the explicit sums of exponentials (MOD-3C-10 to 14), 256-bit arithmetic (Rmpfr); the exponents are the roots of the cubic found by Newton inside the brackets given by the critical points of the cubic, the weights the product-of-differences form (checked against the sum-of-positive-terms form), AUC and AUMC exact integrals of the terms; the confluent limit is used when |ka - lambda| is below 2^-150",
-      cross_checks = list("matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha and gamma always, beta when the gaps exceed 1e-3)"),
+      cross_checks = list("matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha always; beta and gamma where the solver's absolute error, eig_abs_tol, is below the tolerance), and for beta and gamma, when they are apart, the stable identities alpha beta gamma = k10 k21 k31 and the sum of products of pairs (no subtraction of like numbers); a 256-bit scaling-and-squaring matrix exponential for the times that neither double precision check covers"),
       cross_check_tolerance = 1e-8,
-      cross_check_floor = "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case; the floors actually used are in cross_check_results",
+      cross_check_floor = "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case. The search order is: all times first, then (if that fails) only the times with ||A|| t <= 1e8; for each of the two the floors in increasing order (expm: 1e-9, 1e-8, 1e-7, 1e-6; ODE: 1e-9 up to 1e-3); the first that holds is used and written in cross_check_results (floor, number of times checked, limit). ODE to infinity (AUC, AUMC, MRT): 1e-8, or 1e-7 when times were dropped (ode_inf_tol, with the measured ode_inf_gap). Times covered by neither: expm256_times_checked, held to 1e-20",
+      cross_check_tolerance_to_infinity = "see ode_inf_tol of cross_check_results",
       kappa_max = KAPPA_MAX
     ),
     cross_check_results = if (is.null(GAPS[[name]])) list(none = "dose 0 or no time: nothing to integrate") else GAPS[[name]],

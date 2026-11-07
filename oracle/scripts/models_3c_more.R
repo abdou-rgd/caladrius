@@ -230,7 +230,10 @@ beta_probes <- list(
   beta_onto_k31_1e17 = list(p = list(k10 = 0.375, k12 = 0.7875, k21 = 0.2, k13 = 1e-17, k31 = 1, vc = 1), tiny = "k13"),
   beta_onto_k31_1e18 = list(p = list(k10 = 0.375, k12 = 0.7875, k21 = 0.2, k13 = 1e-18, k31 = 1, vc = 1), tiny = "k13"),
   beta_onto_k21_1e300 = list(p = list(k10 = 0.375, k12 = 1e-300, k21 = 0.5, k13 = 0.7875, k31 = 1, vc = 1), tiny = "k12"),
-  beta_onto_k31_1e300 = list(p = list(k10 = 0.375, k12 = 0.7875, k21 = 1, k13 = 1e-300, k31 = 0.5, vc = 1), tiny = "k13"))
+  beta_onto_k31_1e300 = list(p = list(k10 = 0.375, k12 = 0.7875, k21 = 1, k13 = 1e-300, k31 = 0.5, vc = 1), tiny = "k13"),
+  # round 4 (F2): k21 = 0.2 is the double nearest 0.2 (the only value the engine ever sees); beta lies 0.659 half-spacings
+  # of that double above it, so it rounds onto it: decided by the spec (MOD-3C-08), checked at 256 bits by the loop
+  beta_onto_k21_p02_1e18 = list(p = list(k10 = 0.375, k12 = 1e-18, k21 = 0.2, k13 = 0.7875, k31 = 1, vc = 1), tiny = "k12"))
 for (nm in names(beta_probes)) {
   b <- beta_probes[[nm]]
   onto <- roots_onto_pole(b$p)
