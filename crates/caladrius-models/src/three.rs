@@ -165,10 +165,7 @@ pub(crate) fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
             put("dur", p.dur);
             put("rate", dose / p.dur);
             put("tmax_pred", p.dur + p.tlag);
-            put(
-                "cmax_pred",
-                at(&terms, p.tlag, &kernel, p.dur + p.tlag).0,
-            );
+            put("cmax_pred", at(&terms, p.tlag, &kernel, p.dur + p.tlag).0);
         }
         Input::FirstOrder => {
             put("ka", p.ka);
@@ -476,4 +473,129 @@ pub(crate) fn jacobian(input: &ModelInput) -> Result<Jacobian, ModelError> {
         columns,
         method: Derivatives::Analytic,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{ModelId, jacobian as derivatives};
+    use std::collections::BTreeMap;
+
+    fn input(model: ModelId, params: &[(&str, f64)], times: &[f64]) -> ModelInput {
+        ModelInput {
+            model,
+            dose: 100.0,
+            params: params.iter().map(|(n, x)| (n.to_string(), *x)).collect(),
+            times: times.to_vec(),
+        }
+    }
+
+    fn concentrations(i: &ModelInput) -> Vec<f64> {
+        run(i).map(|o| o.conc().to_vec()).unwrap_or_default()
+    }
+
+    /// Every analytic column of the three parameter sets agrees with central differences.
+    #[test]
+    fn analytic_columns_match_central_differences_in_every_set() {
+        let times = [0.3, 1.0, 2.5, 7.0, 20.0, 60.0];
+        let sets: [(ModelId, Vec<(&str, f64)>); 3] = [
+            (
+                ModelId::Pk3Oral1Lag,
+                vec![
+                    ("cl", 3.0),
+                    ("vc", 8.0),
+                    ("q2", 9.5),
+                    ("vp2", 12.0),
+                    ("q3", 2.1),
+                    ("vp3", 30.0),
+                    ("ka", 1.7),
+                    ("tlag", 0.25),
+                ],
+            ),
+            (
+                ModelId::Pk3IvInfusion,
+                vec![
+                    ("k10", 0.4),
+                    ("k12", 0.7),
+                    ("k21", 0.3),
+                    ("k13", 0.05),
+                    ("k31", 0.02),
+                    ("vc", 9.0),
+                    ("dur", 2.0),
+                ],
+            ),
+            (
+                ModelId::Pk3IvBolus,
+                vec![
+                    ("a", 5.0),
+                    ("b", 3.0),
+                    ("c", 1.0),
+                    ("alpha", 2.0),
+                    ("beta", 0.4),
+                    ("gamma", 0.03),
+                ],
+            ),
+        ];
+        for (model, params) in sets {
+            let base = input(model, &params, &times);
+            let jac = derivatives(&base, Derivatives::Analytic);
+            let Ok(jac) = jac else {
+                panic!("{model:?}: no analytic Jacobian");
+            };
+            assert_eq!(jac.method, Derivatives::Analytic);
+            for (j, name) in jac.parameters.iter().enumerate() {
+                let x = base.params.get(name).copied().unwrap_or(1.0);
+                let h = 1e-5 * x;
+                let scale = jac.columns[j].iter().fold(0.0_f64, |m, v| m.max(v.abs()));
+                let mut up = base.clone();
+                let mut down = base.clone();
+                up.params.insert(name.clone(), x + h);
+                down.params.insert(name.clone(), x - h);
+                let (fu, fd) = (concentrations(&up), concentrations(&down));
+                for i in 0..times.len() {
+                    let numeric = (fu[i] - fd[i]) / (2.0 * h);
+                    let exact = jac.columns[j][i];
+                    assert!(
+                        (exact - numeric).abs() <= 1e-6 * scale,
+                        "{model:?} d/d{name} at t = {}: {exact} against {numeric}",
+                        times[i]
+                    );
+                }
+            }
+        }
+    }
+
+    /// The exact tie k21 = k31 is the limit of the nearby untied inputs (MOD-3C-22).
+    #[test]
+    fn the_exact_tie_is_the_limit_of_nearby_inputs() {
+        let times = [0.5, 2.0, 10.0, 40.0];
+        let tied = |k31: f64| {
+            let p: BTreeMap<&str, f64> = [
+                ("k10", 0.4),
+                ("k12", 0.6),
+                ("k21", 0.25),
+                ("k13", 0.1),
+                ("k31", k31),
+                ("vc", 10.0),
+            ]
+            .into_iter()
+            .collect();
+            let params: Vec<(&str, f64)> = p.into_iter().collect();
+            concentrations(&input(ModelId::Pk3IvBolus, &params, &times))
+        };
+        let exact = tied(0.25);
+        let near = tied(0.25 * (1.0 + 1e-7));
+        assert_eq!(exact.len(), times.len());
+        for (e, n) in exact.iter().zip(&near) {
+            assert!((e - n).abs() <= 1e-6 * e.abs(), "{e} against {n}");
+        }
+    }
+
+    /// Unknown or incomplete input is an error, not a panic or a number.
+    #[test]
+    fn a_refused_input_is_an_error() {
+        let bad = input(ModelId::Pk3IvBolus, &[("cl", 3.0), ("vc", 8.0)], &[1.0]);
+        assert!(run(&bad).is_err());
+        assert!(derivatives(&bad, Derivatives::Analytic).is_err());
+    }
 }

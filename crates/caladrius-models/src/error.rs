@@ -101,6 +101,10 @@ pub enum ModelError {
     },
     /// Macro set with a dose of 0: vc = dose / (a + b) is undefined (MOD-2C-05 item 2).
     MacroWithoutDose,
+    /// Macro set of a three-compartment model with a dose of 0: vc = dose / (a + b + c) is
+    /// undefined (MOD-3C-06). A variant of its own keeps the message (and so the digest
+    /// of answers) of the two-compartment refusal as it was.
+    MacroWithoutDoseThree,
     /// A quantity derived from valid parameters is not a finite number > 0 (MOD-2C-05 item 3).
     DerivedOutOfRange {
         /// The derived quantity, e.g. `k21`.
@@ -309,7 +313,11 @@ impl fmt::Display for ModelError {
             ),
             Self::MacroWithoutDose => write!(
                 f,
-                "the macro set (a, b, alpha, beta, and c, gamma for three compartments) needs a dose > 0, since vc = dose / (a + b [+ c]); give the dose or use the clearance set"
+                "the macro set (a, b, alpha, beta) needs a dose > 0, since vc = dose / (a + b); give the dose or use the clearance set"
+            ),
+            Self::MacroWithoutDoseThree => write!(
+                f,
+                "the macro set (a, b, c, alpha, beta, gamma) needs a dose > 0, since vc = dose / (a + b + c); give the dose or use the clearance set"
             ),
             Self::DerivedOutOfRange { name, from, value } => write!(
                 f,

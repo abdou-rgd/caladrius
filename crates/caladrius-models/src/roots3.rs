@@ -78,7 +78,10 @@ impl Sum {
     fn new(k: f64, k12: f64, k13: f64) -> Sum {
         let (s1, e1) = two_sum(k, k12);
         let (s2, e2) = two_sum(s1, k13);
-        Sum { hi: s2, lo: e1 + e2 }
+        Sum {
+            hi: s2,
+            lo: e1 + e2,
+        }
     }
 
     /// S0 − p.
@@ -153,13 +156,7 @@ fn bisection_point(lo: f64, hi: f64) -> Option<f64> {
 
 /// The trigonometric seeds (α0, β0, γ0) of MOD-3C-07 step 1, or `None` when the cubic is too
 /// degenerate for them (non-finite intermediate values).
-fn trigonometric_seeds(
-    k: f64,
-    k12: f64,
-    k21: f64,
-    k13: f64,
-    k31: f64,
-) -> Option<(f64, f64, f64)> {
+fn trigonometric_seeds(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Option<(f64, f64, f64)> {
     let a2 = k + k12 + k13 + k21 + k31;
     let a1 = k * k21 + k * k31 + k21 * k13 + k31 * k12 + k21 * k31;
     let a0 = k * k21 * k31;
@@ -197,13 +194,7 @@ pub(crate) type Failure = String;
 
 /// Solves the secular equation for the micro-constants (all finite and > 0) and returns the
 /// exponents with their weights and offsets (MOD-3C-07).
-pub(crate) fn solve(
-    k: f64,
-    k12: f64,
-    k21: f64,
-    k13: f64,
-    k31: f64,
-) -> Result<Exponents, Failure> {
+pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Exponents, Failure> {
     let c21 = k12 * k21;
     let c31 = k13 * k31;
     let usable = |x: f64| x.is_finite() && x > 0.0;
@@ -266,13 +257,8 @@ pub(crate) fn solve(
         }
         hi *= 2.0;
     }
-    let u_alpha = refine(
-        seeds.map_or(f64::NAN, |s| s.0 - p_hi),
-        hi,
-        true,
-        f_alpha,
-    )
-    .ok_or_else(|| unconverged("alpha"))?;
+    let u_alpha = refine(seeds.map_or(f64::NAN, |s| s.0 - p_hi), hi, true, f_alpha)
+        .ok_or_else(|| unconverged("alpha"))?;
     let alpha = Root {
         lambda: p_hi + u_alpha,
         o_lo: u_alpha + delta,
@@ -319,13 +305,8 @@ pub(crate) fn solve(
                 1.0 + (c_lo / u) / u + (c_hi / v) / v,
             )
         };
-        let u = refine(
-            seeds.map_or(f64::NAN, |s| p_lo - s.2),
-            half,
-            false,
-            f_gamma,
-        )
-        .ok_or_else(|| unconverged("gamma"))?;
+        let u = refine(seeds.map_or(f64::NAN, |s| p_lo - s.2), half, false, f_gamma)
+            .ok_or_else(|| unconverged("gamma"))?;
         Root {
             lambda: p_lo - u,
             o_lo: -u,
@@ -387,7 +368,7 @@ pub(crate) fn solve(
     };
 
     // Weights from the second form, with the offsets.
-    let mut roots = [alpha, beta, gamma];
+    let roots = [alpha, beta, gamma];
     let mut weights = [0.0; 3];
     for (slot, root) in weights.iter_mut().zip(roots.iter()) {
         *slot = weight(c_lo, root.o_lo, c_hi, root.o_hi).ok_or_else(|| {
@@ -401,14 +382,12 @@ pub(crate) fn solve(
     let lambda = [roots[0].lambda, roots[1].lambda, roots[2].lambda];
     let mut o21 = [0.0; 3];
     let mut o31 = [0.0; 3];
-    for (i, root) in roots.iter_mut().enumerate() {
-        let (a, b) = if lo_is_21 {
+    for (root, (to21, to31)) in roots.iter().zip(o21.iter_mut().zip(o31.iter_mut())) {
+        (*to21, *to31) = if lo_is_21 {
             (root.o_lo, root.o_hi)
         } else {
             (root.o_hi, root.o_lo)
         };
-        o21[i] = a;
-        o31[i] = b;
     }
     Ok(Exponents {
         lambda,
@@ -429,12 +408,7 @@ fn pole_name(lo_is_21: bool, lower: bool) -> &'static str {
 
 /// The exact tie k21 = k31 = p (MOD-3C-22): β = p, wβ = 0, and α, γ are the roots of the
 /// two-compartment polynomial with k12 + k13 as the coupling, C = (k12 + k13)·p.
-fn tie(
-    k: f64,
-    p: f64,
-    coupling: f64,
-    sum: &Sum,
-) -> Result<Exponents, Failure> {
+fn tie(k: f64, p: f64, coupling: f64, sum: &Sum) -> Result<Exponents, Failure> {
     let e = sum.minus(p);
     let r = libm::hypot(e, 2.0 * libm::sqrt(coupling));
     // α − p = (E + r)/2 and p − γ = C/(α − p), by the stable branch for the sign of E.

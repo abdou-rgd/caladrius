@@ -331,7 +331,7 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
         return Err(ModelError::ExponentsNotDecreasing { alpha, beta, gamma });
     }
     if dose == 0.0 {
-        return Err(ModelError::MacroWithoutDose);
+        return Err(ModelError::MacroWithoutDoseThree);
     }
     let total = derived("a + b + c", "a + b + c", a + b + c)?;
     let vc = derived("vc", "dose / (a + b + c)", dose / total)?;
@@ -346,7 +346,11 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     let discriminant = (n1 * n1 - 4.0 * n0).max(0.0);
     let k21 = (n1 + libm::sqrt(discriminant)) / 2.0;
     let k31 = n0 / k21;
-    let k10 = derived("k10", "alpha x beta x gamma / n0", alpha * beta * gamma / n0)?;
+    let k10 = derived(
+        "k10",
+        "alpha x beta x gamma / n0",
+        alpha * beta * gamma / n0,
+    )?;
     let gap = k21 - k31;
     if gap <= 0.0 {
         // No macro set with positive a, b, c reaches this in exact arithmetic (MOD-3C-06 item 3).
@@ -553,7 +557,13 @@ mod tests {
         assert!(e(&with("q2", 0.0), 100.0).contains("pk2"));
         let both: Vec<(&str, f64)> = base
             .iter()
-            .map(|&(n, v)| if n == "q2" || n == "vp3" { (n, 0.0) } else { (n, v) })
+            .map(|&(n, v)| {
+                if n == "q2" || n == "vp3" {
+                    (n, 0.0)
+                } else {
+                    (n, v)
+                }
+            })
             .collect();
         assert!(e(&both, 100.0).contains("pk1"));
         assert!(e(&with("vp3", -1.0), 100.0).contains("`vp3`"));
