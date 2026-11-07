@@ -379,7 +379,10 @@ impl MlRun {
             return None;
         }
         let trial = self.newton_point(problem, self.spec.error_model)?;
-        let accepted = trial.ev.m2ll <= self.point.ev.m2ll
+        // Δ before and after must be measured on the same parameters: a trial projected onto a
+        // bound has a smaller free set, and its Δ is not comparable.
+        let accepted = trial.free == self.point.free
+            && trial.ev.m2ll <= self.point.ev.m2ll
             && trial.decrement().is_some_and(|after| after < before);
         accepted.then_some(trial)
     }
@@ -561,7 +564,10 @@ impl MlRun {
         for (index, (theta, pred)) in candidates.iter().enumerate() {
             let xi = initial_xi(em, &problem.y, pred, spec.error_init.as_deref());
             if index == 0 {
-                // FIT-ML-14b: a standard deviation that is 0 or not finite at the start.
+                // FIT-ML-14b: a standard deviation that is 0 or not finite at the start. Only
+                // candidate 0 (the uniform least squares) is checked: a σ of 0 at the 1/y²
+                // candidate is not an error, that candidate is skipped by `evaluate` below and the
+                // start is the better of the candidates that can be evaluated.
                 let bad =
                     problem.y.iter().zip(pred).position(|(_, &f)| {
                         !em.sigma(&xi, f).is_finite() || em.sigma(&xi, f) <= 0.0
@@ -828,16 +834,69 @@ fn nested_fit(model: &dyn FitModel, input: &FitInput) -> Result<crate::FitResult
     Ok(FitRun::new(model, input)?.solve())
 }
 
-/// FIT-ML-13c, decision of T-148: a combined error model cannot describe an observation of
-/// exactly 0 where the model predicts exactly 0 whatever θ is, because σ² is then a² alone and
-/// −2LL tends to −∞ as a tends to 0. Decided by the structure of the model, not by trying values of θ:
-/// with an input that is not a bolus (zero-order or first-order, with or without a lag, which is never
-/// negative) the prediction is 0 for every θ at every time at or before the dose
-/// ([`FitModel::silent_at_dose_time`]). An observed 0 elsewhere is an ordinary observation.
+/// FIT-ML-13c, decisions of T-148 and of the review of T-149: an error model whose standard
+/// deviation can reach 0 where the prediction is 0 has no maximum likelihood, because −2LL then
+/// tends to −∞. Decided by the structure of the model and the bounds, not by trying values of θ.
+///
+/// 1. At the dose time (t = 0, the smallest time the input allows). With an input that is not a
+///    bolus (zero-order or first-order, with or without a lag, which is never negative) the
+///    prediction is 0 for every θ at t = 0 ([`FitModel::silent_at_dose_time`]). Under `combined`
+///    and `combined_sd` an observed 0 there gives σ² = a² alone, which tends to 0. (Under
+///    `proportional` the same row is `NonPositiveSigma`, FIT-ML-14b.)
+/// 2. On a route with a lag, after the dose time. The prediction is 0 for every time up to `tlag`.
+///    Let t₀ > 0 be the time of an observed 0 and t_nz the time of the first nonzero observation
+///    (+∞ if none). If the domain [lower, upper] of `tlag` (a fixed `tlag` is [c, c]) meets
+///    [t₀, t_nz), then with `tlag` in that interval every row at or before it is a zero predicted
+///    exactly 0, and −2LL tends to −∞ under `combined` and `combined_sd` (σ² = a² → 0) and under
+///    `proportional` (ŷ → 0 as `tlag` rises to t₀, so b·ŷ → 0). If `tlag` reaches a nonzero
+///    row, −2LL goes to +∞ instead, so a zero after a nonzero observation is an ordinary
+///    observation. This check comes before `NonPositiveSigma` and before any fit.
+///
+/// Rule 1 is reported alone when it applies; rule 2 names every row it covers.
 fn refuse_unbounded<M: FitModel>(problem: &Problem<M>, em: ErrorModel) -> Result<(), FitError> {
-    if !matches!(em, ErrorModel::Combined | ErrorModel::CombinedSd)
-        || !problem.model.silent_at_dose_time()
+    let at_dose: Vec<usize> = if matches!(em, ErrorModel::Combined | ErrorModel::CombinedSd)
+        && problem.model.silent_at_dose_time()
     {
+        problem
+            .y
+            .iter()
+            .zip(&problem.time)
+            .enumerate()
+            .filter(|(_, (y, t))| **y == 0.0 && **t == 0.0)
+            .map(|(i, _)| i)
+            .collect()
+    } else {
+        Vec::new()
+    };
+    if !at_dose.is_empty() {
+        return Err(unbounded(problem, em, false, at_dose));
+    }
+    if em == ErrorModel::Additive {
+        return Ok(());
+    }
+    let Some(lag) = problem.model.lag_parameter() else {
+        return Ok(());
+    };
+    // The domain of `tlag`: fixed at a value, or the bounds of the fitted parameter.
+    let domain = match problem.fixed.get(lag) {
+        Some(&c) => Some((c, c)),
+        None => problem.names.iter().position(|n| n == lag).and_then(|j| {
+            let lo = problem.lower.get(j).copied()?;
+            let hi = problem.upper.get(j).copied()?;
+            Some((lo.max(0.0), hi))
+        }),
+    };
+    let Some((lag_lower, lag_upper)) = domain else {
+        return Ok(());
+    };
+    let first_nonzero = problem
+        .y
+        .iter()
+        .zip(&problem.time)
+        .filter(|(y, _)| **y != 0.0)
+        .map(|(_, t)| *t)
+        .fold(f64::INFINITY, f64::min);
+    if lag_lower >= first_nonzero {
         return Ok(());
     }
     let rows: Vec<usize> = problem
@@ -845,20 +904,30 @@ fn refuse_unbounded<M: FitModel>(problem: &Problem<M>, em: ErrorModel) -> Result
         .iter()
         .zip(&problem.time)
         .enumerate()
-        .filter(|(_, (y, t))| **y == 0.0 && **t <= 0.0)
+        .filter(|(_, (y, t))| **y == 0.0 && **t > 0.0 && **t < first_nonzero && lag_upper >= **t)
         .map(|(i, _)| i)
         .collect();
     if rows.is_empty() {
         return Ok(());
     }
-    Err(FitError::UnboundedLikelihood {
+    Err(unbounded(problem, em, true, rows))
+}
+
+fn unbounded<M: FitModel>(
+    problem: &Problem<M>,
+    em: ErrorModel,
+    lag: bool,
+    rows: Vec<usize>,
+) -> FitError {
+    FitError::UnboundedLikelihood {
         error_model: em.id().to_string(),
+        lag,
         times: rows
             .iter()
             .map(|&i| problem.time.get(i).copied().unwrap_or(f64::NAN))
             .collect(),
         indices: rows,
-    })
+    }
 }
 
 #[cfg(test)]
@@ -960,5 +1029,53 @@ mod tests {
         assert_eq!(result.status(), FitStatus::ExactFit);
         assert!(result.get("m2ll").is_some_and(f64::is_finite));
         assert_eq!(crate::refuse_exact_fit(result), Err(FitError::ExactFit));
+    }
+
+    /// A polish trial whose free set differs from the current one (a variable projected onto a
+    /// bound that holds it) is not comparable by Δ and is rejected.
+    #[test]
+    fn a_polish_trial_with_another_free_set_is_rejected() {
+        let mut data = input(&Y);
+        data.options = FitOptions::maximum_likelihood(ErrorModel::Proportional);
+        let problem = Problem::new(ModelId::IvBolus, &data).unwrap();
+        let spec = problem.ml.clone().unwrap();
+        let (mut run, row) = MlRun::start(&problem, &spec, &data).unwrap();
+        let mut trace = vec![row];
+        for i in 1..200 {
+            if run.converged() {
+                break;
+            }
+            assert!(matches!(
+                run.iterate(&problem, i, &mut trace),
+                Advance::Committed { .. }
+            ));
+        }
+        assert!(run.converged());
+        let em = run.error_model();
+        let zeta = run.point.ev.zeta.clone();
+        let (lower, upper) = (run.frame.lower.clone(), run.frame.upper.clone());
+        // The unconstrained step is accepted.
+        run.pending = None;
+        let accepted_free = run.newton_step(&problem).map(|p| p.free);
+        assert!(accepted_free.is_some(), "the polish moves this fit");
+        let mut projected = 0;
+        for j in 0..zeta.len() {
+            // A box so narrow that the Newton step leaves it, on variable j.
+            run.frame.lower = lower.clone();
+            run.frame.upper = upper.clone();
+            let x = zeta[j];
+            run.frame.lower[j] = x - 1e-12 * x.abs();
+            run.frame.upper[j] = x + 1e-12 * x.abs();
+            let ev = evaluate(&problem, em, &zeta).unwrap();
+            run.point = point(&problem, &run.frame, em, ev).unwrap();
+            let Some(trial) = run.newton_point(&problem, em) else {
+                continue;
+            };
+            if trial.free != run.point.free {
+                projected += 1;
+                assert!(run.newton_step(&problem).is_none(), "variable {j}");
+            }
+        }
+        assert!(projected > 0, "no trial changed the free set");
     }
 }

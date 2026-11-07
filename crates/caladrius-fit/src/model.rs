@@ -45,6 +45,13 @@ pub trait FitModel {
     fn silent_at_dose_time(&self) -> bool {
         false
     }
+
+    /// The name of the lag parameter when the model has one: the prediction is then 0 for every
+    /// time up to that parameter, and the fit can move it (FIT-ML-13c on a lagged route). `None`
+    /// by default, which leaves the check out.
+    fn lag_parameter(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 /// A derived quantity g(θ) and ∂g/∂θ by parameter name (parameters not named have 0).
@@ -88,12 +95,24 @@ impl<M: FitModel + ?Sized> FitModel for &M {
     fn silent_at_dose_time(&self) -> bool {
         (**self).silent_at_dose_time()
     }
+
+    fn lag_parameter(&self) -> Option<&'static str> {
+        (**self).lag_parameter()
+    }
 }
 
 impl FitModel for ModelId {
     /// Every input but the bolus: the catalogue lists its input parameters (`ka`, `dur`).
     fn silent_at_dose_time(&self) -> bool {
         !self.input_parameters().is_empty()
+    }
+
+    /// `tlag` for the four lagged ids of each disposition, from the catalogue's input parameters.
+    fn lag_parameter(&self) -> Option<&'static str> {
+        self.input_parameters()
+            .iter()
+            .copied()
+            .find(|n| *n == "tlag")
     }
 
     /// One-compartment relations (MOD-SEC-01, SEC-02) in the (v, k) parameterisation: CL = V·k,

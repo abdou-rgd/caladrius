@@ -614,15 +614,28 @@ fn an_observed_zero_at_the_dose_time_is_unbounded_for_every_input_but_the_bolus(
 }
 
 #[test]
-fn a_zero_after_the_dose_time_and_the_other_error_models_are_not_refused_so() {
+fn a_zero_after_the_dose_time_is_refused_only_through_a_lag() {
     for model in ONE_COMPARTMENT {
         let mut after = zero_at(model, 0.1);
         after.options = FitOptions::maximum_likelihood(ErrorModel::Combined);
-        assert!(
-            !matches!(run(&after), Err(FitError::UnboundedLikelihood { .. })),
-            "{}",
-            model.id()
-        );
+        let lagged = model.lag_parameter().is_some();
+        match run(&after) {
+            // The first observation is a zero at 0.1 and tlag (no upper bound) can reach it.
+            Err(FitError::UnboundedLikelihood {
+                lag,
+                indices,
+                times,
+                ..
+            }) => {
+                assert!(lagged && lag, "{}", model.id());
+                assert_eq!((indices, times), (vec![0], vec![0.1]));
+            }
+            other => assert!(
+                !lagged && !matches!(other, Err(FitError::UnboundedLikelihood { .. })),
+                "{}",
+                model.id()
+            ),
+        }
         for error_model in [ErrorModel::Additive, ErrorModel::Proportional] {
             let mut input = zero_at(model, 0.0);
             input.options = FitOptions::maximum_likelihood(error_model);
@@ -633,6 +646,163 @@ fn a_zero_after_the_dose_time_and_the_other_error_models_are_not_refused_so() {
             );
         }
     }
+}
+
+// ------------------------------------------ the lag rule (FIT-ML-13c, review of T-149, A1)
+
+/// The reviewer's scenario: `pk1.oral_1_lag`, the first observation 0 at 0.25, start tlag 0.1.
+fn lagged_zero(error_model: ErrorModel) -> FitInput {
+    FitInput {
+        model: ModelId::Oral1Lag,
+        dose: 100.0,
+        time: vec![0.25, 0.5, 1.0, 2.0, 4.0, 6.0, 8.0, 12.0],
+        conc: vec![0.0, 4.2, 6.1, 5.4, 3.7, 2.4, 1.6, 0.7],
+        weighting: Weighting::Uniform,
+        initial: BTreeMap::from([
+            ("v".to_string(), 12.0),
+            ("k".to_string(), 0.2),
+            ("ka".to_string(), 1.5),
+            ("tlag".to_string(), 0.1),
+        ]),
+        options: FitOptions::maximum_likelihood(error_model),
+    }
+}
+
+fn is_unbounded_by_lag(input: &FitInput) -> Option<(Vec<usize>, Vec<f64>)> {
+    match run(input) {
+        Err(FitError::UnboundedLikelihood {
+            lag: true,
+            indices,
+            times,
+            ..
+        }) => Some((indices, times)),
+        Err(FitError::UnboundedLikelihood { lag: false, .. }) => panic!("refused at the dose time"),
+        _ => None,
+    }
+}
+
+#[test]
+fn a_leading_zero_that_tlag_can_reach_is_unbounded_under_three_error_models() {
+    for error_model in [
+        ErrorModel::Combined,
+        ErrorModel::CombinedSd,
+        ErrorModel::Proportional,
+    ] {
+        let input = lagged_zero(error_model);
+        assert_eq!(
+            is_unbounded_by_lag(&input),
+            Some((vec![0], vec![0.25])),
+            "{error_model:?}"
+        );
+        let message = run(&input).unwrap_err().to_string();
+        for word in ["time 0.25", "lag", "Exclude", "tlag", "additive"] {
+            assert!(message.contains(word), "{error_model:?}: {message}");
+        }
+    }
+    // The additive error model has no such problem.
+    assert_eq!(
+        is_unbounded_by_lag(&lagged_zero(ErrorModel::Additive)),
+        None
+    );
+}
+
+#[test]
+fn the_domain_of_tlag_decides_the_lag_rule() {
+    let bounded = |lower: Option<f64>, upper: Option<f64>| {
+        let mut input = lagged_zero(ErrorModel::Combined);
+        input
+            .initial
+            .insert("tlag".to_string(), lower.unwrap_or(0.1));
+        input
+            .options
+            .bounds
+            .insert("tlag".to_string(), Bounds { lower, upper });
+        is_unbounded_by_lag(&input).is_some()
+    };
+    // Upper bound at the time of the zero or above: the domain reaches it.
+    assert!(bounded(None, Some(0.25)));
+    assert!(bounded(None, Some(3.0)));
+    // Upper bound below it: the prediction of that row stays above 0.
+    assert!(!bounded(None, Some(0.2)));
+    // The domain must also begin before the first nonzero observation (0.5).
+    assert!(bounded(Some(0.2), Some(3.0)));
+    assert!(!bounded(Some(0.5), Some(3.0)));
+    // A fixed tlag is both bounds.
+    let fixed = |c: f64| {
+        let mut input = lagged_zero(ErrorModel::Combined);
+        input.initial.remove("tlag");
+        input.options.fixed.insert("tlag".to_string(), c);
+        is_unbounded_by_lag(&input).is_some()
+    };
+    assert!(fixed(0.25));
+    assert!(fixed(0.4));
+    assert!(!fixed(0.2));
+    // Fixed at or above the first nonzero observation: that row is predicted 0 too, and its
+    // error then sends -2LL to +infinity, not -infinity, so this is not refused for this reason.
+    assert!(!fixed(0.5));
+    assert!(!fixed(3.0));
+}
+
+#[test]
+fn a_zero_after_a_nonzero_observation_is_an_ordinary_observation() {
+    let mut input = lagged_zero(ErrorModel::Combined);
+    input.conc = vec![3.0, 0.0, 6.1, 5.4, 3.7, 2.4, 1.6, 0.7];
+    assert_eq!(is_unbounded_by_lag(&input), None);
+    // Several leading zeros are all named; the zero after the nonzero one is not.
+    input.conc = vec![0.0, 0.0, 6.1, 0.0, 3.7, 2.4, 1.6, 0.7];
+    assert_eq!(
+        is_unbounded_by_lag(&input),
+        Some((vec![0, 1], vec![0.25, 0.5]))
+    );
+    // Not a lagged route.
+    let mut plain = lagged_zero(ErrorModel::Combined);
+    plain.model = ModelId::Oral1;
+    plain.initial.remove("tlag");
+    assert_eq!(is_unbounded_by_lag(&plain), None);
+}
+
+#[test]
+fn the_lag_rule_covers_the_two_compartment_routes() {
+    let initial = BTreeMap::from([
+        ("cl".to_string(), 2.0),
+        ("vc".to_string(), 10.0),
+        ("q".to_string(), 4.0),
+        ("vp".to_string(), 8.0),
+        ("ka".to_string(), 2.0),
+        ("tlag".to_string(), 0.1),
+    ]);
+    let mut input = lagged_zero(ErrorModel::Combined);
+    input.model = ModelId::Pk2Oral1Lag;
+    input.initial = initial;
+    // N must exceed P + Q (FIT-ML-14a): six parameters and two error parameters.
+    input.time = vec![0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 24.0];
+    input.conc = vec![0.0, 4.2, 6.1, 5.4, 4.6, 3.7, 2.4, 1.6, 0.7, 0.2];
+    assert_eq!(is_unbounded_by_lag(&input), Some((vec![0], vec![0.25])));
+    assert!(ModelId::Pk2Oral1Lag.silent_at_dose_time());
+    for model in ModelId::ALL.into_iter().chain(ModelId::TWO_COMPARTMENT) {
+        assert_eq!(
+            model.lag_parameter().is_some(),
+            matches!(
+                model,
+                ModelId::Oral1Lag | ModelId::Oral0Lag | ModelId::Pk2Oral1Lag | ModelId::Pk2Oral0Lag
+            ),
+            "{}",
+            model.id()
+        );
+    }
+}
+
+#[test]
+fn the_lag_refusal_serialises_with_its_flag_and_the_dose_time_one_without() {
+    let lagged =
+        serde_json::to_value(run(&lagged_zero(ErrorModel::Combined)).unwrap_err()).unwrap();
+    assert_eq!(lagged["code"], "unbounded_likelihood");
+    assert_eq!(lagged["lag"], true);
+    let at_dose =
+        serde_json::to_value(run(&oral_with_zero_at_time_zero(ErrorModel::Combined)).unwrap_err())
+            .unwrap();
+    assert_eq!(at_dose["code"], "unbounded_likelihood");
+    assert!(at_dose.get("lag").is_none());
 }
 
 // ------------------------------------------------------------------ the exact-fit status

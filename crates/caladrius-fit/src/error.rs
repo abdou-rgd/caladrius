@@ -158,10 +158,15 @@ pub enum FitError {
     },
     /// A combined error model with an observation of exactly 0 where the model predicts exactly 0
     /// whatever the parameters: the standard deviation can shrink to 0 there at no cost, so the
-    /// likelihood is unbounded (FIT-ML-13c, decision of T-148).
+    /// likelihood is unbounded (FIT-ML-13c, decision of T-148). On a route with a lag the
+    /// prediction is also 0 up to `tlag`, which can reach the time of a leading zero (`lag`).
     UnboundedLikelihood {
         /// The error model.
         error_model: String,
+        /// `true` when the rows are leading zeros that a lag can reach (the message then says how
+        /// to bound or fix `tlag`); absent when the prediction is 0 at the dose time itself.
+        #[serde(default, skip_serializing_if = "is_false")]
+        lag: bool,
         /// Positions of the observations.
         indices: Vec<usize>,
         /// Their times.
@@ -273,6 +278,7 @@ impl fmt::Display for FitError {
             ),
             Self::UnboundedLikelihood {
                 error_model,
+                lag,
                 indices,
                 times,
             } => {
@@ -286,6 +292,12 @@ impl fmt::Display for FitError {
                     .map(|t| format!("time {t}"))
                     .collect::<Vec<_>>()
                     .join(", ");
+                if *lag {
+                    return write!(
+                        f,
+                        "The {error_model} error model has no maximum likelihood here: observation(s) {rows} ({at}) are exactly 0 before the first nonzero observation, and with a lag the model predicts exactly 0 up to `tlag`, which the fit can move to those times, so the standard deviation can shrink to 0 there without cost. Exclude those observations, bound or fix `tlag` below the first of them, or use the additive error model."
+                    );
+                }
                 write!(
                     f,
                     "The {error_model} error model has no maximum likelihood here: observation(s) {rows} ({at}) are exactly 0 where the model predicts exactly 0 for every parameter value, so the standard deviation can shrink to 0 there without cost. Exclude those observations, or use the additive error model."
@@ -297,3 +309,7 @@ impl fmt::Display for FitError {
 }
 
 impl std::error::Error for FitError {}
+
+fn is_false(b: &bool) -> bool {
+    !*b
+}
