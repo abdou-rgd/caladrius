@@ -139,6 +139,7 @@ fn import(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
     let options = CsvOptions {
         delimiter: p.delimiter,
         decimal_comma: p.decimal_comma,
+        ..CsvOptions::default()
     };
     // A stamp line at the top (`# caladrius ...`, written by an export) is not data.
     let mut table = ImportedTable::from_csv(strip_stamp(&p.csv).as_bytes(), &options)?;
@@ -722,6 +723,7 @@ fn preview(_engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
     let options = CsvOptions {
         delimiter: p.delimiter,
         decimal_comma: p.decimal_comma,
+        ..CsvOptions::default()
     };
     let readings = caladrius_project::readings(strip_stamp(&p.csv).as_bytes(), &options)?;
     let best_is_plausible = readings.first().is_some_and(|r| r.checks.is_empty());
