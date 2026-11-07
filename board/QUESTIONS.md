@@ -190,3 +190,13 @@ Iteration 3 (T-139) keeps its code on branches `iter3/*` until 2026-11-18. CI ch
 Decision taken meanwhile: the `iter3/*` branches stay local; `main` receives only `docs/` and `board/`, pushed under Q-013.
 
 Answer (2026-11-07): not answered in words; the decision taken meanwhile stands.
+
+## Q-023 (2026-11-07, orchestrator): the tolerances of the maximum-likelihood fit in `AGENTS.md` section 5
+
+T-148 (the oracle of brick 2) needed tolerances that section 5 does not have: −2LL crosses zero, so a relative rule on it means nothing. It defined them once in `caladrius-testkit` (`AbsoluteTolerance`, `crates/caladrius-testkit/src/ml.rs`), and only the new tests use them. They agree with what `specs/fit.md` OF-12 proposed from the reader's prototype (−2LL to 1.3e-9 against `optim`).
+
+Proposed line, after "Fitting: ..." in section 5 (181 lines today, one line added):
+
+"- Maximum-likelihood fitting (`objective = ml`): −2LL, AIC and BIC within 1e-7 absolute (a log-likelihood can be negative, so a relative rule means nothing), IWRES within 1e-5 absolute, a value that is zero by structure within 1e-8 absolute; estimates and standard errors as for fitting."
+
+Decision taken meanwhile: the constants stand in the testkit for the new tests and T-149 uses them as they are, reporting the worst error it reaches for each. Nothing is written in `AGENTS.md` without a yes here.
