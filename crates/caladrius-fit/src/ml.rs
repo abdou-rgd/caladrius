@@ -355,28 +355,33 @@ fn score<M: FitModel>(
 impl MlRun {
     /// The endgame of OF-19. The scoring step has a linear rate where the expected and the observed
     /// information differ, so the test Δ ≤ ε can fire with the estimates still about 1e-5
-    /// standard errors from the optimum. From a converged iterate this takes Newton steps with the
-    /// observed information (central differences of the analytic score, the free variables only)
-    /// for as long as they lower Δ. The fixed point is the same as the scoring iteration's, only
-    /// the distance to it changes, and the step is kept only if Δ falls.
-    pub(crate) fn polish<M: FitModel>(&mut self, problem: &Problem<M>) {
-        let em = self.spec.error_model;
-        for _ in 0..POLISH_STEPS {
-            let Some(before) = self.point.decrement() else {
-                return;
-            };
-            if before <= POLISH_FLOOR || self.point.free.is_empty() {
-                return;
-            }
-            let Some(trial) = self.newton_point(problem, em) else {
-                return;
-            };
-            if !trial.decrement().is_some_and(|after| after < before) {
-                return;
-            }
-            self.point = trial;
-            self.values = self.values_at(&self.point.ev.zeta);
+    /// standard errors from the optimum. Once it has fired, each further iteration is a Newton step
+    /// on the free variables with the observed information (central differences of the analytic
+    /// score), recorded as its own trace row marked `polish`, so that the result is the last row.
+    ///
+    /// **Acceptance rule.** A Newton step is taken if and only if, at the trial point, (1) −2LL is
+    /// not greater than at the current point, and (2) the scaled score Δ = gᵀ·I⁻¹·g (the squared
+    /// norm of the score in the metric of the expected information, the Newton decrement of
+    /// FIT-ML-08) is strictly smaller than at the current point. Otherwise the endgame ends. It ends
+    /// too after [`POLISH_STEPS`] steps, or when Δ is at most [`POLISH_FLOOR`], or when the trial
+    /// point cannot be evaluated. The fixed point is that of the scoring iteration; only the
+    /// distance to it changes.
+    fn refresh_endgame<M: FitModel>(&mut self, problem: &Problem<M>) {
+        self.pending = None;
+        if self.converged() && self.polish_steps < POLISH_STEPS {
+            self.pending = self.newton_step(problem);
         }
+    }
+
+    fn newton_step<M: FitModel>(&self, problem: &Problem<M>) -> Option<Point> {
+        let before = self.point.decrement()?;
+        if before <= POLISH_FLOOR || self.point.free.is_empty() {
+            return None;
+        }
+        let trial = self.newton_point(problem, self.spec.error_model)?;
+        let accepted = trial.ev.m2ll <= self.point.ev.m2ll
+            && trial.decrement().is_some_and(|after| after < before);
+        accepted.then_some(trial)
     }
 
     fn newton_point<M: FitModel>(&self, problem: &Problem<M>, em: ErrorModel) -> Option<Point> {
@@ -442,12 +447,21 @@ pub(crate) struct MlRun {
     eps: f64,
     /// The estimate of the least-squares fit that gave the start (FIT-ML-20).
     pub start: Vec<f64>,
+    /// The next Newton step of the endgame, when the scoring test is met and the step is accepted.
+    pending: Option<Point>,
+    /// Newton steps taken so far.
+    polish_steps: usize,
 }
 
 impl MlRun {
-    /// ε of the test Δ ≤ ε holds at the iterate.
+    /// The test Δ ≤ ε of FIT-ML-08 holds at the iterate: the fit has converged (the endgame may go on).
     pub(crate) fn converged(&self) -> bool {
         self.point.decrement().is_some_and(|d| d <= self.eps)
+    }
+
+    /// Converged, and no Newton step of the endgame is left.
+    pub(crate) fn finished(&self) -> bool {
+        self.converged() && self.pending.is_none()
     }
 
     pub(crate) fn error_model(&self) -> ErrorModel {
@@ -505,6 +519,7 @@ impl MlRun {
             relative_decrease: None,
             m2ll: Some(self.point.ev.m2ll),
             decrement: self.point.decrement(),
+            polish: false,
         }
     }
 
@@ -603,10 +618,10 @@ impl MlRun {
             lambda: 0.0,
             eps: problem.options.convergence,
             start,
+            pending: None,
+            polish_steps: 0,
         };
-        if run.converged() {
-            run.polish(problem);
-        }
+        run.refresh_endgame(problem);
         run.values = run.values_at(&run.point.ev.zeta);
         let row = run.trace_row(problem, 0, None, 0.0, 0);
         Ok((run, row))
@@ -620,6 +635,20 @@ impl MlRun {
         iteration: usize,
         trace: &mut Vec<TraceRow>,
     ) -> Advance {
+        if let Some(next) = self.pending.take() {
+            // The endgame: a Newton step accepted by `newton_step`, its own row.
+            self.point = next;
+            self.polish_steps += 1;
+            self.values = self.values_at(&self.point.ev.zeta);
+            self.refresh_endgame(problem);
+            let mut row = self.trace_row(problem, iteration, Some(1.0), 0.0, 0);
+            row.polish = true;
+            trace.push(row);
+            return Advance::Committed {
+                converged: true,
+                polishing: self.pending.is_some(),
+            };
+        }
         if self.point.singular {
             return Advance::Stopped(FitStatus::Singular);
         }
@@ -674,18 +703,11 @@ impl MlRun {
             return Advance::Stopped(FitStatus::NoDecrease);
         };
         // FIT-ML-15: the moved variable of a one-parameter error model has fallen to rounding
-        // level of its natural scale, the likelihood has no maximum. There is no error channel in
-        // a step, so the run stops as a fit that went non-finite (reported in the thread).
-        if self.frame.q == 1 {
-            let xi = ev.zeta.get(self.frame.p).copied().unwrap_or(f64::NAN);
-            let natural = if em == ErrorModel::Additive {
-                problem.y.iter().map(|y| y * y).sum::<f64>() / problem.y.len().max(1) as f64
-            } else {
-                1.0
-            };
-            if xi <= EXACT_FIT_SCALE * natural {
-                return Advance::Stopped(FitStatus::NonFinite);
-            }
+        // level of its natural scale, the likelihood has no maximum. A step has no error to carry,
+        // so the run ends with the status `ExactFit` at the last iterate (`run` refuses with the
+        // error of the same name); the iterate that went to 0 is not committed.
+        if collapsed(em, self.frame.p, &ev.zeta, &problem.y) {
+            return Advance::Stopped(FitStatus::ExactFit);
         }
         let Some(point) = point(problem, &self.frame, em, ev) else {
             return Advance::Stopped(FitStatus::NonFinite);
@@ -696,15 +718,45 @@ impl MlRun {
             lam / LAMBDA_FACTOR
         };
         self.point = point;
-        if self.converged() {
-            self.polish(problem);
-        }
+        self.refresh_endgame(problem);
         self.values = self.values_at(&self.point.ev.zeta);
         trace.push(self.trace_row(problem, iteration, Some(nu), lam, halvings));
         Advance::Committed {
             converged: self.converged(),
+            polishing: self.pending.is_some(),
         }
     }
+}
+
+/// FIT-ML-15, during the iteration: every error variable has fallen to `EXACT_FIT_SCALE` times its
+/// natural scale (Σ y²/N as a variance for the additive part, 1 for the proportional part), so the
+/// likelihood has no maximum. A component of a combined model alone at 0 is the collapse of
+/// FIT-ML-13c, not this.
+fn collapsed(error_model: ErrorModel, p: usize, zeta: &[f64], y: &[f64]) -> bool {
+    let xi = zeta.get(p..).unwrap_or_default();
+    let mean_square = y.iter().map(|y| y * y).sum::<f64>() / y.len().max(1) as f64;
+    // Variances of the components: the additive one (when there is one) first.
+    let variances: Vec<f64> = xi
+        .iter()
+        .map(|x| {
+            if error_model.is_variance_scale() {
+                *x
+            } else {
+                x * x
+            }
+        })
+        .collect();
+    let scales: Vec<f64> = match error_model {
+        ErrorModel::Additive => vec![mean_square],
+        ErrorModel::Proportional => vec![1.0],
+        ErrorModel::Combined | ErrorModel::CombinedSd => vec![mean_square, 1.0],
+    };
+    !variances.is_empty()
+        && variances.len() == scales.len()
+        && variances
+            .iter()
+            .zip(&scales)
+            .all(|(v, s)| *v <= EXACT_FIT_SCALE * s)
 }
 
 /// θ on its bounds (the least-squares fit already respects them; this is for the rounding of a
@@ -777,40 +829,25 @@ fn nested_fit(model: &dyn FitModel, input: &FitInput) -> Result<crate::FitResult
 }
 
 /// FIT-ML-13c, decision of T-148: a combined error model cannot describe an observation of
-/// exactly 0 where the model predicts exactly 0 whatever θ is. The probe looks at the start and at
-/// a few other points (every parameter scaled together, then each alone).
+/// exactly 0 where the model predicts exactly 0 whatever θ is, because σ² is then a² alone and
+/// −2LL tends to −∞ as a tends to 0. Decided by the structure of the model, not by trying values of θ:
+/// with an input that is not a bolus (zero-order or first-order, with or without a lag, which is never
+/// negative) the prediction is 0 for every θ at every time at or before the dose
+/// ([`FitModel::silent_at_dose_time`]). An observed 0 elsewhere is an ordinary observation.
 fn refuse_unbounded<M: FitModel>(problem: &Problem<M>, em: ErrorModel) -> Result<(), FitError> {
-    if !matches!(em, ErrorModel::Combined | ErrorModel::CombinedSd) {
+    if !matches!(em, ErrorModel::Combined | ErrorModel::CombinedSd)
+        || !problem.model.silent_at_dose_time()
+    {
         return Ok(());
     }
-    let mut rows: Vec<usize> = problem
+    let rows: Vec<usize> = problem
         .y
         .iter()
+        .zip(&problem.time)
         .enumerate()
-        .filter(|(_, y)| **y == 0.0)
+        .filter(|(_, (y, t))| **y == 0.0 && **t <= 0.0)
         .map(|(i, _)| i)
         .collect();
-    if rows.is_empty() {
-        return Ok(());
-    }
-    let mut probes: Vec<Vec<f64>> = vec![problem.theta0.clone()];
-    for factor in [0.5, 2.0, 3.0] {
-        probes.push(problem.theta0.iter().map(|x| x * factor).collect());
-    }
-    for j in 0..problem.theta0.len() {
-        for factor in [0.5, 2.0] {
-            let mut moved = problem.theta0.clone();
-            if let Some(slot) = moved.get_mut(j) {
-                *slot *= factor;
-            }
-            probes.push(moved);
-        }
-    }
-    for theta in &probes {
-        if let Some(pred) = problem.predict(theta) {
-            rows.retain(|&i| pred.get(i).is_some_and(|f| *f == 0.0));
-        }
-    }
     if rows.is_empty() {
         return Ok(());
     }
@@ -822,4 +859,106 @@ fn refuse_unbounded<M: FitModel>(problem: &Problem<M>, em: ErrorModel) -> Result
             .collect(),
         indices: rows,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use caladrius_models::ModelId;
+
+    use super::*;
+    use crate::result::TraceRow;
+
+    const T: [f64; 5] = [0.5, 1.0, 2.0, 4.0, 8.0];
+    const Y: [f64; 5] = [9.31, 7.92, 6.85, 4.31, 2.11];
+
+    fn input(y: &[f64]) -> FitInput {
+        FitInput {
+            model: ModelId::IvBolus,
+            dose: 100.0,
+            time: T.to_vec(),
+            conc: y.to_vec(),
+            weighting: Weighting::Uniform,
+            initial: BTreeMap::from([("v".to_string(), 12.0), ("k".to_string(), 0.15)]),
+            options: FitOptions::maximum_likelihood(ErrorModel::Additive),
+        }
+    }
+
+    #[test]
+    fn collapsed_needs_every_error_variable_at_rounding_level() {
+        // Σy²/N of the F data is about 47; the natural scale of the additive variance.
+        let y = Y.to_vec();
+        let at = |em, xi: &[f64]| {
+            let mut zeta = vec![10.0, 0.2];
+            zeta.extend_from_slice(xi);
+            collapsed(em, 2, &zeta, &y)
+        };
+        assert!(at(ErrorModel::Additive, &[1e-30]));
+        assert!(!at(ErrorModel::Additive, &[1e-3]));
+        assert!(at(ErrorModel::Proportional, &[1e-27]));
+        assert!(!at(ErrorModel::Proportional, &[1e-3]));
+        // A combined model with one component at 0 is the collapse of FIT-ML-13c, not an exact fit.
+        assert!(at(ErrorModel::Combined, &[1e-30, 1e-30]));
+        assert!(!at(ErrorModel::Combined, &[0.0, 1e-3]));
+        assert!(!at(ErrorModel::Combined, &[1e-3, 0.0]));
+        // combined_sd moves a and b themselves: the variances are their squares.
+        assert!(at(ErrorModel::CombinedSd, &[1e-15, 1e-14]));
+        assert!(!at(ErrorModel::CombinedSd, &[1e-15, 1e-3]));
+        // No error variable at all is not a collapse.
+        assert!(!collapsed(ErrorModel::Additive, 2, &[10.0, 0.2], &y));
+    }
+
+    /// FIT-ML-15 during the iteration: a step that takes the error of a one-parameter model to
+    /// rounding level ends the run with `ExactFit` at the iterate before it, and does not commit
+    /// the iterate that went to 0. (No data reach this from a real start: the least-squares fit
+    /// that gives the start already refuses an exact fit, so the data are swapped for exact ones
+    /// after the start and a step to the exact solution is forced.)
+    #[test]
+    fn a_step_to_an_exact_fit_ends_the_run_with_the_status_exact_fit() {
+        let inexact = input(&Y);
+        let problem = Problem::new(ModelId::IvBolus, &inexact).unwrap();
+        let spec = problem.ml.clone().unwrap();
+        let (mut run, row) = MlRun::start(&problem, &spec, &inexact).unwrap();
+        let mut trace: Vec<TraceRow> = vec![row];
+
+        let truth = BTreeMap::from([("v".to_string(), 10.0), ("k".to_string(), 0.2)]);
+        let exact: Vec<f64> = caladrius_models::run(&caladrius_models::ModelInput {
+            model: ModelId::IvBolus,
+            dose: 100.0,
+            params: truth,
+            times: T.to_vec(),
+        })
+        .unwrap()
+        .conc()
+        .to_vec();
+        let problem = Problem::new(ModelId::IvBolus, &input(&exact)).unwrap();
+        let em = run.error_model();
+        let mut start = run.point.ev.zeta.clone();
+        // A variance already tiny, so that the step below does not lose it in the sum.
+        start[2] = 1e-24;
+        let ev = evaluate(&problem, em, &start).unwrap();
+        let mut here = point(&problem, &run.frame, em, ev).unwrap();
+        // The direction that lands on the true θ with a variance far below rounding level.
+        let delta = vec![10.0 - start[0], 0.2 - start[1], 1e-25 - 1e-24];
+        here.gn = Some((delta, 1.0));
+        run.point = here;
+        run.pending = None;
+        let before = run.point.ev.zeta.clone();
+
+        let advance = run.iterate(&problem, 1, &mut trace);
+        assert!(matches!(advance, Advance::Stopped(FitStatus::ExactFit)));
+        assert_eq!(trace.len(), 1, "the iterate that went to 0 is not a row");
+        assert_eq!(
+            run.point.ev.zeta, before,
+            "the run stays at the last iterate"
+        );
+
+        // The result is built at that iterate, with the status, and the one-shot entry points
+        // turn it into the refusal.
+        let result = crate::ml_result::build(&problem, &run, trace, FitStatus::ExactFit);
+        assert_eq!(result.status(), FitStatus::ExactFit);
+        assert!(result.get("m2ll").is_some_and(f64::is_finite));
+        assert_eq!(crate::refuse_exact_fit(result), Err(FitError::ExactFit));
+    }
 }

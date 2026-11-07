@@ -91,7 +91,13 @@ enum Phase {
 }
 
 pub(crate) enum Advance {
-    Committed { converged: bool },
+    /// An iteration was committed. `converged`: the criterion is met (the status is `Converged`);
+    /// `polishing`: the maximum-likelihood endgame still has a Newton step to take, so the next
+    /// step is not the end.
+    Committed {
+        converged: bool,
+        polishing: bool,
+    },
     Stopped(FitStatus),
 }
 
@@ -151,6 +157,7 @@ impl<M: FitModel> FitRun<M> {
             relative_decrease: None,
             m2ll: None,
             decrement: None,
+            polish: false,
         }];
         // FIT-CNV-01 (a): below this predicted relative gain a point from which no step decreases
         // the WRSS is the minimum. With forward differences of increment h the Jacobian is only
@@ -188,8 +195,10 @@ impl<M: FitModel> FitRun<M> {
         input: &FitInput,
     ) -> Result<Self, FitError> {
         let (run, row) = MlRun::start(&problem, spec, input)?;
-        let (status, phase) = if run.converged() {
+        let (status, phase) = if run.finished() {
             (FitStatus::Converged, Phase::Converged)
+        } else if run.converged() {
+            (FitStatus::Converged, Phase::Running)
         } else {
             (FitStatus::MaxIterations, Phase::Running)
         };
@@ -248,11 +257,16 @@ impl<M: FitModel> FitRun<M> {
                 self.status = status;
                 Step::Finished(self.finish())
             }
-            Advance::Committed { converged } => {
+            Advance::Committed {
+                converged,
+                polishing,
+            } => {
                 self.next_iteration += 1;
                 if converged {
                     self.status = FitStatus::Converged;
-                    self.phase = Phase::Converged;
+                    if !polishing {
+                        self.phase = Phase::Converged;
+                    }
                 }
                 Step::Progress(self.progress())
             }
@@ -452,6 +466,7 @@ impl<M: FitModel> FitRun<M> {
             relative_decrease: Some(decrease / s_new).filter(|x| x.is_finite()),
             m2ll: None,
             decrement: None,
+            polish: false,
         });
         let relative = decrease / s_new;
         let met = if self.problem.weighting.uses_predictions() {
@@ -470,6 +485,7 @@ impl<M: FitModel> FitRun<M> {
         self.previous_decrease = Some(relative);
         Advance::Committed {
             converged: self.problem.options.criterion == Criterion::RelativeDecrease && met,
+            polishing: false,
         }
     }
 

@@ -363,8 +363,14 @@ pub enum FitStatus {
     Singular,
     /// The model gave non-finite values during the iterations.
     NonFinite,
-    /// Converged with a parameter on a bound (bounds are not implemented yet; never reported).
+    /// Converged with a parameter on a bound (FIT-BND-02): a model parameter at its bound, or,
+    /// with `objective = ml`, an error component at 0 (FIT-ML-15).
     AtBound,
+    /// `objective = ml` only: during the iteration the error of a one-parameter error model fell to
+    /// rounding level, so the likelihood has no maximum (FIT-ML-15). The result is the last
+    /// iterate before that; [`run`] and [`run_model`] turn this status into
+    /// [`FitError::ExactFit`].
+    ExactFit,
 }
 
 impl FitStatus {
@@ -385,6 +391,9 @@ impl FitStatus {
                 "not converged: the model gave non-finite values; check the initial estimates and the units"
             }
             FitStatus::AtBound => "converged with a parameter on a bound",
+            FitStatus::ExactFit => {
+                "the model reproduces the observations exactly (the residual sum of squares is 0 within rounding): the maximum-likelihood estimate of the error does not exist; add observations, remove a parameter, or add noise to simulated data"
+            }
         }
     }
 }
@@ -437,12 +446,23 @@ pub fn start(input: &FitInput) -> Result<FitRun<ModelId>, FitError> {
 /// modification, FIT-ALG-01). Invalid input is an error; a fit that starts always returns a
 /// result with a status, its best iterate and its trace.
 pub fn run(input: &FitInput) -> Result<FitResult, FitError> {
-    Ok(start(input)?.solve())
+    refuse_exact_fit(start(input)?.solve())
 }
 
 /// As [`run`], with any [`FitModel`] in place of `input.model`.
 pub fn run_model(model: &dyn FitModel, input: &FitInput) -> Result<FitResult, FitError> {
-    Ok(FitRun::new(model, input)?.solve())
+    refuse_exact_fit(FitRun::new(model, input)?.solve())
+}
+
+/// FIT-ML-15: an exact fit found during the iteration is a refusal for the one-shot entry points; a
+/// host that drives the steps sees the status [`FitStatus::ExactFit`] on the result instead
+/// (a [`Step`] has no error to carry, and adding a variant would break its exhaustive matches).
+fn refuse_exact_fit(result: FitResult) -> Result<FitResult, FitError> {
+    if result.status() == FitStatus::ExactFit {
+        Err(FitError::ExactFit)
+    } else {
+        Ok(result)
+    }
 }
 
 #[cfg(test)]

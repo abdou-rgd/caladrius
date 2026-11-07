@@ -127,23 +127,28 @@ pub(crate) fn build<M: FitModel>(
         .zip(&ev.sigma)
         .map(|((y, f), s)| (y - f) / s)
         .collect();
-    let mean = z.iter().sum::<f64>() / nf;
-    v.put("iwres_mean", mean);
-    v.put("iwres_sum_sq", z.iter().map(|z| z * z).sum());
-    if n >= 2 {
+    // NC (the key is absent) when a sigma_i is not finite, and for the standard deviation with
+    // fewer than 2 observations. A fit that did not converge keeps its summaries, flagged with
+    // the "not converged" mark (FIT-ML-18, FIT-CNV-03).
+    if z.iter().all(|z| z.is_finite()) {
+        let mean = z.iter().sum::<f64>() / nf;
+        v.put("iwres_mean", mean);
+        v.put("iwres_sum_sq", z.iter().map(|z| z * z).sum());
+        if n >= 2 {
+            v.put(
+                "iwres_sd",
+                (z.iter().map(|z| sq(z - mean)).sum::<f64>() / (nf - 1.0)).sqrt(),
+            );
+        }
         v.put(
-            "iwres_sd",
-            (z.iter().map(|z| sq(z - mean)).sum::<f64>() / (nf - 1.0)).sqrt(),
+            "n_iwres_gt2",
+            z.iter().filter(|z| z.abs() > 2.0).count() as f64,
+        );
+        v.put(
+            "n_iwres_gt3",
+            z.iter().filter(|z| z.abs() > 3.0).count() as f64,
         );
     }
-    v.put(
-        "n_iwres_gt2",
-        z.iter().filter(|z| z.abs() > 2.0).count() as f64,
-    );
-    v.put(
-        "n_iwres_gt3",
-        z.iter().filter(|z| z.abs() > 3.0).count() as f64,
-    );
 
     // FIT-OUT-08 for the model parameters only.
     let partials = problem.jacobian(theta, pred).unwrap_or_default();
@@ -226,7 +231,9 @@ pub(crate) fn build<M: FitModel>(
         &flags::Inputs {
             status,
             last_step: trace
-                .last()
+                .iter()
+                .rev()
+                .find(|row| !row.polish)
                 .and_then(|row| row.step.map(|step| (row.lambda, step))),
             at_bound,
             free: &free_names,
@@ -234,7 +241,12 @@ pub(crate) fn build<M: FitModel>(
             get: &|name: &str| v.0.get(name).copied(),
         },
     );
-    let iterations = trace.last().map_or(0, |row| row.iteration);
+    // The Newton steps of the endgame are not iterations of the scoring (FIT-ML-20).
+    let iterations = trace
+        .iter()
+        .rev()
+        .find(|row| !row.polish)
+        .map_or(0, |row| row.iteration);
     if iterations > SLOW_ITERATIONS {
         flag_list.push(FitFlag::SlowConvergence { iterations });
     }

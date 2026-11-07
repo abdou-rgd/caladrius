@@ -36,6 +36,15 @@ pub trait FitModel {
         let _ = (dose, params);
         Vec::new()
     }
+
+    /// `true` when the prediction is exactly 0 for every admissible parameter value at every time
+    /// at or before the dose (time 0): an input that is not a bolus (zero-order or first-order,
+    /// with or without a lag, since a lag is never negative). Decided by the structure of the
+    /// model, not by probing parameter values (FIT-ML-13c). `false` by default, which is always
+    /// safe: the check is then left out.
+    fn silent_at_dose_time(&self) -> bool {
+        false
+    }
 }
 
 /// A derived quantity g(θ) and ∂g/∂θ by parameter name (parameters not named have 0).
@@ -75,9 +84,18 @@ impl<M: FitModel + ?Sized> FitModel for &M {
     fn secondary(&self, dose: f64, params: &BTreeMap<String, f64>) -> Vec<Secondary> {
         (**self).secondary(dose, params)
     }
+
+    fn silent_at_dose_time(&self) -> bool {
+        (**self).silent_at_dose_time()
+    }
 }
 
 impl FitModel for ModelId {
+    /// Every input but the bolus: the catalogue lists its input parameters (`ka`, `dur`).
+    fn silent_at_dose_time(&self) -> bool {
+        !self.input_parameters().is_empty()
+    }
+
     /// One-compartment relations (MOD-SEC-01, SEC-02) in the (v, k) parameterisation: CL = V·k,
     /// t½ = ln 2/k, AUC∞ = D/(V·k). None when `v` or `k` is not a parameter.
     fn secondary(&self, dose: f64, params: &BTreeMap<String, f64>) -> Vec<Secondary> {

@@ -48,6 +48,15 @@ pub struct TraceRow {
     /// system is singular there.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decrement: Option<f64>,
+    /// The row is a Newton step of the endgame (`objective = ml`, FIT-ML-08): the iteration
+    /// number goes on, and the estimates of the last row are the result. Absent for scoring
+    /// iterations and for least squares.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub polish: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 /// One observation with its prediction (FIT-OUT-09).

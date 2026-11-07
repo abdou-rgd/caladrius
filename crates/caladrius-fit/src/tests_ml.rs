@@ -469,4 +469,185 @@ fn the_iteration_limit_ends_an_ml_fit_as_max_iterations() {
             .any(|f| matches!(f, FitFlag::NotConverged { .. }))
     );
     assert!(r.get("m2ll").is_some());
+    // FIT-ML-17, FIT-ML-18, FIT-CNV-03: the statistics are shown, with the mark, not hidden.
+    for name in [
+        "iwres_mean",
+        "iwres_sd",
+        "n_iwres_gt2",
+        "se.v",
+        "se.error_b",
+        "cv_percent.v",
+    ] {
+        assert!(r.get(name).is_some(), "{name}");
+    }
+    // Secondary parameters: the delta method on the same covariance, no interval for ml.
+    assert!(r.get("se.cl").is_some() && r.get("cv_percent.cl").is_some());
+    assert!(r.get("ci_lo.cl").is_none() && r.get("ci_lo.v").is_none());
+}
+
+// ------------------------------------------------- the Newton polish (OF-19, FIT-ML-08)
+
+#[test]
+fn the_polish_is_marked_in_the_trace_and_follows_its_acceptance_rule() {
+    let mut polished = 0;
+    for model in [
+        ErrorModel::Proportional,
+        ErrorModel::Combined,
+        ErrorModel::CombinedSd,
+    ] {
+        let r = run(&f_data(model)).unwrap();
+        let rows = r.trace();
+        // Iteration numbers go on one by one, polish rows included.
+        for (i, row) in rows.iter().enumerate() {
+            assert_eq!(row.iteration, i, "{model:?}");
+        }
+        // The polish rows close the trace: a scoring row never follows one.
+        let first = rows.iter().position(|row| row.polish).unwrap_or(rows.len());
+        assert!(rows[first..].iter().all(|row| row.polish), "{model:?}");
+        assert!(!rows[0].polish);
+        // The rule: -2LL does not increase and the scaled score (decrement) decreases.
+        for pair in rows[first.saturating_sub(1)..].windows(2) {
+            let (before, after) = (&pair[0], &pair[1]);
+            assert!(after.polish);
+            assert!(after.m2ll.unwrap() <= before.m2ll.unwrap(), "{model:?}");
+            assert!(
+                after.decrement.unwrap() < before.decrement.unwrap(),
+                "{model:?}"
+            );
+            assert_eq!(after.step, Some(1.0));
+            assert_eq!(after.lambda, 0.0);
+            assert_eq!(after.halvings, 0);
+        }
+        // The last scoring row met the test of FIT-ML-08.
+        let last_scoring = rows[..first].last().unwrap();
+        assert!(last_scoring.decrement.unwrap() <= 1e-10, "{model:?}");
+        // The returned values are the last row's.
+        let last = rows.last().unwrap();
+        assert_eq!(
+            r.get("estimate.v").unwrap().to_bits(),
+            last.estimates[0].to_bits()
+        );
+        assert_eq!(
+            r.get("estimate.k").unwrap().to_bits(),
+            last.estimates[1].to_bits()
+        );
+        assert_eq!(r.get("m2ll").map(f64::to_bits), last.m2ll.map(f64::to_bits));
+        polished += rows.iter().filter(|row| row.polish).count();
+    }
+    assert!(polished > 0, "the polish is exercised on the F data");
+}
+
+#[test]
+fn only_the_likelihood_trace_has_polish_rows() {
+    let ml = serde_json::to_value(run(&f_data(ErrorModel::Combined)).unwrap().trace()).unwrap();
+    assert!(ml.to_string().contains("\"polish\":true"));
+    let mut ls = f_data(ErrorModel::Additive);
+    ls.options = FitOptions::default();
+    let ls = serde_json::to_value(run(&ls).unwrap().trace()).unwrap();
+    assert!(!ls.to_string().contains("polish"));
+    // Absent means false when a trace is read back.
+    let row: TraceRow = serde_json::from_value(json!({
+        "iteration": 0, "wrss": 1.0, "estimates": [1.0], "step": null,
+        "lambda": 0.0, "halvings": 0, "relative_decrease": null
+    }))
+    .unwrap();
+    assert!(!row.polish);
+}
+
+// ------------------------------------- the unbounded likelihood by structure (FIT-ML-13c)
+
+const ONE_COMPARTMENT: [ModelId; 6] = ModelId::ALL;
+
+fn zero_at(model: ModelId, time0: f64) -> FitInput {
+    let mut input = oral_with_zero_at_time_zero(ErrorModel::Combined);
+    input.model = model;
+    input.time[0] = time0;
+    input.initial = BTreeMap::from([("v".to_string(), 12.0), ("k".to_string(), 0.2)]);
+    for name in model.input_parameters() {
+        let value = match *name {
+            "ka" => 1.5,
+            "dur" => 1.0,
+            _ => 0.2,
+        };
+        input.initial.insert((*name).to_string(), value);
+    }
+    input
+}
+
+#[test]
+fn a_model_is_silent_at_the_dose_time_when_its_input_is_not_a_bolus() {
+    for model in ModelId::ALL.into_iter().chain(ModelId::TWO_COMPARTMENT) {
+        let bolus = matches!(model, ModelId::IvBolus | ModelId::Pk2IvBolus);
+        assert_eq!(model.silent_at_dose_time(), !bolus, "{}", model.id());
+    }
+}
+
+#[test]
+fn an_observed_zero_at_the_dose_time_is_unbounded_for_every_input_but_the_bolus() {
+    for model in ONE_COMPARTMENT {
+        for error_model in [ErrorModel::Combined, ErrorModel::CombinedSd] {
+            let mut input = zero_at(model, 0.0);
+            input.options = FitOptions::maximum_likelihood(error_model);
+            let outcome = run(&input);
+            if model == ModelId::IvBolus {
+                // The prediction is D/V at t = 0: nothing is silent, nothing is refused so.
+                assert!(
+                    !matches!(outcome, Err(FitError::UnboundedLikelihood { .. })),
+                    "{} {error_model:?}",
+                    model.id()
+                );
+            } else {
+                match outcome {
+                    Err(FitError::UnboundedLikelihood { indices, times, .. }) => {
+                        assert_eq!(indices, vec![0], "{}", model.id());
+                        assert_eq!(times, vec![0.0]);
+                    }
+                    other => panic!(
+                        "{} {error_model:?}: {:?}",
+                        model.id(),
+                        other.map(|r| r.status())
+                    ),
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_zero_after_the_dose_time_and_the_other_error_models_are_not_refused_so() {
+    for model in ONE_COMPARTMENT {
+        let mut after = zero_at(model, 0.1);
+        after.options = FitOptions::maximum_likelihood(ErrorModel::Combined);
+        assert!(
+            !matches!(run(&after), Err(FitError::UnboundedLikelihood { .. })),
+            "{}",
+            model.id()
+        );
+        for error_model in [ErrorModel::Additive, ErrorModel::Proportional] {
+            let mut input = zero_at(model, 0.0);
+            input.options = FitOptions::maximum_likelihood(error_model);
+            assert!(
+                !matches!(run(&input), Err(FitError::UnboundedLikelihood { .. })),
+                "{} {error_model:?}",
+                model.id()
+            );
+        }
+    }
+}
+
+// ------------------------------------------------------------------ the exact-fit status
+
+#[test]
+fn the_exact_fit_status_has_its_own_name_and_message() {
+    assert_eq!(
+        serde_json::to_value(FitStatus::ExactFit).unwrap(),
+        json!("exact_fit")
+    );
+    let back: FitStatus = serde_json::from_value(json!("exact_fit")).unwrap();
+    assert_eq!(back, FitStatus::ExactFit);
+    assert!(!FitStatus::ExactFit.message().is_empty());
+    assert_ne!(
+        FitStatus::ExactFit.message(),
+        FitStatus::NonFinite.message()
+    );
 }
