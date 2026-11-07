@@ -202,3 +202,25 @@ Proposed line, after "Fitting: ..." in section 5 (181 lines today, one line adde
 Decision taken meanwhile: the constants stand in the testkit for the new tests and T-149 uses them as they are, reporting the worst error it reaches for each. Nothing is written in `AGENTS.md` without a yes here.
 
 Added by the orchestrator after the T-148 review (2026-11-07): the reviewer measured a coupling. A −2LL within 1e-7 of the optimum keeps a parameter within 1e-4 relative only when its CV is below about 32 %, and 46 of the 436 CVs of the oracle are above it. IWRES at 1e-5 needs σ to about 4e-6 relative. Nothing is changed before T-149 measures what it reaches. If a correct engine misses only on weakly determined parameters, the question becomes whether to accept a fit by its likelihood (−2LL within 1e-7, and the parameters inside the matching profile region of the 256-bit Hessian) rather than by a fixed relative gap.
+
+Added by the orchestrator after T-149's fix round (2026-11-07): with the Newton polish at the end of the iteration, the engine reaches these worst errors at eae738c, against the tolerances proposed above:
+- −2LL: 6.04e-14 absolute;
+- estimates, SE and correlations: 4.85e-9 relative;
+- IWRES: 9.09e-8 absolute;
+- a structural zero: 2.26e-16 absolute.
+
+Every one is at least about 200 times inside. Without the polish, 23 of 477 tests miss, mostly combined fits with a tiny `error_b`. So the coupling the review measured does not bite a converged fit. The proposed line stands as written.
+
+## Q-024 (2026-11-07, orchestrator): a condition-scaled tolerance for the ill-conditioned scalars of the three-compartment models
+
+T-142's oracle marks 47 tests `#[ignore]`. They are scalars (micro constants, weights, conversions) whose condition number κ, written in each case, exceeds 1e3. On them no double-precision formula can promise 1e-12 relative (MOD-3C-08).
+
+T-144 ran them against the engine at fd0d5d4. 46 pass at the usual `MODEL_VALUES`. One fails, `conversions_ill::conv_tie_6_clearance::scalars`:
+- two rows, `b` and `w_beta`, are off by 1.05e-10 relative;
+- κ is about 8.0e6, so κ·2⁻⁵² = 1.78e-9, and the error is 0.059 of it, about 17 times inside.
+
+Section 5 has no rule for this case. Two options:
+- **(a)** Keep the 47 tests ignored and informational, as today. Nothing changes in `AGENTS.md`.
+- **(b)** Add one line to section 5 and turn the 47 into real tests: "Scalars whose condition number κ, written by the oracle, exceeds 1e3: relative error within κ·2⁻⁵²." No other tolerance moves.
+
+The orchestrator recommends (b). It tests the engine where the conditioning limit lies, and the measure shows a margin of about 17. Nothing is applied without a yes here.
