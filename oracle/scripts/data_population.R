@@ -484,6 +484,16 @@ for (def in defs$refusals) {
                                                 " but the definition says ", format(claimed_row))
   if (!identical(found$subject, def$subject)) fail(def$case, ": R finds subject ", format(found$subject),
                                                     " but the definition says ", format(def$subject))
+  # the words are written by hand: every "row r of subject S" in them must name the row and subject R computes
+  for (w in unlist(def$words)) {
+    m <- regmatches(w, regexec("^row ([0-9]+) of subject (.+)$", w))[[1]]
+    if (length(m) == 3L) {
+      if (is.null(found$row) || !identical(as.integer(m[2]), as.integer(found$row)))
+        fail(def$case, ": the word `", w, "` says row ", m[2], " but R finds ", def$code, " at row ", format(found$row))
+      if (!identical(m[3], as.character(found$subject)))
+        fail(def$case, ": the word `", w, "` says subject ", m[3], " but R finds subject ", format(found$subject))
+    }
+  }
   affected <- unlist(def$affected)
   unaffected <- setdiff(subs, affected)
   # sanity: the rows of the unaffected subjects are free of the problem

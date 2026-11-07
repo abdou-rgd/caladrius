@@ -9,6 +9,7 @@
 use std::collections::BTreeSet;
 
 use caladrius_models::ModelId;
+use caladrius_project::ColumnRole;
 use serde_json::{Map, Value, json};
 
 pub(crate) const DIALECT: &str = "https://json-schema.org/draft/2020-12/schema";
@@ -141,7 +142,8 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
             "Identifier of a worksheet or an analysis, as returned by the command that created it.",
         ),
         "ColumnRole" => {
-            one_of_strings(&["time", "concentration", "subject", "dose", "route", "other"])
+            let ids: Vec<&str> = ColumnRole::ALL.iter().map(ColumnRole::id).collect();
+            one_of_strings(&ids)
         }
         "Route" => json!({
             "description": "Route of administration.",
@@ -784,5 +786,38 @@ pub(crate) mod validate {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod column_role_tests {
+    use caladrius_project::ColumnRole;
+
+    use super::{definition, validate};
+
+    /// `data.import` and `data.preview` return the id of any role a column can have (the event
+    /// layout and the declared covariates added several), so the schema must accept all of them.
+    #[test]
+    fn the_schema_lists_every_column_role() {
+        let Some(def) = definition("ColumnRole") else {
+            panic!("no ColumnRole definition");
+        };
+        let listed: Vec<&str> = def["enum"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|v| v.as_str()).collect())
+            .unwrap_or_default();
+        for role in ColumnRole::ALL {
+            let id = role.id();
+            assert!(
+                listed.contains(&id),
+                "role `{id}` is missing from the schema"
+            );
+            let value = serde_json::to_value(role).unwrap();
+            assert!(
+                validate::check(&serde_json::json!({}), &def, &value).is_ok(),
+                "`{id}` does not validate"
+            );
+        }
+        assert_eq!(listed.len(), ColumnRole::ALL.len());
     }
 }

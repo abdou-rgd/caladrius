@@ -19,6 +19,7 @@
 
 mod analysis;
 mod csv;
+mod dataset;
 mod error;
 mod plot;
 mod project;
@@ -30,6 +31,10 @@ pub use analysis::{
     NcaSubjectResult, Outcome, SimulationRun, SimulationSpec, StaleReason,
 };
 pub use csv::{CsvOptions, ImportedTable, Reading, ReadingCheck, readings};
+pub use dataset::{
+    CovariateValue, Dataset, DoseKind, DoseRecord, Layout, ObservationRecord, ObservationStatus,
+    SubjectRecords,
+};
 pub use error::ProjectError;
 pub use plot::{
     FitView, PlotAxis, PlotGuide, PlotLayout, PlotPanel, PlotPoint, PlotRun, PlotScale, PlotSeries,
@@ -43,5 +48,7 @@ pub use worksheet::{
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_dataset;
 #[cfg(test)]
 mod tests_plot;
