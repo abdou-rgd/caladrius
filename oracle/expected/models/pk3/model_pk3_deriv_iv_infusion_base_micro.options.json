@@ -32,7 +32,7 @@
     "kappa_max": 1000,
     "n_omitted_ill_conditioned": 3,
     "n_structural_zero_written_as_zero": 14,
-    "n_recomputed_at_2048_bits": 1
+    "n_recomputed_at_2048_bits": 4
   },
   "versions": {
     "R": "R version 4.5.2 (2025-10-31 ucrt)",

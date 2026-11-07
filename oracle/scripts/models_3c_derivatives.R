@@ -8,7 +8,8 @@
 # factors by 256-bit central differences with relative step 1e-25 (the roots of every perturbed set
 # re-solved in 256 bits). The condition number of an entry is sum_j |term_j| / |sum_j term_j|: an
 # entry above KAPPA_MAX is omitted and counted (T-032). ka, tlag and dur are differentiated directly.
-step_now <- function() mpfr(10, PREC)^-25
+STEP_EXP <- 25L
+step_now <- function() mpfr(10, PREC)^-STEP_EXP
 psi_vec <- function(q) c(q$V, q$l, q$w[1], q$w[2])
 q_from_psi <- function(q0, psi) {
   q <- q0
@@ -72,6 +73,7 @@ extra_deriv <- function(model, q0, which, tm) {
   (conc_vec(segments(model, qp), tm, bolus) - conc_vec(segments(model, qm), tm, bolus)) / (2 * h)
 }
 N_OMIT <- 0L; N_STRUCT <- 0L; N_RECOMP <- 0L; N_KINK <- 0L
+N_ZERO_STRUCT <- 0L; N_ZERO_UNDERFLOW <- 0L; N_ZERO_DENORM <- 0L
 write_deriv_case <- function(name, model, set, p, dose, extra, note) {
   q0 <- derive_q3(set, p, dose, extra)
   times <- deriv_times(q0, extra)
@@ -83,7 +85,9 @@ write_deriv_case <- function(name, model, set, p, dose, extra, note) {
   flag <- rep(FALSE, length(times))
   for (j in 1:6) {
     sc <- abs(ch$cps[[j]]) * abs(ch$psi0[j])
-    flag <- flag | (sc != 0 & Cabs != 0 & sc < mpfr(10, 256L)^-38 * Cabs)
+    # a term that came out exactly 0 is flagged too: it may be a true value far below the 256-bit noise
+    # (T-142 fix: d_alpha, d_beta of the macro sets at late times had been taken for zeros)
+    flag <- flag | (Cabs != 0 & sc < mpfr(10, 256L)^-38 * Cabs)
   }
   ent <- ch$ent; kap <- ch$kap
   if (any(flag)) {
@@ -101,10 +105,48 @@ write_deriv_case <- function(name, model, set, p, dose, extra, note) {
     present <- switch(which, ka = !is.null(extra$ka), tlag = !is.null(extra$tlag), dur = !is.null(extra$dur))
     if (!present) next
     d <- extra_deriv(model, q0, which, tm)
+    # an exact 0 after the lag may be a value below the 256-bit noise: recompute it at 2048 bits
+    zi <- which(d == 0 & times > tl & Cabs != 0)
+    if (length(zi) > 0L) {
+      dh <- at_prec(2048L, extra_deriv(model, derive_q3(set, p, dose, extra), which, mpfr(times[zi], 2048L)))
+      for (i in seq_along(zi)) d[zi[i]] <- mpfr(dh[i], 256L)
+      N_RECOMP <<- N_RECOMP + length(zi)
+    }
     base <- mp(extra[[which]])
     k <- rep(1, length(times))
     k[(d != 0) & (abs(base * d) < mpfr(10, 256L)^-12 * Cabs)] <- Inf
     cols[[paste0("d_", which)]] <- d; kapp[[paste0("d_", which)]] <- k
+  }
+  # self-test (T-142 fix): every 0 about to be written for a time after the lag is checked against an
+  # independent evaluation, 3072 bits and a relative step of 1e-40 (the values come from 256 or 2048
+  # bits and 1e-25). It must be exactly 0 there (a structural zero) or lie below the normal double range
+  # (written as 0 by tonum); anything else stops the script.
+  zero_after <- function(v) which(v == 0 & times > tl & Cabs != 0)
+  zrows <- sort(unique(unlist(lapply(cols, zero_after))))
+  if (length(zrows) > 0L) {
+    STEP_EXP <<- 40L
+    hi3 <- tryCatch(at_prec(3072L, {
+      th <- mpfr(times[zrows], 3072L)
+      r <- deriv_chain(model, set, p, dose, extra, th)$ent
+      names(r) <- paste0("d_", names(r))
+      qh <- derive_q3(set, p, dose, extra)
+      for (wh in c("ka", "tlag", "dur"))
+        if (!is.null(extra[[wh]])) r[[paste0("d_", wh)]] <- extra_deriv(model, qh, wh, th)
+      r
+    }), finally = STEP_EXP <<- 25L)
+    for (nm in names(cols)) {
+      zi <- zero_after(cols[[nm]])
+      for (i in zi) {
+        hm <- hi3[[nm]][match(i, zrows)]
+        hv <- asNumeric(hm)
+        if (hm == 0) N_ZERO_STRUCT <<- N_ZERO_STRUCT + 1L
+        else {
+          check(abs(hv) < XMIN, model, " ", name, ": ", nm, " at t=", times[i],
+                " is 0 but the 3072-bit value is ", format(hv, digits = 6))
+          if (hv == 0) N_ZERO_UNDERFLOW <<- N_ZERO_UNDERFLOW + 1L else N_ZERO_DENORM <<- N_ZERO_DENORM + 1L
+        }
+      }
+    }
   }
   keys_t <- character(0); keys_p <- character(0); vals <- numeric(0)
   tkeys <- paste0("t=", num17(times))
@@ -117,7 +159,7 @@ write_deriv_case <- function(name, model, set, p, dose, extra, note) {
       if (kink) { N_KINK <<- N_KINK + 1L; next }
       if (v[i] == 0) { structural <- structural + 1L; keys_t <- c(keys_t, tkeys[i]); keys_p <- c(keys_p, nm); vals <- c(vals, 0); next }
       if (k[i] > KAPPA_MAX) { omitted <- omitted + 1L; next }
-      keys_t <- c(keys_t, tkeys[i]); keys_p <- c(keys_p, nm); vals <- c(vals, tonum(v[i]))
+      keys_t <- c(keys_t, tkeys[i]); keys_p <- c(keys_p, nm); vals <- c(vals, tonum(v[i]) + 0)
     }
   }
   N_OMIT <<- N_OMIT + omitted; N_STRUCT <<- N_STRUCT + structural
@@ -185,5 +227,7 @@ total_deriv <- 0L
 for (s in deriv_specs) total_deriv <- total_deriv + write_deriv_case(s$name, s$model, s$set, s$p, s$dose, s$extra, s$note)
 cat(sprintf("derivatives: %d values, %d omitted (kappa > %g), %d structural zeros, %d recomputed at 2048 bits, %d kink entries not written\n",
             total_deriv, N_OMIT, KAPPA_MAX, N_STRUCT, N_RECOMP, N_KINK))
+cat(sprintf("zero audit: %d zeros after the lag checked at 3072 bits: %d give exactly 0 (structural, or a true value far below that precision such as exp(-2400)), %d are non-zero but below 4.9e-324, %d between 4.9e-324 and 2.2e-308 (written 0)\n",
+            N_ZERO_STRUCT + N_ZERO_UNDERFLOW + N_ZERO_DENORM, N_ZERO_STRUCT, N_ZERO_UNDERFLOW, N_ZERO_DENORM))
 
 if (file.exists(file.path(script_dir, "models_3c_more.R"))) source(file.path(script_dir, "models_3c_more.R"))

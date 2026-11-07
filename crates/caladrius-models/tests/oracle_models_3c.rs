@@ -309,6 +309,55 @@ macro_rules! md_tests {
 // invocations of the macros above, one name per case file (without the prefix `model_pk3_`).
 include!("oracle_models_3c.cases");
 
+/// Below this decay exponent (the natural logarithm of the smallest normal double is -708.4) the
+/// factor `exp(-x)` of a term cannot underflow, so a derivative that contains it is not zero.
+const UNDERFLOW_EXPONENT: f64 = 700.0;
+
+/// Guards the oracle itself, without the engine (T-142 fix, the pk2 defect of T-033 again): in the
+/// macro set the derivative with respect to alpha, beta or gamma is the derivative of one exponential
+/// term, which is non-zero until its factor `exp(-x)` underflows. An exact 0 is written only after
+/// the exponent `x` of the slowest factor involved (the exponent itself, or ka for a first-order
+/// input, times the time since the end of the input) has passed `UNDERFLOW_EXPONENT`.
+#[test]
+fn macro_derivative_zeros_are_underflow() {
+    let mut zeros = 0_usize;
+    let mut tiny = 0_usize;
+    for name in list_pk3_cases().unwrap() {
+        if !name.starts_with("model_pk3_deriv_") {
+            continue;
+        }
+        let loaded = load_pk3_case(&name).unwrap();
+        if loaded.parameterisation != "macro" {
+            continue;
+        }
+        let p = &loaded.case.parameters;
+        let tlag = p.get("tlag").copied().unwrap_or(0.0);
+        let dur = p.get("dur").copied().unwrap_or(0.0);
+        for (group, column, value) in loaded.case.expected.iter() {
+            let Some(lambda) = column
+                .strip_prefix("d_")
+                .filter(|c| ["alpha", "beta", "gamma"].contains(c))
+                .and_then(|c| p.get(c).copied())
+            else {
+                continue;
+            };
+            let t: f64 = group.strip_prefix("t=").unwrap().parse().unwrap();
+            if t <= tlag + dur || value != Some(0.0) {
+                continue;
+            }
+            let rate = p.get("ka").map_or(lambda, |ka| lambda.min(*ka));
+            let x = rate * (t - tlag - dur);
+            zeros += 1;
+            assert!(
+                x >= UNDERFLOW_EXPONENT,
+                "{name}: {column} at {group} is written 0 but its exponential factor is exp(-{x}), far above the underflow"
+            );
+            tiny += 1;
+        }
+    }
+    assert!(zeros > 0 && zeros == tiny, "the guard checked no zero");
+}
+
 /// Guards the guard: every case file of the three-compartment oracle is run by a test above, and
 /// every case named above exists.
 #[test]

@@ -31,8 +31,8 @@
     "derivatives": "central differences in 256-bit arithmetic (Rmpfr), relative step 1e-25, of the independent explicit form of the concentration, the roots of every perturbed parameter set re-solved; chain rule through psi = (V, alpha, beta, gamma, w_alpha, w_beta); rounded once to double",
     "kappa_max": 1000,
     "n_omitted_ill_conditioned": 10,
-    "n_structural_zero_written_as_zero": 19,
-    "n_recomputed_at_2048_bits": 0
+    "n_structural_zero_written_as_zero": 16,
+    "n_recomputed_at_2048_bits": 3
   },
   "versions": {
     "R": "R version 4.5.2 (2025-10-31 ucrt)",
