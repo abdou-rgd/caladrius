@@ -56,6 +56,24 @@ pub enum ColumnRole {
 }
 
 impl ColumnRole {
+    /// Every role, in the order the schema lists them. A test of this crate matches each variant, so    /// a new role cannot be left out of this list, and the engine builds its schema from it.
+    pub const ALL: [ColumnRole; 14] = [
+        ColumnRole::Time,
+        ColumnRole::Concentration,
+        ColumnRole::Subject,
+        ColumnRole::Dose,
+        ColumnRole::Route,
+        ColumnRole::Event,
+        ColumnRole::Rate,
+        ColumnRole::Dur,
+        ColumnRole::Cmt,
+        ColumnRole::Mdv,
+        ColumnRole::Cens,
+        ColumnRole::Limit,
+        ColumnRole::Covariate,
+        ColumnRole::Other,
+    ];
+
     /// The stable id, as in the serialized form.
     pub fn id(&self) -> &'static str {
         match self {

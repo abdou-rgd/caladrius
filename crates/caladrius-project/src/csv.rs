@@ -37,6 +37,11 @@ pub struct ImportedTable {
     /// Things to check: ignored text in a numeric column, roles not found, units read from
     /// headers.
     pub notes: Vec<String>,
+    /// The limit written after a `<` in a cell of the concentration column (`<0.5`), by data row
+    /// (counted from 0). Not part of the stored or serialized form: a BLQ cell is stored as 0 and
+    /// marked, as it always was (DAT-LEG-01); the dataset reads the limit from here (DAT-CEN-02).
+    #[serde(skip)]
+    pub(crate) blq_limits: Vec<(usize, f64)>,
 }
 
 impl ImportedTable {
@@ -80,6 +85,7 @@ impl ImportedTable {
         }
         let mut notes = Vec::new();
         let mut columns = Vec::with_capacity(width);
+        let mut column_limits: Vec<Vec<(usize, f64)>> = Vec::with_capacity(width);
         // DAT-LAY-01: the layout is decided by a column recognised as `event`, and by nothing else.
         // The names added for the event layout are recognised only in that layout, so a file without
         // an event column reads exactly as it always did (DAT-LEG-02).
@@ -114,7 +120,7 @@ impl ImportedTable {
                             | ColumnRole::Limit
                     )
                 );
-            let (data, blq) = type_column(
+            let (data, blq, limits) = type_column(
                 &name,
                 values,
                 decimal_comma,
@@ -129,17 +135,24 @@ impl ImportedTable {
                 data,
                 blq,
             });
+            column_limits.push(limits);
         }
         assign_roles(&mut columns, &mut notes, event_layout);
         declare_covariates(&mut columns, &options.covariates, &mut notes);
         if event_layout {
             event_layout_notes(&columns, &mut notes);
         }
+        let blq_limits = columns
+            .iter()
+            .position(|c| c.role == ColumnRole::Concentration)
+            .and_then(|i| column_limits.into_iter().nth(i))
+            .unwrap_or_default();
         Ok(ImportedTable {
             columns,
             delimiter,
             decimal_comma,
             notes,
+            blq_limits,
         })
     }
 }
@@ -304,6 +317,15 @@ fn is_blq(t: &str, decimal_comma: bool) -> bool {
         .is_some_and(|x| x >= 0.0)
 }
 
+/// The limit written after the `<` of a BLQ cell (`< 0,45`), when there is one.
+fn blq_limit(t: &str, decimal_comma: bool) -> Option<f64> {
+    let compact: String = t.chars().filter(|c| !c.is_whitespace()).collect();
+    compact
+        .strip_prefix('<')
+        .and_then(|limit| parse_number(limit, decimal_comma))
+        .filter(|x| *x >= 0.0)
+}
+
 fn classify(raw: &str, decimal_comma: bool) -> Cell {
     let t = raw.trim();
     if t.is_empty() {
@@ -342,7 +364,7 @@ fn type_column(
     blq_allowed: bool,
     optional_numbers: bool,
     notes: &mut Vec<String>,
-) -> (ColumnData, Vec<usize>) {
+) -> (ColumnData, Vec<usize>, Vec<(usize, f64)>) {
     let cells: Vec<Cell> = values
         .iter()
         .map(|v| match classify(v, decimal_comma) {
@@ -356,7 +378,11 @@ fn type_column(
         .count();
     let n_text = cells.iter().filter(|c| matches!(c, Cell::Text)).count();
     if optional_numbers && cells.iter().all(|c| matches!(c, Cell::Missing)) {
-        return (ColumnData::Number(vec![None; cells.len()]), Vec::new());
+        return (
+            ColumnData::Number(vec![None; cells.len()]),
+            Vec::new(),
+            Vec::new(),
+        );
     }
     if n_numbers > 0 && n_text == 0 {
         if decimal_comma {
@@ -388,7 +414,14 @@ fn type_column(
                 })
                 .collect(),
         );
-        return (data, blq);
+        let limits = blq
+            .iter()
+            .filter_map(|row| {
+                let limit = values.get(*row).and_then(|v| blq_limit(v, decimal_comma))?;
+                Some((*row, limit))
+            })
+            .collect();
+        return (data, blq, limits);
     }
     if n_numbers > 0 {
         let example = cells
@@ -401,7 +434,7 @@ fn type_column(
             "column `{name}` mixes numbers and text (`{example}`, {n_text} cell(s)); it is kept as text. Replace the text by numbers or leave the cells empty to use it as data"
         ));
     }
-    (ColumnData::Text(values), Vec::new())
+    (ColumnData::Text(values), Vec::new(), Vec::new())
 }
 
 pub(crate) fn key(name: &str) -> String {
@@ -419,7 +452,7 @@ fn is_event_name(name: &str) -> bool {
 /// The role a column name suggests. The names added for the event layout (DAT-REC-01) count only
 /// when the file has an event column: in a profile-layout file a column called `limit` or `rate`
 /// stays `other`, as it always did (DAT-LEG-02, the legacy behaviour wins).
-fn role_of(name: &str, event_layout: bool) -> Option<ColumnRole> {
+pub(crate) fn role_of(name: &str, event_layout: bool) -> Option<ColumnRole> {
     let k = key(name);
     if k.starts_with("time")
         || matches!(
@@ -487,6 +520,37 @@ fn event_layout_notes(columns: &[Column], notes: &mut Vec<String>) {
         };
         notes.push(format!("column `{}` {what}", column.name));
     }
+    // DAT-TYP-03: a rate, a duration or a route on an observation row is not read.
+    if let Some(event) = columns.iter().find(|c| c.role == ColumnRole::Event) {
+        for column in columns.iter().filter(|c| {
+            matches!(
+                c.role,
+                ColumnRole::Rate | ColumnRole::Dur | ColumnRole::Route
+            )
+        }) {
+            let filled: Vec<usize> = (0..column.data.len())
+                .filter(|row| dataset::is_observation_row(event, *row))
+                .filter(|row| match &column.data {
+                    ColumnData::Number(v) => {
+                        v.get(*row).copied().flatten().is_some_and(|x| x != 0.0)
+                    }
+                    ColumnData::Text(v) => v.get(*row).is_some_and(|s| !s.trim().is_empty()),
+                })
+                .collect();
+            if let Some(first) = filled.first() {
+                let how_many = if filled.len() == 1 {
+                    "1 observation row".to_owned()
+                } else {
+                    format!("{} observation rows", filled.len())
+                };
+                notes.push(format!(
+                    "column `{}` has a value on {how_many} (the first is row {}); rate, duration and route are read on dose rows only, so they are ignored on observation rows",
+                    column.name,
+                    first + 1
+                ));
+            }
+        }
+    }
     if let Some(amount) = columns.iter().find(|c| c.role == ColumnRole::Dose) {
         if amount.unit.is_none() {
             notes.push(format!(
@@ -500,7 +564,10 @@ fn event_layout_notes(columns: &[Column], notes: &mut Vec<String>) {
 /// DAT-COV-01: the columns the user declares as covariates take that role, unless they have a role.
 fn declare_covariates(columns: &mut [Column], declared: &[String], notes: &mut Vec<String>) {
     for name in declared {
-        match columns.iter_mut().find(|c| &c.name == name) {
+        match columns
+            .iter_mut()
+            .find(|c| c.name.to_lowercase() == name.to_lowercase())
+        {
             None => notes.push(format!(
                 "covariate `{name}` was declared but the file has no column of that name"
             )),
@@ -739,18 +806,32 @@ pub fn readings(bytes: &[u8], options: &CsvOptions) -> Result<Vec<Reading>> {
         };
         numeric(ColumnRole::Time) && numeric(ColumnRole::Concentration)
     };
-    let mut out: Vec<Reading> = tables
+    let mut out: Vec<(bool, Reading)> = tables
         .into_iter()
         .filter(usable)
         .map(|table| {
             let built = dataset::build(&table);
             let mut checks = built.checks;
+            let n_dataset = checks.len();
             checks.extend(check_times(&table, built.observation_rows.as_deref()));
-            Reading {
-                table,
-                checks,
-                dataset: built.dataset,
-            }
+            // What counts against a reading when they are ranked. A profile file was ranked on its
+            // time checks alone before the dataset checks existed, and a wrong delimiter or decimal
+            // mark must not climb over the right reading because it happens to have no
+            // `different_doses`; so the dataset checks of a profile file are left out of the key.
+            // An event file is ranked on every check: only a reading that found the event column
+            // has the layout at all.
+            let counted = match built.dataset.layout {
+                dataset::Layout::Event => checks.len(),
+                dataset::Layout::Profile => checks.len().saturating_sub(n_dataset),
+            };
+            (
+                counted > 0,
+                Reading {
+                    table,
+                    checks,
+                    dataset: built.dataset,
+                },
+            )
         })
         .collect();
     if out.is_empty() {
@@ -762,6 +843,6 @@ pub fn readings(bytes: &[u8], options: &CsvOptions) -> Result<Vec<Reading>> {
         }));
     }
     // Stable: plausible readings first, each group in the order found (the default first).
-    out.sort_by_key(|r| !r.checks.is_empty());
-    Ok(out)
+    out.sort_by_key(|(counted, _)| *counted);
+    Ok(out.into_iter().map(|(_, reading)| reading).collect())
 }

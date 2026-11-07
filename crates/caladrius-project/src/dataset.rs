@@ -81,6 +81,11 @@ pub struct ObservationRecord {
     pub status: ObservationStatus,
     /// The measured value when `status` is `observed`, else `None`.
     pub value: Option<f64>,
+    /// The limit of quantification of a row below it, when the file gives it: the number after the
+    /// `<` of the cell (`<0.5`), or the `limit` column of a row with `cens` = 1 (DAT-CEN-02).
+    /// Absent otherwise. The value of such a row stays `None`: the row is left out of the analyses.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<f64>,
 }
 
 /// The value of a declared covariate for one subject (DAT-COV-01).
@@ -179,11 +184,16 @@ struct Cols<'a> {
     conc: Option<&'a Column>,
     dose: Option<&'a Column>,
     event: Option<&'a Column>,
+    /// A column whose name says it is the amount but that holds text (so it has no role).
+    amount_text: Option<&'a Column>,
     rate: Option<&'a Column>,
     dur: Option<&'a Column>,
     cmt: Option<&'a Column>,
     mdv: Option<&'a Column>,
     cens: Option<&'a Column>,
+    limit: Option<&'a Column>,
+    /// The limits written after a `<` in the concentration column, by row.
+    blq_limits: &'a [(usize, f64)],
     covariates: Vec<&'a Column>,
     /// Columns named `ii`, `addl` or `ss`, which have no role (DAT-REC-02).
     history: Vec<&'a Column>,
@@ -199,8 +209,24 @@ enum Kind {
     Unknown(String),
 }
 
+/// True when the event cell of `row` says it is an observation (DAT-TYP-01); the notes of the
+/// importer use it to find the cells that are ignored on observation rows.
+pub(crate) fn is_observation_row(event: &Column, row: usize) -> bool {
+    matches!(event_kind(event, row), Kind::Observation)
+}
+
 fn first_with(table: &ImportedTable, role: ColumnRole) -> Option<&Column> {
     table.columns.iter().find(|c| c.role == role)
+}
+
+/// The number written after the `<` of the concentration cell of `row` (`<0.5`), if any.
+fn text_limit(cols: &Cols, row: usize) -> Option<f64> {
+    // Sorted by row: they are collected in order.
+    let at = cols
+        .blq_limits
+        .binary_search_by_key(&row, |(r, _)| *r)
+        .ok()?;
+    cols.blq_limits.get(at).map(|(_, limit)| *limit)
 }
 
 fn number_at(column: Option<&Column>, row: usize) -> Option<f64> {
@@ -287,11 +313,17 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
         conc: first_with(table, ColumnRole::Concentration),
         dose: first_with(table, ColumnRole::Dose),
         event: first_with(table, ColumnRole::Event),
+        amount_text: table.columns.iter().find(|c| {
+            c.role == ColumnRole::Other
+                && crate::csv::role_of(&c.name, true) == Some(ColumnRole::Dose)
+        }),
         rate: first_with(table, ColumnRole::Rate),
         dur: first_with(table, ColumnRole::Dur),
         cmt: first_with(table, ColumnRole::Cmt),
         mdv: first_with(table, ColumnRole::Mdv),
         cens: first_with(table, ColumnRole::Cens),
+        limit: first_with(table, ColumnRole::Limit),
+        blq_limits: &table.blq_limits,
         covariates: table
             .columns
             .iter()
@@ -333,7 +365,12 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
     // A table with at most one subject: a blank subject cell is that subject (DAT-ERR-06 refuses a
     // blank cell only when there are several).
     let several = ids.len() > 1;
-    if !several {
+    // The profile layout takes its subjects as `Worksheet::profile` does: a row whose subject cell
+    // is blank belongs to no subject there, even when the table has one subject, and the dose check
+    // below must see the same rows. With no label at all there is no profile to ask for.
+    let named = !ids.is_empty();
+    let profile_by_label = layout == Layout::Profile && subject_col.is_some() && named;
+    if !several && !profile_by_label {
         if ids.is_empty() {
             ids.push(SINGLE_SUBJECT.to_owned());
         }
@@ -404,7 +441,9 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
                         duration: None,
                         kind: DoseKind::Bolus,
                     });
-                    if let Some(other_row) = acc.dose_conflict {
+                    if let Some(other_row) =
+                        acc.dose_conflict.filter(|_| subject_col.is_none() || named)
+                    {
                         problems.push(Problem {
                             code: "different_doses",
                             subject: Some(si),
@@ -429,12 +468,19 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
                     });
                 }
                 if acc.n_observation_rows == 0 && acc.n_rows > 0 {
+                    let what = if acc.n_dose_rows == 0 {
+                        "no observation row".to_owned()
+                    } else {
+                        format!(
+                            "no observation (only {})",
+                            plural(acc.n_dose_rows, "dose row", "dose rows")
+                        )
+                    };
                     problems.push(Problem {
                         code: "subject_without_observation",
                         subject: Some(si),
                         message: format!(
-                            "subject {id} has no observation (only {}), so there is nothing to analyse or fit for it; add its observations or remove its rows",
-                            plural(acc.n_dose_rows, "dose row", "dose rows")
+                            "subject {id} has {what}, so there is nothing to analyse or fit for it; add its observations or remove its rows",
                         ),
                     });
                 }
@@ -599,11 +645,15 @@ fn profile_row(cols: &Cols, row: usize, acc: &mut Acc) {
         (false, Some(x)) => (ObservationStatus::Observed, Some(x)),
         (false, None) => (ObservationStatus::Missing, None),
     };
+    let limit = (status == ObservationStatus::Blq)
+        .then(|| text_limit(cols, row))
+        .flatten();
     acc.observations.push(ObservationRecord {
         row: row + 1,
         time,
         status,
         value,
+        limit,
     });
 }
 
@@ -700,12 +750,19 @@ fn dose_row(
     let r = row + 1;
     let amt = name_of(cols.dose, "amt");
     let Some(amount) = number_at(cols.dose, row) else {
-        fail(
-            "dose_without_amount",
-            format!(
+        let message = match (cols.dose, cols.amount_text) {
+            (Some(_), _) => format!(
                 "row {r} of subject {id} is a dose but has no amount; give the amount in column `{amt}`, or change the event type if it is an observation"
             ),
-        );
+            (None, Some(text)) => format!(
+                "row {r} of subject {id} is a dose but column `{}` holds text, not numbers, so there is no amount; make the amounts numbers, or change the event type if it is an observation",
+                text.name
+            ),
+            (None, None) => format!(
+                "row {r} of subject {id} is a dose but the table has no amount column; add a column named amt (or amount) with the amount of each dose, or change the event type if it is an observation"
+            ),
+        };
+        fail("dose_without_amount", message);
         return;
     };
     if amount <= 0.0 {
@@ -735,8 +792,22 @@ fn dose_row(
     }
     let (rate, duration, kind) = match (rate.filter(|x| *x > 0.0), dur.filter(|x| *x > 0.0)) {
         (None, None) => (None, None, DoseKind::Bolus),
-        (Some(q), None) => (Some(q), Some(amount / q), DoseKind::Infusion),
-        (None, Some(d)) => (Some(amount / d), Some(d), DoseKind::Infusion),
+        (Some(q), None) => {
+            let d = amount / q;
+            if !d.is_finite() {
+                not_finite(fail, (r, id), amount, ("rate", q), ("duration", d));
+                return;
+            }
+            (Some(q), Some(d), DoseKind::Infusion)
+        }
+        (None, Some(d)) => {
+            let q = amount / d;
+            if !q.is_finite() {
+                not_finite(fail, (r, id), amount, ("duration", d), ("rate", q));
+                return;
+            }
+            (Some(q), Some(d), DoseKind::Infusion)
+        }
         (Some(q), Some(d)) => {
             if (q * d - amount).abs() > 1e-6 * amount {
                 fail(
@@ -773,6 +844,24 @@ fn dose_row(
         duration,
         kind,
     });
+}
+
+/// A rate or duration derived from the amount and the other one is not a finite number (the amount
+/// is huge or the other one is tiny). Refused as `rate_duration_mismatch` (DAT-ERR-06): the rate
+/// and the duration do not make a usable infusion.
+fn not_finite(
+    fail: &mut impl FnMut(&'static str, String),
+    (r, id): (usize, &str),
+    amount: f64,
+    (given, given_value): (&str, f64),
+    (derived, derived_value): (&str, f64),
+) {
+    fail(
+        "rate_duration_mismatch",
+        format!(
+            "row {r} of subject {id} gives an amount of {amount} and a {given} of {given_value}, from which the {derived} (the amount divided by the {given}) is {derived_value}, not a finite number; give a {given} of a usual size, or give the {derived} instead"
+        ),
+    );
 }
 
 fn observation_row(
@@ -844,6 +933,18 @@ fn observation_row(
     } else {
         (ObservationStatus::Missing, None)
     };
+    // The limit of a row below it: the `limit` column of a censored row, else the number after the
+    // `<` of the cell. A row left out by `mdv` has none.
+    let limit = (status == ObservationStatus::Blq)
+        .then(|| {
+            let from_column = if censored {
+                number_at(cols.limit, row)
+            } else {
+                None
+            };
+            from_column.or_else(|| text_limit(cols, row))
+        })
+        .flatten();
     let compartment = cols.cmt.map_or_else(String::new, |c| c.data.text_at(row));
     if !compartment.is_empty() && !acc.compartments.contains(&compartment) {
         acc.compartments.push(compartment);
@@ -853,5 +954,6 @@ fn observation_row(
         time: Some(time),
         status,
         value,
+        limit,
     });
 }
