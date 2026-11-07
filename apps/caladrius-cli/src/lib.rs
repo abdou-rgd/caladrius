@@ -116,7 +116,7 @@ options for a command:
   --progress          fit.run only: one line per iteration on standard error, such as
                       `iteration 3, wrss 12.5`; the answer on standard output is unchanged
   --cancel-after N    fit.run only: cancel after iteration N (for scripts and tests). Prints
-                      `fit cancelled after iteration N; nothing was stored` on standard error,
+                      `error: fit cancelled after iteration N; nothing was stored` on standard error,
                       stores nothing, prints no answer and exits with code 1. Ctrl-C does the
                       same at the next iteration
   --no-seal           print the answer as it is. By default it carries the seal of the command:
@@ -642,7 +642,7 @@ fn run_fit_job(
     match engine.finish(completed) {
         Ok(answer) => Ok(FitEnd::Answer(answer)),
         Err(e) if e.code == "fit_cancelled" => {
-            (watch.sink)(&e.message);
+            (watch.sink)(&format!("error: {}", e.message));
             Ok(FitEnd::Cancelled)
         }
         Err(e) => Err(e.into()),
@@ -748,6 +748,10 @@ fn run_command(
     }
     let params = Value::Object(params);
     let result = if args.command == "fit.run" {
+        // What the import said comes before the lines of the fit.
+        for note in notes.drain(..) {
+            sink(&note);
+        }
         let mut watch = FitWatch {
             progress: args.progress,
             cancel_after: args.cancel_after,

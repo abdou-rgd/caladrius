@@ -104,7 +104,7 @@ pub fn command_ids() -> Vec<&'static str> {
 }
 
 /// A project and the history of the commands executed on it.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug)]
 pub struct Engine {
     pub(crate) project: Project,
     pub(crate) history: History,
@@ -118,6 +118,33 @@ pub struct Engine {
     pub(crate) running: Option<job::Running>,
     /// How many jobs this engine has begun; the number of the next one is this plus one.
     pub(crate) jobs_begun: u64,
+    /// Tells this engine from every other one in the process, so that a job begun by one engine
+    /// is never taken by another. Never in an answer, a seal or the history.
+    pub(crate) identity: u64,
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self::with_project(Project::default())
+    }
+}
+
+/// A copy of the project, the history and the settings. A job that is running is not copied: the
+/// copy has no running job and takes an identity of its own, so a job of the original cannot be
+/// finished on it.
+impl Clone for Engine {
+    fn clone(&self) -> Self {
+        Self {
+            project: self.project.clone(),
+            history: self.history.clone(),
+            revision: self.revision,
+            clock: self.clock,
+            without_provenance: self.without_provenance,
+            running: None,
+            jobs_begun: self.jobs_begun,
+            identity: job::new_identity(),
+        }
+    }
 }
 
 impl Engine {
@@ -136,6 +163,7 @@ impl Engine {
             without_provenance: false,
             running: None,
             jobs_begun: 0,
+            identity: job::new_identity(),
         }
     }
 

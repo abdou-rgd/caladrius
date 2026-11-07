@@ -9,6 +9,8 @@
 //! host without one (WebAssembly) calls [`Job::step`] between two ticks of its event loop.
 
 use caladrius_fit::{Control, FitResult, FitRun, ModelId, Observer, Outcome, Progress, Step};
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use serde_json::Value;
 
 use crate::Engine;
@@ -17,6 +19,13 @@ use crate::error::CommandError;
 
 /// The id of the one command that can run as a job.
 pub const FIT_RUN: &str = "fit.run";
+
+/// A number no other engine of the process has. It only tells engines apart: it is not in an
+/// answer, a seal or the history, so it does not touch rule 10.
+pub(crate) fn new_identity() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    NEXT.fetch_add(1, Ordering::Relaxed)
+}
 
 /// What the engine remembers of the job that is running.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +37,8 @@ pub(crate) struct Running {
 /// What `begin` took from the project and from the caller, kept until `finish`.
 struct Ticket {
     id: u64,
+    /// The engine that began the job.
+    engine: u64,
     /// The parameters as received (what the entry of the history and the seal carry).
     received: Value,
     /// The hash of the worksheet(s) the fit reads, taken before it ran.
@@ -156,6 +167,19 @@ impl Engine {
         self.running.map(|r| r.id)
     }
 
+    /// The way out for a host that lost its job (a `Job` or `Completed` dropped, a worker that
+    /// panicked, a command that was aborted): if `id` is the running job, clears the mark and
+    /// returns true. Nothing is recorded and the project is untouched. Any other `id` changes
+    /// nothing and returns false.
+    pub fn abandon_job(&mut self, id: u64) -> bool {
+        if self.running.is_some_and(|r| r.id == id) {
+            self.running = None;
+            true
+        } else {
+            false
+        }
+    }
+
     /// The refusal of a command that would change the project under the running job, if one runs.
     pub(crate) fn refuse_while_running(&self, id: &str, params: &Value) -> Option<CommandError> {
         let running = self.running?;
@@ -261,6 +285,7 @@ impl Engine {
         Ok(Job {
             ticket: Ticket {
                 id: job_id,
+                engine: self.identity,
                 received,
                 input,
                 revision: self.revision,
@@ -273,7 +298,7 @@ impl Engine {
     /// `finish` without the entry.
     pub(crate) fn finish_job(&mut self, completed: Completed) -> Settled {
         let Completed { ticket, outcome } = completed;
-        if self.running.map(|r| r.id) != Some(ticket.id) {
+        if ticket.engine != self.identity || self.running.map(|r| r.id) != Some(ticket.id) {
             return Settled::Unrecorded(CommandError::new(
                 "not_the_running_job",
                 format!(

@@ -1007,7 +1007,7 @@ fn cancel_after_stops_the_fit_prints_the_sentence_and_exits_with_1() {
     assert_eq!(output.stdout, "", "no answer is printed");
     assert_eq!(
         output.notes.last().map(String::as_str),
-        Some("fit cancelled after iteration 1; nothing was stored")
+        Some("error: fit cancelled after iteration 1; nothing was stored")
     );
     assert_eq!(progress_lines(&output).len(), 1, "{:?}", output.notes);
     assert!(!project.exists(), "nothing is stored, not even the import");
@@ -1017,7 +1017,7 @@ fn cancel_after_stops_the_fit_prints_the_sentence_and_exits_with_1() {
     assert_eq!(output.exit_code, 1);
     assert_eq!(
         output.notes.last().map(String::as_str),
-        Some("fit cancelled after iteration 0; nothing was stored")
+        Some("error: fit cancelled after iteration 0; nothing was stored")
     );
 
     // A fit that ends before iteration N is not cancelled.
@@ -1068,9 +1068,10 @@ fn ctrl_c_cancels_at_the_next_iteration_like_cancel_after() {
     .unwrap();
     assert_eq!(output.exit_code, 1);
     assert_eq!(output.stdout, "");
+    shown.retain(|l| !l.starts_with("note:"));
     assert_eq!(
         shown,
-        ["fit cancelled after iteration 0; nothing was stored"]
+        ["error: fit cancelled after iteration 0; nothing was stored"]
     );
     assert!(output.notes.iter().all(|n| !n.starts_with("fit cancelled")));
 
@@ -1088,12 +1089,13 @@ fn ctrl_c_cancels_at_the_next_iteration_like_cancel_after() {
     )
     .unwrap();
     assert_eq!(output.exit_code, 1);
+    shown.retain(|l| !l.starts_with("note:"));
     assert_eq!(shown.len(), 3, "{shown:?}");
     assert!(shown[0].starts_with("iteration 1, wrss "), "{shown:?}");
     assert!(shown[1].starts_with("iteration 2, wrss "), "{shown:?}");
     assert_eq!(
         shown[2],
-        "fit cancelled after iteration 2; nothing was stored"
+        "error: fit cancelled after iteration 2; nothing was stored"
     );
 }
 
@@ -1117,4 +1119,37 @@ fn the_fit_flags_are_refused_with_a_sentence_elsewhere_and_when_malformed() {
     assert!(bad.contains("needs a value"), "{bad}");
     let bad = failure(&["fit.run", "--csv", &file, "--progress=1"]);
     assert!(bad.contains("takes no value"), "{bad}");
+}
+
+#[test]
+fn what_the_import_said_comes_before_the_lines_of_the_fit() {
+    let dir = scratch("note-order");
+    let path = dir.join("bare.csv");
+    // Headers without units: the import warns.
+    fs::write(
+        &path,
+        CSV.replace(" (h)", "")
+            .replace(" (mg/L)", "")
+            .replace(" (mg)", ""),
+    )
+    .unwrap();
+    let file = path.to_str().unwrap().to_owned();
+    let list = args(&fit_args(&file, &["--progress", "--cancel-after", "2"]));
+    let mut shown = Vec::new();
+    let output = run_with(
+        &list,
+        &mut std::io::empty(),
+        &mut |l| shown.push(l.to_owned()),
+        &|| false,
+    )
+    .unwrap();
+    assert!(output.notes.is_empty(), "{:?}", output.notes);
+    let first_line = shown.iter().position(|l| l.starts_with("iteration 1,"));
+    let last_warning = shown.iter().rposition(|l| l.starts_with("warning:"));
+    assert!(last_warning.is_some(), "{shown:?}");
+    assert!(last_warning < first_line, "{shown:?}");
+    assert_eq!(
+        shown.last().map(String::as_str),
+        Some("error: fit cancelled after iteration 2; nothing was stored")
+    );
 }

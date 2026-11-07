@@ -439,3 +439,188 @@ fn only_fit_run_runs_as_a_job() {
     assert_eq!(e.running_job(), None);
     assert_eq!(e.history().len(), 1, "only the import");
 }
+
+/// Captured at fa306d4 (before `fit.run` went through jobs), with the provenance off: the SHA-256
+/// of the answer bytes (the error text for a refusal), the SHA-256 of the seal and the hash of the
+/// input. `execute` and `begin`/`finish` must both still give them.
+const GOLDEN: [(&str, &str, &str, &str); 6] = [
+    (
+        "pk1 converges",
+        "ffef529abbba0a2d9286328a76e3fca7aedcce4cc7bf868b1eea50e01ff6aae4",
+        "7de6e47f34a5cf65378eb75beb08936890adda83290baf37232ffcd18fe3ddfa",
+        "e4f4cf193bb4f41a5ba7e5d77a1a0f2d5ec54637a7746ef901a5edacacefcbdc",
+    ),
+    (
+        "pk1 stops on the iteration limit",
+        "3e62a8210a05ae6fe660d45a2b550abef36f7d1183f37b33679e76579e49ff7e",
+        "2e3da314500818d83e38637e0a3a92a4258d1dd6b5a7e4bebb3e5a6784c8e4b8",
+        "e4f4cf193bb4f41a5ba7e5d77a1a0f2d5ec54637a7746ef901a5edacacefcbdc",
+    ),
+    (
+        "pk1 fails",
+        "5b622742654eda28f10f16e86548c9bb6732fadf761c4d955e258371c593c758",
+        "4af0e759be860acba670350188b090786b460172c0f55b2f927f72922a3f2cc0",
+        "e4f4cf193bb4f41a5ba7e5d77a1a0f2d5ec54637a7746ef901a5edacacefcbdc",
+    ),
+    (
+        "pk2 converges",
+        "4c5143e306ff54489f65448e540bfb7f1b900e8d7a9dade1e90fd27b9f3916c4",
+        "ea94bab83f4a4f2ba51cd23603c6e44a01c9f41922bace3f937a6a09fa06037f",
+        "8b1c4f51f2fab2337721e583b92eb86ee93215858112c9e50c23f95a31453394",
+    ),
+    (
+        "pk2 stops on the iteration limit",
+        "cb0b787831b3318a24749633c2449a4c3c0b54b0f2b58efd9b33e6add56ed0d4",
+        "ab6625a62c772fbb32bbf4f1902dd880c6e010749710569cf9a6c042f98cc6a5",
+        "8b1c4f51f2fab2337721e583b92eb86ee93215858112c9e50c23f95a31453394",
+    ),
+    (
+        "pk2 fails",
+        "a3bf11f494620d528fde32fc6ed4eae06ea64bf94d1b735bd4ce592805c5ba6f",
+        "f175d7d0c39a3043b113da9b2c8f76277dcc5ff4e48e19f573a794862571ad57",
+        "8b1c4f51f2fab2337721e583b92eb86ee93215858112c9e50c23f95a31453394",
+    ),
+];
+
+#[test]
+fn the_answers_and_seals_are_those_of_the_engine_before_jobs() {
+    use crate::seal::sha256_hex;
+    let digest = |answer: &Result<Value, CommandError>| {
+        let text = match answer {
+            Ok(v) => v.to_string(),
+            Err(e) => e.to_string(),
+        };
+        sha256_hex(text.as_bytes())
+    };
+    let seal_of = |e: &Engine| {
+        let seal = e.history().entries().last().and_then(|x| x.seal.clone());
+        (
+            seal.as_ref().map(|s| s.sha256.clone()).unwrap_or_default(),
+            seal.and_then(|s| s.input).unwrap_or_default(),
+        )
+    };
+    for ((label, engine, params, _), golden) in cases().into_iter().zip(GOLDEN) {
+        assert_eq!(label, golden.0);
+        let mut by_execute = engine.clone();
+        by_execute.set_provenance(false);
+        let answer = by_execute.execute("fit.run", params.clone());
+        assert_eq!(digest(&answer), golden.1, "{label}: answer, execute");
+        let (seal, input) = seal_of(&by_execute);
+        assert_eq!(
+            (seal.as_str(), input.as_str()),
+            (golden.2, golden.3),
+            "{label}: seal, execute"
+        );
+
+        let mut by_job = engine.clone();
+        by_job.set_provenance(false);
+        let answer = match by_job.begin("fit.run", params) {
+            Ok(job) => by_job.finish(job.run(&mut Recorder::new(None))),
+            Err(e) => Err(e),
+        };
+        assert_eq!(digest(&answer), golden.1, "{label}: answer, job");
+        let (seal, input) = seal_of(&by_job);
+        assert_eq!(
+            (seal.as_str(), input.as_str()),
+            (golden.2, golden.3),
+            "{label}: seal, job"
+        );
+    }
+}
+
+#[test]
+fn a_job_of_another_engine_is_refused_even_with_the_same_number() {
+    let mut a = oral();
+    let mut b = oral();
+    let (Ok(job_a), Ok(job_b)) = (
+        a.begin("fit.run", oral_params()),
+        b.begin("fit.run", oral_params()),
+    ) else {
+        panic!("begin failed");
+    };
+    assert_eq!(job_a.id(), 1);
+    assert_eq!(job_b.id(), 1, "both engines hand out job 1");
+    let done_a = job_a.run(&mut Recorder::new(None));
+    let b_history = b.history().entries().to_vec();
+    let b_project = project_text(&b);
+    let refusal = b.finish(done_a).err();
+    assert!(
+        refusal
+            .as_ref()
+            .is_some_and(|r| r.code == "not_the_running_job"),
+        "{refusal:?}"
+    );
+    assert_eq!(b.history().entries(), b_history.as_slice());
+    assert_eq!(project_text(&b), b_project, "A's fit is not stored in B");
+    assert_eq!(b.running_job(), Some(1), "B's own job is untouched");
+    // And each engine still ends its own job.
+    assert!(b.finish(job_b.run(&mut Recorder::new(None))).is_ok());
+    assert_eq!(a.running_job(), Some(1));
+}
+
+#[test]
+fn abandon_job_is_the_way_out_for_a_job_that_was_lost() {
+    let mut e = oral();
+    let Ok(job) = e.begin("fit.run", oral_params()) else {
+        panic!("begin failed");
+    };
+    let id = job.id();
+    drop(job); // the host lost it
+    assert_eq!(e.running_job(), Some(id));
+    let refusal = e.execute("project.new", Value::Null).err();
+    assert!(refusal.is_some_and(|r| r.code == "job_running"));
+    let entries = e.history().entries().to_vec();
+    let project = project_text(&e);
+    assert!(!e.abandon_job(id + 1), "another number changes nothing");
+    assert_eq!(e.running_job(), Some(id));
+    assert!(e.abandon_job(id));
+    assert!(!e.abandon_job(id), "nothing left to clear");
+    assert_eq!(e.running_job(), None);
+    assert_eq!(
+        e.history().entries(),
+        entries.as_slice(),
+        "nothing recorded"
+    );
+    assert_eq!(project_text(&e), project);
+    ok(
+        &mut e,
+        "nca.run",
+        json!({ "worksheet": 1, "route": "extravascular" }),
+    );
+    // A lost `Completed` is the same: abandoned, then the next job is numbered on.
+    let Ok(job) = e.begin("fit.run", oral_params()) else {
+        panic!("begin failed");
+    };
+    let lost = job.run(&mut Recorder::new(None));
+    assert!(e.abandon_job(2));
+    assert!(
+        e.finish(lost).is_err(),
+        "an abandoned job cannot be finished"
+    );
+    assert_eq!(
+        e.history().entries().len(),
+        entries.len() + 1,
+        "only the nca.run"
+    );
+}
+
+#[test]
+fn a_clone_made_during_a_job_has_no_running_job_and_its_own_identity() {
+    let mut e = oral();
+    let Ok(job) = e.begin("fit.run", oral_params()) else {
+        panic!("begin failed");
+    };
+    let mut copy = e.clone();
+    assert_eq!(copy.running_job(), None);
+    ok(&mut copy, "project.describe", Value::Null);
+    ok(&mut copy, "fit.run", oral_params());
+    // The job of the original cannot be finished on the copy, even if it were running a job 1.
+    let Ok(job_copy) = oral().begin("fit.run", oral_params()) else {
+        panic!("begin failed");
+    };
+    drop(job_copy);
+    let done = job.run(&mut Recorder::new(None));
+    let refusal = copy.finish(done).err();
+    assert!(refusal.is_some_and(|r| r.code == "not_the_running_job"));
+    assert_eq!(e.running_job(), Some(1), "the original still runs its job");
+}
