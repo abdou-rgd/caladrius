@@ -82,10 +82,15 @@ pub struct ObservationRecord {
     /// The measured value when `status` is `observed`, else `None`.
     pub value: Option<f64>,
     /// The limit of quantification of a row below it, when the file gives it: the number after the
-    /// `<` of the cell (`<0.5`), or the `limit` column of a row with `cens` = 1 (DAT-CEN-02).
-    /// Absent otherwise. The value of such a row stays `None`: the row is left out of the analyses.
+    /// `<` of the cell (`<0.5`), or the value cell of a row with `cens` = 1, which holds the limit
+    /// (DAT-CEN-02). Absent otherwise. The value of such a row stays `None`: the row is left out of
+    /// the analyses.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<f64>,
+    /// The `limit` column of a row with `cens` = 1: the other, lower bound of the censoring
+    /// interval (DAT-CEN-02). Kept and unused. Absent otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lower_limit: Option<f64>,
 }
 
 /// The value of a declared covariate for one subject (DAT-COV-01).
@@ -654,6 +659,7 @@ fn profile_row(cols: &Cols, row: usize, acc: &mut Acc) {
         status,
         value,
         limit,
+        lower_limit: None,
     });
 }
 
@@ -924,6 +930,8 @@ fn observation_row(
         }
     };
     let blq = cols.conc.is_some_and(|c| c.is_blq(row));
+    // The cell as read, before the value of a row below the limit is dropped.
+    let cell = value;
     let (status, value) = if skipped {
         (ObservationStatus::Missing, None)
     } else if censored || blq {
@@ -933,18 +941,20 @@ fn observation_row(
     } else {
         (ObservationStatus::Missing, None)
     };
-    // The limit of a row below it: the `limit` column of a censored row, else the number after the
-    // `<` of the cell. A row left out by `mdv` has none.
-    let limit = (status == ObservationStatus::Blq)
-        .then(|| {
-            let from_column = if censored {
-                number_at(cols.limit, row)
-            } else {
-                None
-            };
-            from_column.or_else(|| text_limit(cols, row))
-        })
-        .flatten();
+    // The limit of a row below it: the number after the `<` of the cell, else, on a censored row,
+    // its value cell (the `rxode2` convention). The `limit` column of a censored row is the other,
+    // lower bound. A row left out by `mdv` has neither.
+    let below = status == ObservationStatus::Blq;
+    let limit = if below {
+        text_limit(cols, row).or(if censored && !blq { cell } else { None })
+    } else {
+        None
+    };
+    let lower_limit = if below && censored {
+        number_at(cols.limit, row)
+    } else {
+        None
+    };
     let compartment = cols.cmt.map_or_else(String::new, |c| c.data.text_at(row));
     if !compartment.is_empty() && !acc.compartments.contains(&compartment) {
         acc.compartments.push(compartment);
@@ -955,5 +965,6 @@ fn observation_row(
         status,
         value,
         limit,
+        lower_limit,
     });
 }

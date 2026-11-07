@@ -414,40 +414,39 @@ fn mdv_leaves_a_row_out_and_other_values_are_refused() {
 #[test]
 fn cens_marks_a_row_below_the_limit_and_keeps_the_limit() {
     let csv = "ID,TIME,DV,AMT,EVID,CENS,LIMIT\n\
-        1,0,,10,1,,\n1,1,3,,0,0,\n1,2,0.5,,0,1,0.5\n1,3,<0.2,,0,,\n1,4,<0.3,,0,1,0.1\n";
+        1,0,,10,1,,\n1,1,3,,0,0,\n1,2,0.5,,0,1,\n1,3,0.4,,0,1,0.1\n1,4,<0.5,,0,,\n1,5,<0.3,,0,1,0.1\n";
     let r = read(csv);
     assert!(r.checks.is_empty(), "{:?}", r.checks);
     let s = r.dataset.subjects.first().unwrap();
     let rows: Vec<_> = s
         .observations
         .iter()
-        .map(|o| (o.row, o.status, o.value, o.limit))
+        .map(|o| (o.row, o.status, o.value, o.limit, o.lower_limit))
         .collect();
     assert_eq!(
         rows,
         [
-            (2, ObservationStatus::Observed, Some(3.0), None),
-            // A censored row: below the limit, the value is not kept, the limit is the column's.
-            (3, ObservationStatus::Blq, None, Some(0.5)),
-            // A `<` cell: the limit is the number after it.
-            (4, ObservationStatus::Blq, None, Some(0.2)),
-            // Both: the limit column of a censored row wins.
-            (5, ObservationStatus::Blq, None, Some(0.1)),
+            (2, ObservationStatus::Observed, Some(3.0), None, None),
+            // cens = 1 and only the value cell: the value cell is the limit, the value is not kept.
+            (3, ObservationStatus::Blq, None, Some(0.5), None),
+            // cens = 1 with the value cell and a limit column: the column is the lower bound.
+            (4, ObservationStatus::Blq, None, Some(0.4), Some(0.1)),
+            // A `<0.5` text cell: the limit is the number after the sign.
+            (5, ObservationStatus::Blq, None, Some(0.5), None),
+            // Both a `<` cell and a censored row: the cell's number is the limit.
+            (6, ObservationStatus::Blq, None, Some(0.3), Some(0.1)),
         ]
     );
-    assert_eq!((s.n_obs, s.n_observed, s.n_blq), (4, 1, 3));
-    // Right-censored and unknown codes are refused, and so is a censored row without a limit.
+    assert_eq!((s.n_obs, s.n_observed, s.n_blq), (5, 1, 4));
+    // A censored row whose value cell is empty is refused: the limit is missing.
+    let missing = read("ID,TIME,DV,AMT,EVID,CENS,LIMIT\n1,0,,10,1,,\n1,1,,,0,1,0.1\n1,2,2,,0,,\n");
+    assert_eq!(codes(&missing), ["unsupported_censoring"]);
+    let message = &missing.checks.first().unwrap().message;
+    assert!(message.contains("the limit is missing"), "{message}");
+    // Right-censored and unknown codes are refused.
     let right = read("ID,TIME,DV,AMT,EVID,CENS\n1,0,,10,1,\n1,1,3,,0,-1\n");
     assert_eq!(codes(&right), ["unsupported_censoring"]);
-    let missing = read(
-        "ID,TIME,DV,AMT,EVID,CENS
-1,0,,10,1,
-1,1,,,0,1
-1,2,2,,0,
-",
-    );
-    assert_eq!(codes(&missing), ["unsupported_censoring"]);
-    // A file without a limit anywhere has no limit field in its records.
+    // A word without a number, and a row not censored, give no limit; the field is not written.
     let plain = read("ID,TIME,DV,AMT,EVID\n1,0,,10,1\n1,1,BLQ,,0\n1,2,4,,0\n");
     let o = plain
         .dataset
@@ -457,8 +456,23 @@ fn cens_marks_a_row_below_the_limit_and_keeps_the_limit() {
         .observations
         .first()
         .unwrap();
+    assert_eq!(
+        (o.status, o.limit, o.lower_limit),
+        (ObservationStatus::Blq, None, None)
+    );
+    let json = serde_json::to_string(o).unwrap();
+    assert!(!json.contains("limit"), "{json}");
+    // The word BLQ on a censored row has no number to give: no limit, rather than 0.
+    let word = read("ID,TIME,DV,AMT,EVID,CENS\n1,0,,10,1,\n1,1,BLQ,,0,1\n1,2,4,,0,\n");
+    let o = word
+        .dataset
+        .subjects
+        .first()
+        .unwrap()
+        .observations
+        .first()
+        .unwrap();
     assert_eq!((o.status, o.limit), (ObservationStatus::Blq, None));
-    assert!(!serde_json::to_string(o).unwrap().contains("limit"));
 }
 
 #[test]
