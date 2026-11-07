@@ -202,10 +202,13 @@ pub fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
     let overflow = |what: String| Err(ModelError::Overflow { what });
     for (t, (c, a)) in input.times.iter().zip(conc.iter().zip(&auc)) {
         if !c.is_finite() {
-            return overflow(format!("the concentration at time {t}"));
+            return overflow(format!(
+                "the concentration at time {}",
+                crate::error::short(*t)
+            ));
         }
         if !a.is_finite() {
-            return overflow(format!("the AUC at time {t}"));
+            return overflow(format!("the AUC at time {}", crate::error::short(*t)));
         }
     }
     if let Some((name, _)) = secondary.iter().find(|(_, v)| !v.is_finite()) {

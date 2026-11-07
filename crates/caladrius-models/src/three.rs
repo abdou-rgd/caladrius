@@ -181,13 +181,16 @@ pub(crate) fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
     for (i, t) in input.times.iter().enumerate() {
         let finite = |v: &Vec<f64>| v.get(i).is_some_and(|x| x.is_finite());
         if !finite(&conc) {
-            return overflow(format!("the concentration at time {t}"));
+            return overflow(format!(
+                "the concentration at time {}",
+                crate::error::short(*t)
+            ));
         }
         if !finite(&auc) {
-            return overflow(format!("the AUC at time {t}"));
+            return overflow(format!("the AUC at time {}", crate::error::short(*t)));
         }
         if !finite(&aumc) {
-            return overflow(format!("the AUMC at time {t}"));
+            return overflow(format!("the AUMC at time {}", crate::error::short(*t)));
         }
     }
     if let Some((name, _)) = secondary.iter().find(|(_, v)| !v.is_finite()) {
@@ -597,5 +600,34 @@ mod tests {
         let bad = input(ModelId::Pk3IvBolus, &[("cl", 3.0), ("vc", 8.0)], &[1.0]);
         assert!(run(&bad).is_err());
         assert!(derivatives(&bad, Derivatives::Analytic).is_err());
+    }
+
+    /// MOD-3C-08: beta onto a pole is refused alike by `run` and by `jacobian` (they share one
+    /// solver, and the message names the exponent and the coupling).
+    #[test]
+    fn run_and_jacobian_agree_on_a_degenerate_beta() {
+        let p = [
+            ("k10", 1.0),
+            ("k12", 0.5),
+            ("k21", 2.0),
+            ("k13", 1e-300),
+            ("k31", 1.5),
+            ("vc", 5.0),
+        ];
+        let i = input(ModelId::Pk3IvBolus, &p, &[1.0, 5.0]);
+        let from_run = run(&i).unwrap_err();
+        let from_jacobian = derivatives(&i, Derivatives::Analytic).unwrap_err();
+        let numeric = derivatives(&i, Derivatives::ForwardDifference { increment: 1e-6 });
+        assert!(
+            matches!(from_run, ModelError::DegenerateExponents { .. }),
+            "{from_run:?}"
+        );
+        assert!(
+            matches!(from_jacobian, ModelError::DegenerateExponents { .. }),
+            "{from_jacobian:?}"
+        );
+        assert_eq!(from_run.to_string(), from_jacobian.to_string());
+        assert!(from_run.to_string().contains("beta"), "{from_run}");
+        assert!(numeric.is_err());
     }
 }

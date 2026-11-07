@@ -421,7 +421,15 @@ fn check_macro_offsets(
     k21: f64,
     k31: f64,
 ) -> Result<(), ModelError> {
-    // Half a unit in the last place, relative to the pole: 2^-53.
+    // The threshold is pole·2^-53, a relative stand-in for half the spacing of the doubles at the
+    // pole. For a pole in the binade [2^e, 2^(e+1)) that half spacing is 2^(e-53) on the upper
+    // side (and on the lower side, except just below 2^e, where it is 2^(e-54)), so the threshold
+    // is larger than it by a factor between 1 and 2 (pole / 2^e), reaching 2 for a pole just
+    // below the top of a binade and for an exponent just below a pole that is a power of two.
+    // The macro check therefore refuses a macro set whose exponent lies up to twice as far from a
+    // pole as half a spacing, which the exact rule (the exponent rounds onto the pole) would
+    // return; only that band between the exact limit and the threshold differs. The wording of the
+    // spec on this band belongs to card T-164; the behaviour is kept as it is.
     let unit = f64::EPSILON / 2.0;
     let names = ["alpha", "beta", "gamma"];
     for (i, ((&root, &w), name)) in lambda.iter().zip(&weight).zip(names).enumerate() {

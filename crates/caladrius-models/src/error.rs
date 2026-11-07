@@ -391,6 +391,18 @@ impl fmt::Display for ModelError {
     }
 }
 
+/// A number for a message in a short round-trip form: plain decimal for the magnitudes people
+/// write (1e-4 up to 1e16, and 0), scientific (`1e-300`, `2.5e300`) beyond, so that no message
+/// carries hundreds of zeros. Not finite values print as `NaN`, `inf` or `-inf`.
+pub(crate) fn short(x: f64) -> String {
+    let a = x.abs();
+    if a == 0.0 || !a.is_finite() || (1e-4..1e16).contains(&a) {
+        format!("{x}")
+    } else {
+        format!("{x:e}")
+    }
+}
+
 /// The sets of the model of this id, for the messages.
 fn sets_of(model: &str) -> &'static str {
     if model.starts_with("pk3.") {

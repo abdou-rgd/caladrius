@@ -152,13 +152,16 @@ pub(crate) fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
     for (i, t) in input.times.iter().enumerate() {
         let finite = |v: &Vec<f64>| v.get(i).is_some_and(|x| x.is_finite());
         if !finite(&conc) {
-            return overflow(format!("the concentration at time {t}"));
+            return overflow(format!(
+                "the concentration at time {}",
+                crate::error::short(*t)
+            ));
         }
         if !finite(&auc) {
-            return overflow(format!("the AUC at time {t}"));
+            return overflow(format!("the AUC at time {}", crate::error::short(*t)));
         }
         if !finite(&aumc) {
-            return overflow(format!("the AUMC at time {t}"));
+            return overflow(format!("the AUMC at time {}", crate::error::short(*t)));
         }
     }
     if let Some((name, _)) = secondary.iter().find(|(_, v)| !v.is_finite()) {

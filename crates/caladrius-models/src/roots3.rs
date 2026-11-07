@@ -90,6 +90,63 @@ impl Sum {
     }
 }
 
+/// The secular function of the two poles, F(x) = k − x + r_lo·x/(x − p_lo) + r_hi·x/(x − p_hi) (r the
+/// rate attached to the pole: k12 for k21, k13 for k31). A term is written in one of two forms:
+/// shifted, r·x/(x − p) = r + C/(x − p) with C = r·p (the singular part C/(x − p) alone, the r
+/// joining the smooth part, which keeps its digits as a double-double sum), or direct, r·x/(x − p).
+/// The shifted form is the right one next to the pole; for a pole far above x it adds r to a term
+/// of about −r and cancels (up to six digits when the coupling is large), so the direct form is
+/// used there.
+struct Secular {
+    k: f64,
+    p_lo: f64,
+    p_hi: f64,
+    r_lo: f64,
+    r_hi: f64,
+    c_lo: f64,
+    c_hi: f64,
+}
+
+impl Secular {
+    /// The constant part k + (the shifted rates) − p_ref, `p_ref` being the pole the root is
+    /// measured from (always shifted); `other_shifted` says whether the other pole is.
+    fn base(&self, ref_lo: bool, other_shifted: bool) -> f64 {
+        let (r_ref, r_other, p_ref) = if ref_lo {
+            (self.r_lo, self.r_hi, self.p_lo)
+        } else {
+            (self.r_hi, self.r_lo, self.p_hi)
+        };
+        Sum::new(self.k, r_ref, if other_shifted { r_other } else { 0.0 }).minus(p_ref)
+    }
+
+    /// (F, dF/dx) at x with its offsets `o_lo = x − p_lo` and `o_hi = x − p_hi`.
+    fn at(
+        &self,
+        base: f64,
+        ref_lo: bool,
+        other_shifted: bool,
+        x: f64,
+        o_lo: f64,
+        o_hi: f64,
+    ) -> (f64, f64) {
+        let o_ref = if ref_lo { o_lo } else { o_hi };
+        let lo_term = if ref_lo || other_shifted {
+            self.c_lo / o_lo
+        } else {
+            self.r_lo * x / o_lo
+        };
+        let hi_term = if !ref_lo || other_shifted {
+            self.c_hi / o_hi
+        } else {
+            self.r_hi * x / o_hi
+        };
+        (
+            base - o_ref + lo_term + hi_term,
+            -1.0 - (self.c_lo / o_lo) / o_lo - (self.c_hi / o_hi) / o_hi,
+        )
+    }
+}
+
 /// The root of a strictly monotone `f` in (0, `hi`] by a safeguarded Newton iteration:
 /// `f(u)` returns (F, dF/du); `decreasing` says F decreases with u. `start` is the seed (the
 /// upper end `hi` when it is not inside the bracket). `None` when the cap is reached, or a value
@@ -224,10 +281,10 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
     }
     // Poles in increasing order, with the coupling attached to each.
     let lo_is_21 = k21 < k31;
-    let (p_lo, c_lo, p_hi, c_hi) = if lo_is_21 {
-        (k21, c21, k31, c31)
+    let (p_lo, c_lo, r_lo, p_hi, c_hi, r_hi) = if lo_is_21 {
+        (k21, c21, k12, k31, c31, k13)
     } else {
-        (k31, c31, k21, c21)
+        (k31, c31, k13, k21, c21, k12)
     };
     let delta = p_hi - p_lo;
     let (name_lo, name_hi) = if lo_is_21 {
@@ -235,20 +292,26 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
     } else {
         ("k13 x k31", "k12 x k21")
     };
+    let f = Secular {
+        k,
+        p_lo,
+        p_hi,
+        r_lo,
+        r_hi,
+        c_lo,
+        c_hi,
+    };
+    // The far pole is written in the shifted form too when it is within a factor 4 of the near
+    // one (the loss is then a factor 8 at most); otherwise in the direct form.
+    let near_other = p_hi <= 4.0 * p_lo;
     let seeds = trigonometric_seeds(k, k12, k21, k13, k31);
     let unconverged = |what: &str| {
         format!("the iteration for the exponent {what} did not converge in {CAP} steps")
     };
 
-    // α = p_hi + u, u > 0: F = E − u + C_hi/u + C_lo/(u + Δ), decreasing in u.
-    let e_hi = sum.minus(p_hi);
-    let f_alpha = |u: f64| {
-        let v = u + delta;
-        (
-            e_hi - u + c_hi / u + c_lo / v,
-            -1.0 - (c_hi / u) / u - (c_lo / v) / v,
-        )
-    };
+    // α = p_hi + u, u > 0: F decreasing in u.
+    let base_alpha = f.base(false, true);
+    let f_alpha = |u: f64| f.at(base_alpha, false, true, p_hi + u, u + delta, u);
     // F(u) < 0 at the upper end of the bracket: a2 − p_hi bounds the root, enlarged until it does.
     let mut hi = sum.hi + p_lo;
     for _ in 0..64 {
@@ -282,6 +345,7 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
         )
     };
     let f_half = f_direct(half).0;
+    let base_lo = f.base(true, near_other);
     let gamma = if f_half <= 0.0 {
         // The root is in (0, p_lo/2]: solved for itself; both offsets are far from it.
         let x = if f_half == 0.0 {
@@ -296,14 +360,10 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
             o_hi: x - p_hi,
         }
     } else {
-        // The root is in (p_lo/2, p_lo): γ = p_lo − u: F = E_lo + u − C_lo/u − C_hi/(u + Δ).
-        let e_lo = sum.minus(p_lo);
+        // The root is in (p_lo/2, p_lo): γ = p_lo − u, F increasing in u.
         let f_gamma = |u: f64| {
-            let v = u + delta;
-            (
-                e_lo + u - c_lo / u - c_hi / v,
-                1.0 + (c_lo / u) / u + (c_hi / v) / v,
-            )
+            let (value, slope) = f.at(base_lo, true, near_other, p_lo - u, -u, -(u + delta));
+            (value, -slope)
         };
         let u = refine(seeds.map_or(f64::NAN, |s| p_lo - s.2), half, false, f_gamma)
             .ok_or_else(|| unconverged("gamma"))?;
@@ -325,8 +385,7 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
 
     // β between the poles, as an offset from the nearer one.
     let h = delta / 2.0;
-    let e_lo = sum.minus(p_lo);
-    let f_mid = e_lo - h + c_lo / h - c_hi / h;
+    let f_mid = f.at(base_lo, true, near_other, p_lo + h, h, -h).0;
     let beta = if f_mid == 0.0 {
         Root {
             lambda: p_lo + h,
@@ -334,14 +393,8 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
             o_hi: -h,
         }
     } else if f_mid < 0.0 {
-        // The root is in (p_lo, mid]: β = p_lo + v, F = E_lo − v + C_lo/v − C_hi/(Δ − v).
-        let f_beta = |v: f64| {
-            let w = delta - v;
-            (
-                e_lo - v + c_lo / v - c_hi / w,
-                -1.0 - (c_lo / v) / v - (c_hi / w) / w,
-            )
-        };
+        // The root is in (p_lo, mid]: β = p_lo + v, F decreasing in v.
+        let f_beta = |v: f64| f.at(base_lo, true, near_other, p_lo + v, v, v - delta);
         let v = refine(seeds.map_or(f64::NAN, |s| s.1 - p_lo), h, true, f_beta)
             .ok_or_else(|| unconverged("beta"))?;
         Root {
@@ -350,13 +403,11 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
             o_hi: v - delta,
         }
     } else {
-        // The root is in (mid, p_hi): β = p_hi − w, F = E_hi + w − C_hi/w + C_lo/(Δ − w).
+        // The root is in (mid, p_hi): β = p_hi − w, F increasing in w.
+        let base_hi = f.base(false, true);
         let f_beta = |w: f64| {
-            let v = delta - w;
-            (
-                e_hi + w - c_hi / w + c_lo / v,
-                1.0 + (c_hi / w) / w + (c_lo / v) / v,
-            )
+            let (value, slope) = f.at(base_hi, false, true, p_hi - w, delta - w, -w);
+            (value, -slope)
         };
         let w = refine(seeds.map_or(f64::NAN, |s| p_hi - s.1), h, false, f_beta)
             .ok_or_else(|| unconverged("beta"))?;
@@ -366,6 +417,19 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
             o_hi: -w,
         }
     };
+    // MOD-3C-08: β rounding onto a pole is refused as α and γ are. The one exception is a pair of
+    // poles that are neighbours among the doubles (k21 and k31 one unit in the last place apart):
+    // no double lies strictly between them, so β has to be one of them, and its offsets, kept
+    // apart from it, are what the weights use.
+    let adjacent = p_hi.to_bits() == p_lo.to_bits().saturating_add(1);
+    if !adjacent && (beta.lambda <= p_lo || beta.lambda >= p_hi) {
+        let onto_lo = beta.lambda <= p_lo;
+        return Err(format!(
+            "the exponent beta would equal the pole {}: its offset is below the rounding unit of the pole ({} is too small to separate them in double precision)",
+            pole_name(lo_is_21, onto_lo),
+            if onto_lo { name_lo } else { name_hi }
+        ));
+    }
 
     // Weights from the second form, with the offsets.
     let roots = [alpha, beta, gamma];
@@ -527,5 +591,48 @@ mod tests {
         let e = solve(0.375, 1.1875, 1.0, 0.7875, 0.999_999_999_999_999_9).unwrap();
         assert!(e.lambda[0] > e.lambda[1] && e.lambda[1] > e.lambda[2]);
         assert!(e.weight[1] > 0.0 && e.weight[1] < 1e-20, "{:?}", e.weight);
+    }
+
+    /// Large couplings (k12·k21/k21² about 1 or more, the lc_rev inputs of the oracle): the roots
+    /// obey the product, the sum and the pair-sum identities, the weights sum to 1 and Σwλ = S0,
+    /// to a few units in the last place (the old shifted form lost up to six digits here).
+    #[test]
+    fn large_couplings_keep_the_identities() {
+        let sets = [
+            (0.783, 452_000.0, 1.27e10, 0.000169, 0.108),
+            (5.38e-5, 1040.0, 903.0, 2.65e-5, 0.000172),
+            (1.16e-6, 3.35, 12.2, 1.51e-11, 6.01e-9),
+            (1.0, 1.0e3, 1.0, 1.0e3, 0.5),
+            (0.2, 40.0, 2.0, 90.0, 1.0e-3),
+        ];
+        for (k10, k12, k21, k13, k31) in sets {
+            let e = solve(k10, k12, k21, k13, k31).unwrap_or_else(|m| panic!("{k10}: {m}"));
+            let [a, b, g] = e.lambda;
+            let s2 = k10 + k12 + k13 + k21 + k31;
+            let s1 = k10 * k21 + k10 * k31 + k21 * k13 + k12 * k31 + k21 * k31;
+            assert!(a > b && b > g && g > 0.0, "{:?}", e.lambda);
+            assert!(
+                close(a * b * g, k10 * k21 * k31, 1e-12),
+                "{k10} {:?}",
+                e.lambda
+            );
+            assert!(close(a + b + g, s2, 1e-13), "{k10} {:?}", e.lambda);
+            assert!(
+                close(a * b + a * g + b * g, s1, 1e-12),
+                "{k10} {:?}",
+                e.lambda
+            );
+            let w: f64 = e.weight.iter().sum();
+            assert!((w - 1.0).abs() < 1e-12, "{k10}: sum of weights {w}");
+            let first: f64 = e.weight.iter().zip(e.lambda).map(|(w, l)| w * l).sum();
+            assert!(close(first, k10 + k12 + k13, 1e-12), "{k10}: {first}");
+        }
+    }
+
+    /// MOD-3C-08: beta rounding onto a pole is refused, naming beta and the coupling.
+    #[test]
+    fn beta_onto_a_pole_is_refused() {
+        let e = solve(1.0, 0.5, 2.0, 1e-300, 1.5).unwrap_err();
+        assert!(e.contains("beta") && e.contains("k13"), "{e}");
     }
 }

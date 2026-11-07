@@ -86,7 +86,9 @@ fn forward(input: &ModelInput, base: &[f64], h: f64) -> Result<Jacobian, ModelEr
         if !(theta + step).is_finite() {
             return Err(ModelError::Overflow {
                 what: format!(
-                    "the forward-difference step of parameter `{name}` ({theta} + {step})"
+                    "the forward-difference step of parameter `{name}` ({} + {})",
+                    crate::error::short(theta),
+                    crate::error::short(step)
                 ),
             });
         }
@@ -96,7 +98,7 @@ fn forward(input: &ModelInput, base: &[f64], h: f64) -> Result<Jacobian, ModelEr
         let shifted = run(&moved).map_err(|e| ModelError::Overflow {
             what: format!(
                 "the forward-difference step of parameter `{name}` (to {}: {e})",
-                theta + step
+                crate::error::short(theta + step)
             ),
         })?;
         columns.push(
