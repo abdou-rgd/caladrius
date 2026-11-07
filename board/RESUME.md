@@ -1,4 +1,4 @@
-# How to resume (state of 2026-11-07, evening)
+# How to resume (state of 2026-11-07, night)
 
 1. Open Claude Code in `C:\Users\abdou\apothicaire\caladrius`: the agent files of `.claude/agents/` load only when a session starts here. Say: "Reprends le rôle d'orchestrateur : lis AGENTS.md, board/RESUME.md, board/INDEX.md et la carte d'itération ouverte, puis continue."
 2. One session = one iteration (`AGENTS.md` section 9). The open iteration card holds the brief, the plan and the state of each card; if none is open, propose the next one to Abdou from the bolder next step of the last outcome.
@@ -7,7 +7,7 @@
 
 ## State
 
-- **Iteration 3 is open: T-139**, the missing PK bricks of the engine (three compartments, what individual fitting lacks, population PK with FOCEI, population simulation, the long-running command protocol). Brief written 2026-11-07 and shown to Abdou; nothing started. It waits for his go, for Q-020 (the `AGENTS.md` amendment: section 1 forbids NLME today), Q-021 (Rtools for nlmixr2), Q-022 (pushing `iter3/*`) and his pick of brick 2 (inventory in the T-139 thread). Wave 1 cards are written: T-140 and T-141.
+- **Iteration 3 is open: T-139**, the missing PK bricks of the engine (three compartments, what individual fitting lacks, population PK with FOCEI, population simulation, the long-running command protocol). Abdou gave his go on 2026-11-07 ("oui lance") and left the running to the orchestrator. Q-020 points 3 to 5 (engine scope) are applied in `AGENTS.md` (8773e52); points 1, 2 and 6 (interface stack) are held until the stack is retested after population PK. Q-021 (Rtools) and Q-022 (pushing `iter3/*`) stand as decided: no installer, branches local. Brick 2: the orchestrator's pick is recorded in the T-139 thread. **Wave 1 is running:** T-140 (`reader`, worktree `C:\Users\abdou\caladrius-iter3\pk3`, branch `iter3/pk3`) and T-141 (`interface`, worktree `C:\Users\abdou\caladrius-iter3\docs`, branch `iter3/docs`). Subagents do not survive a session: if this one ended, look at the commits on those two branches before starting the cards again.
 - **Iteration 2 is paused: T-130** (`blocked`, the board has no `paused` state) until population PK with an OFV exists. Waves 1 to 3 are done: T-131 (inventory), T-132 (three mockups, local files in `../notes/iteration-2-mockups/`), T-133 (the plot scene), T-134 (the engine bridge), T-135 to T-137 (the prototypes). Left: wave 4, T-138, the audit and the outcome.
 - **Code of the iteration** is on branches, pushed under Q-019: `iter2/base` (T-133 and T-134 merged), `iter2/scene` and `iter2/bridge`. Their worktrees are `C:\Users\abdou\caladrius-iter2\scene` (now on `iter2/base`) and `C:\Users\abdou\caladrius-iter2\bridge`. Only `docs/` and `board/` reach `main` before 2026-11-18.
 - **CI on the branches:** `iter2/base` adds a push trigger for `iter2/**` to `.github/workflows/ci.yml`. Remove it before the iteration is merged into `main`.
@@ -23,7 +23,7 @@
 
 ## Waiting for Abdou
 
-- **Iteration 3:** the go on T-139, Q-020, Q-021, Q-022 and the pick of brick 2.
+- **Iteration 3:** Q-020 points 1, 2 and 6 (the interface lines of `AGENTS.md` and the README), after the stack is retested on population PK; Rtools 4.5 (Q-021), needed from wave 6; pushing `iter3/*` (Q-022).
 - **Iteration 2 (paused):** a new visual direction (the three mockups were turned down on 2026-11-07), applied to the chosen stack later.
 - Q-015, answered (delete): Abdou deletes `C:\Users\abdou\.claude\commands\onizuka.md` by hand.
 - Ideas that wait for Abdou:
