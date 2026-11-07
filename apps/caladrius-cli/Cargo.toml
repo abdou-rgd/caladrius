@@ -13,6 +13,8 @@ path = "src/main.rs"
 [dependencies]
 caladrius-engine = { path = "../../crates/caladrius-engine" }
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+# Ctrl-C cancels a fit at the next iteration (MIT or Apache-2.0; this crate only, never the engine).
+ctrlc = "3.5.2"
 
 [dev-dependencies]
 # The integration test checks the binary's output against the public oracle.

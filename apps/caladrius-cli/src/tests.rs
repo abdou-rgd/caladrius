@@ -928,3 +928,193 @@ fn project_replay_checks_a_saved_project_and_exits_with_1_when_it_differs() {
     // Every other command exits with 0.
     assert_eq!(run_args(&["commands"]).unwrap().exit_code, 0);
 }
+
+// ---- progress and cancel (T-146) -----------------------------------------------------------
+
+fn fit_args<'a>(file: &'a str, extra: &[&'a str]) -> Vec<&'a str> {
+    let mut list = vec!["fit.run", "--csv", file, "--param", "model=pk1.oral_1"];
+    list.extend_from_slice(extra);
+    list
+}
+
+/// The progress lines in the notes: `(iteration, wrss)`.
+fn progress_lines(output: &Output) -> Vec<(u32, f64)> {
+    output
+        .notes
+        .iter()
+        .filter_map(|n| {
+            let rest = n.strip_prefix("iteration ")?;
+            let (iteration, wrss) = rest.split_once(", wrss ")?;
+            Some((iteration.parse().ok()?, wrss.parse().ok()?))
+        })
+        .collect()
+}
+
+#[test]
+fn progress_prints_one_line_per_iteration_on_standard_error_and_changes_nothing_else() {
+    let dir = scratch("progress");
+    let file = csv_file(&dir);
+    let plain = run_args(&fit_args(&file, &[])).unwrap();
+    let watched = run_args(&fit_args(&file, &["--progress"])).unwrap();
+    let lines = progress_lines(&watched);
+    assert!(lines.len() >= 2, "{:?}", watched.notes);
+    let numbers: Vec<u32> = lines.iter().map(|(i, _)| *i).collect();
+    let expected: Vec<u32> = (1..=u32::try_from(numbers.len()).unwrap()).collect();
+    assert_eq!(numbers, expected, "strictly increasing from 1");
+    assert!(
+        lines
+            .iter()
+            .all(|(_, wrss)| wrss.is_finite() && *wrss >= 0.0),
+        "{lines:?}"
+    );
+    // The line is `iteration N, wrss X` and nothing else, and it is not in the answer.
+    assert!(
+        watched
+            .notes
+            .iter()
+            .any(|n| n.starts_with("iteration 1, wrss "))
+    );
+    assert!(!watched.stdout.contains("iteration 1, wrss"));
+    // The answer is the one without the flag, and the notes of the plain run are a prefix.
+    assert_eq!(watched.stdout, plain.stdout);
+    assert_eq!(watched.exit_code, 0);
+    assert_eq!(&watched.notes[..plain.notes.len()], plain.notes.as_slice());
+    assert!(progress_lines(&plain).is_empty());
+    // The CSV form too.
+    let plain_csv = run_args(&fit_args(&file, &["--format", "csv"])).unwrap();
+    let watched_csv = run_args(&fit_args(&file, &["--format", "csv", "--progress"])).unwrap();
+    assert_eq!(watched_csv.stdout, plain_csv.stdout);
+}
+
+#[test]
+fn cancel_after_stops_the_fit_prints_the_sentence_and_exits_with_1() {
+    let dir = scratch("cancel");
+    let file = csv_file(&dir);
+    let project = dir.join("study.caladrius.json");
+    let project_arg = project.to_str().unwrap().to_owned();
+    let output = run_args(&fit_args(
+        &file,
+        &[
+            "--cancel-after",
+            "1",
+            "--progress",
+            "--project",
+            &project_arg,
+        ],
+    ))
+    .unwrap();
+    assert_eq!(output.exit_code, 1);
+    assert_eq!(output.stdout, "", "no answer is printed");
+    assert_eq!(
+        output.notes.last().map(String::as_str),
+        Some("fit cancelled after iteration 1; nothing was stored")
+    );
+    assert_eq!(progress_lines(&output).len(), 1, "{:?}", output.notes);
+    assert!(!project.exists(), "nothing is stored, not even the import");
+
+    // Before the first iteration.
+    let output = run_args(&fit_args(&file, &["--cancel-after=0"])).unwrap();
+    assert_eq!(output.exit_code, 1);
+    assert_eq!(
+        output.notes.last().map(String::as_str),
+        Some("fit cancelled after iteration 0; nothing was stored")
+    );
+
+    // A fit that ends before iteration N is not cancelled.
+    let output = run_args(&fit_args(&file, &["--cancel-after", "500"])).unwrap();
+    assert_eq!(output.exit_code, 0);
+    assert!(
+        output.stdout.contains("\"kind\": \"fit\""),
+        "{}",
+        output.stdout
+    );
+}
+
+#[test]
+fn a_cancelled_fit_leaves_a_saved_project_as_it_was() {
+    let dir = scratch("cancel-project");
+    let file = csv_file(&dir);
+    let project = dir.join("study.caladrius.json");
+    let project_arg = project.to_str().unwrap().to_owned();
+    run_args(&["data.import", "--csv", &file, "--project", &project_arg]).unwrap();
+    let before = fs::read(&project).unwrap();
+    let output = run_args(&[
+        "fit.run",
+        "--param",
+        "model=pk1.oral_1",
+        "--cancel-after",
+        "1",
+        "--project",
+        &project_arg,
+    ])
+    .unwrap();
+    assert_eq!(output.exit_code, 1);
+    assert_eq!(fs::read(&project).unwrap(), before);
+}
+
+#[test]
+fn ctrl_c_cancels_at_the_next_iteration_like_cancel_after() {
+    let dir = scratch("interrupt");
+    let file = csv_file(&dir);
+    let list = args(&fit_args(&file, &["--progress"]));
+    // Pressed before the fit began: cancelled after iteration 0, the sentence on the sink.
+    let mut shown = Vec::new();
+    let output = run_with(
+        &list,
+        &mut std::io::empty(),
+        &mut |l| shown.push(l.to_owned()),
+        &|| true,
+    )
+    .unwrap();
+    assert_eq!(output.exit_code, 1);
+    assert_eq!(output.stdout, "");
+    assert_eq!(
+        shown,
+        ["fit cancelled after iteration 0; nothing was stored"]
+    );
+    assert!(output.notes.iter().all(|n| !n.starts_with("fit cancelled")));
+
+    // Pressed during the second iteration: iterations 1 and 2 are shown, then the sentence.
+    let polls = std::cell::Cell::new(0);
+    let mut shown = Vec::new();
+    let output = run_with(
+        &list,
+        &mut std::io::empty(),
+        &mut |l| shown.push(l.to_owned()),
+        &|| {
+            polls.set(polls.get() + 1);
+            polls.get() > 2
+        },
+    )
+    .unwrap();
+    assert_eq!(output.exit_code, 1);
+    assert_eq!(shown.len(), 3, "{shown:?}");
+    assert!(shown[0].starts_with("iteration 1, wrss "), "{shown:?}");
+    assert!(shown[1].starts_with("iteration 2, wrss "), "{shown:?}");
+    assert_eq!(
+        shown[2],
+        "fit cancelled after iteration 2; nothing was stored"
+    );
+}
+
+#[test]
+fn the_fit_flags_are_refused_with_a_sentence_elsewhere_and_when_malformed() {
+    let dir = scratch("fit-flags");
+    let file = csv_file(&dir);
+    let other = failure(&["nca.run", "--csv", &file, "--progress"]);
+    assert!(
+        other.contains("`fit.run`") && other.contains("nca.run"),
+        "{other}"
+    );
+    let other = failure(&["nca.run", "--csv", &file, "--cancel-after", "1"]);
+    assert!(other.contains("`fit.run`"), "{other}");
+    let bad = failure(&["fit.run", "--csv", &file, "--cancel-after", "soon"]);
+    assert!(
+        bad.contains("whole number") && bad.contains("soon"),
+        "{bad}"
+    );
+    let bad = failure(&["fit.run", "--csv", &file, "--cancel-after"]);
+    assert!(bad.contains("needs a value"), "{bad}");
+    let bad = failure(&["fit.run", "--csv", &file, "--progress=1"]);
+    assert!(bad.contains("takes no value"), "{bad}");
+}
