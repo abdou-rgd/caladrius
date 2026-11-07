@@ -710,6 +710,10 @@ pub struct NaiveDiagnostics {
     pub cwres_symmetric: Vec<f64>,
     pub sum_w2: f64,
     pub logdet_c: f64,
+    /// Jacobian of the prediction in the random effects at the mode, one row per observation (the matrix G).
+    pub d_yhat_d_eta: Vec<Vec<f64>>,
+    /// Derivative of the residual variance in the random effects at the mode, one row per observation.
+    pub d_s2_d_eta: Vec<Vec<f64>>,
 }
 
 /// One subject of the result.
@@ -831,6 +835,8 @@ fn eval_subject(spec: &Spec, s: &Subj, frozen: NaiveFrozen, marginal: bool) -> R
         cwres_symmetric,
         sum_w2: lf.dist,
         logdet_c: lf.logdet,
+        d_yhat_d_eta: pc.g.clone(),
+        d_s2_d_eta: pc.ds2.clone(),
     };
     Ok(NaiveSubject {
         id: s.id.clone(),

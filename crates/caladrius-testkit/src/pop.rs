@@ -69,16 +69,27 @@ impl AbsoluteTolerance {
     /// and the total adds the subjects. The measured `checks.eta_perturbation_ofv_slope_max` over the 20 `ofv`
     /// cases is 1.7 to 37.4 (the largest: `theoph_proportional`, 12 subjects). To hold `POP_OFV` on the largest
     /// case, `d <= POP_OFV / (37.4 * 12) = 2.2e-10`; the constant is 1e-10, the power of ten below. The naive code
-    /// is within 8.5e-15 of the 256-bit modes (exact and ofv cases), and the Newton polish of FIT-ML-08 took the individual fits to 6.04e-14 in -2LL
-    /// (specs/fit.md), so this is a requirement on the inner solve (POP-INN-02: polish to the floor), not on the
-    /// outer one.
+    /// is within 8.5e-15 of the 256-bit modes (exact and ofv cases), and the Newton polish of FIT-ML-08 took the
+    /// individual fits to 6.04e-14 in -2LL (specs/fit.md), so this is a requirement on the inner solve (POP-INN-02:
+    /// polish to the floor), not on the outer one.
+    ///
+    /// The slope is per component of eta. With q random effects the first-order worst case adds up to q times the
+    /// slope per subject: with the largest slope for every subject, every component off by exactly the constant in
+    /// the worst direction, and q = 3 (`theoph_proportional`), the sum is 3 x 37.4 x 12 x 1e-10 = 1.3e-7, which is
+    /// 1.3 times `POP_OFV`. That case does not occur in practice (the slope is a maximum over subjects and
+    /// components, the components err with different signs, and a polished inner solve is at about 1e-13), so the
+    /// constant keeps a power of ten of margin for q = 1 and q = 2 and a factor 0.7 in the pessimistic q = 3 case.
+    /// The cost is that a flat objective in eta needs the inner solver polished to the floor (POP-INN-02).
     pub const POP_ETA: AbsoluteTolerance = AbsoluteTolerance { abs: 1e-10 };
     /// IPRED, IWRES and the three CWRES forms (PRED does not depend on eta): concentration-scale or standardised
     /// values derived from the modes. Same value as `FIT_IWRES` (1e-5), which the engine meets with a margin of
-    /// two orders (9e-8, FIT-ML-08). Here the modes are accurate to `POP_ETA`; a standardised residual changes by
-    /// about (d prediction / d eta) / sigma times the error of eta, and for the cases (error parameters a >= 0.02 and b >= 0.08,
-    /// predictions below 12) that factor is below 1e3, so an error of 1e-10 in eta becomes at most 1e-7
-    /// in a residual. The naive code is within 5.0e-14 of the stored values.
+    /// two orders (9e-8, FIT-ML-08). The modes are accurate to `POP_ETA`, and an error `d` in an eta changes a
+    /// standardised residual by about `|d yhat / d eta| / sigma * d`. Measured at the conditional modes of the 20
+    /// `ofv` cases and of the 23 exact cases given to the engine: the maximum of `|d yhat / d eta| / sigma` is
+    /// 3.24e2 (`lin_q3_block`, subject S3, observation 5, third random effect), and the exact derivative of IWRES
+    /// (interaction term included) has the same maximum (test
+    /// `the_amplification_of_an_error_in_eta_is_below_the_documented_factor`). An error of 1e-10 in eta therefore
+    /// becomes at most 3.2e-8 in a residual. The naive code is within 5.0e-14 of the stored values.
     pub const POP_DIAGNOSTIC: AbsoluteTolerance = AbsoluteTolerance { abs: 1e-5 };
     /// Shrinkage (both divisors), derived from the modes and the variances: an error `d` in the modes moves the
     /// standard deviation of the modes by at most `d`, divided by the square root of the smallest omega in the

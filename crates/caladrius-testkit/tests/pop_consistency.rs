@@ -27,7 +27,8 @@ use caladrius_testkit::{
 };
 
 /// The naive code against the 256-bit eta: the conditional mode is found by Newton to a gradient of 1e-12.
-const NAIVE_ETA: f64 = 1e-8;
+/// The measured gap is 8.5e-15 (exact cases), so the margin is more than two orders of magnitude.
+const NAIVE_ETA: f64 = 1e-12;
 /// The naive diagnostics against the doubles of the file (values of order 1 to 10).
 const NAIVE_DIAG: f64 = 1e-8;
 
@@ -238,7 +239,7 @@ fn naive_pop_reproduces_every_exact_case() {
                         - bound)
                         .max(0.0);
                 marg.see(
-                    &format!("{id}/{} exact_marginal beyond its stated bound", got.id),
+                    &format!("{id}/{} exact_marginal beyond its estimated bound", got.id),
                     excess,
                     0.0,
                 );
@@ -268,7 +269,7 @@ fn naive_pop_reproduces_every_exact_case() {
 }
 
 #[test]
-fn the_exact_marginal_of_the_file_carries_a_stated_error_bound() {
+fn the_exact_marginal_of_the_file_carries_an_estimated_error_bound() {
     let mut seen = 0usize;
     for id in list_pop_exact_cases().unwrap() {
         let c = load_pop_exact_case(&id).unwrap();
@@ -285,7 +286,7 @@ fn the_exact_marginal_of_the_file_carries_a_stated_error_bound() {
             bound < 1e-8,
             "{id}: the quadrature bound {bound:e} is not tight"
         );
-        eprintln!("{id}: stated bound of the total exact marginal {bound:e}");
+        eprintln!("{id}: estimated bound of the total exact marginal {bound:e}");
         let exact = parse(&c.expected.total_full["exact_marginal"]);
         let lin = parse(&c.expected.total_full["linearised"]);
         assert!(
@@ -826,4 +827,68 @@ fn the_unbounded_rows_are_constructed_as_they_say() {
         assert!(!e.must_not_contain.iter().any(|w| w == zero_ids[0]));
         assert_eq!(e.code.as_deref(), Some("unbounded_likelihood"));
     }
+}
+
+/// Measures the factor quoted in the documentation of `AbsoluteTolerance::POP_DIAGNOSTIC`: an error `d` in an eta
+/// changes a standardised residual by about `factor * d`, with `factor = |d yhat / d eta| / sigma` for the leading
+/// term, and the exact derivative of IWRES (the interaction term included) as a check. Over the ofv cases and the
+/// exact cases given to the engine (the variance not frozen), at the conditional modes.
+#[test]
+fn the_amplification_of_an_error_in_eta_is_below_the_documented_factor() {
+    let mut lead = Worst::default();
+    let mut iwres = Worst::default();
+    let place = |w: &mut Worst, what: String, v: f64| {
+        if v > w.value {
+            w.value = v;
+            w.at = what;
+        }
+    };
+    let mut visit = |id: &str, r: &caladrius_testkit::NaivePop| {
+        for s in &r.subjects {
+            let d = &s.diagnostics;
+            for j in 0..d.sigma_hat.len() {
+                let sigma = d.sigma_hat[j];
+                for k in 0..d.d_yhat_d_eta[j].len() {
+                    let g = d.d_yhat_d_eta[j][k];
+                    place(
+                        &mut lead,
+                        format!("{id}/{} obs {j} eta[{k}]", s.id),
+                        g.abs() / sigma,
+                    );
+                    let full = (g + d.iwres[j] * d.d_s2_d_eta[j][k] / (2.0 * sigma)) / sigma;
+                    place(
+                        &mut iwres,
+                        format!("{id}/{} obs {j} eta[{k}]", s.id),
+                        full.abs(),
+                    );
+                }
+            }
+        }
+    };
+    for id in list_pop_ofv_cases().unwrap() {
+        let c = load_pop_ofv_case(&id).unwrap();
+        visit(
+            &id,
+            &naive_pop(&c.model, &c.subjects, NaiveFrozen::None, false).unwrap(),
+        );
+    }
+    for id in list_pop_exact_cases().unwrap() {
+        let c = load_pop_exact_case(&id).unwrap();
+        if matches!(frozen_of(&c), NaiveFrozen::None) {
+            visit(
+                &id,
+                &naive_pop(&c.model, &c.subjects, NaiveFrozen::None, false).unwrap(),
+            );
+        }
+    }
+    eprintln!(
+        "max |d yhat / d eta| / sigma: {:e} ({})",
+        lead.value, lead.at
+    );
+    eprintln!(
+        "max |d IWRES / d eta| (interaction included): {:e} ({})",
+        iwres.value, iwres.at
+    );
+    assert!(lead.value < 1e3, "the documented factor 1e3 is exceeded");
+    assert!(iwres.value < 1e3, "the documented factor 1e3 is exceeded");
 }
