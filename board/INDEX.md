@@ -147,4 +147,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-134 | The engine bridge: one call, two transports and shared number formatting | interface | done | T-131 |
 | T-135 | NCA screen prototype in egui 0.37 | interface | done | T-133, T-134 |
 | T-136 | NCA screen prototype in React 19 with Tauri 2 | interface | done | T-133, T-134 |
-| T-137 | NCA screen prototype in Leptos 0.8 with Tauri 2 | interface | in progress | T-133, T-134, T-136 |
+| T-137 | NCA screen prototype in Leptos 0.8 with Tauri 2 | interface | done | T-133, T-134, T-136 |
