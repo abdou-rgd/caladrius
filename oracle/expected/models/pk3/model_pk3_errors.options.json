@@ -2604,7 +2604,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-17: the root rounds onto the pole (relative offset 1.2e-19 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-17: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e18",
       "group": "numeric",
@@ -2621,7 +2621,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 1.2e-20 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-18: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e19",
       "group": "numeric",
@@ -2638,7 +2638,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 1.2e-21 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-19: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e20",
       "group": "numeric",
@@ -2655,7 +2655,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 1.2e-22 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-20: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e21",
       "group": "numeric",
@@ -2672,7 +2672,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 1.2e-23 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-21: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e22",
       "group": "numeric",
@@ -2689,7 +2689,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 1.2e-24 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-22: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e23",
       "group": "numeric",
@@ -2706,7 +2706,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 1.2e-25 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-23: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e24",
       "group": "numeric",
@@ -2723,7 +2723,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 1.2e-26 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-24: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e25",
       "group": "numeric",
@@ -2740,7 +2740,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 1.2e-27 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-25: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e26",
       "group": "numeric",
@@ -2757,7 +2757,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 1.2e-28 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-26: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e27",
       "group": "numeric",
@@ -2774,7 +2774,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 1.2e-29 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-27: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e28",
       "group": "numeric",
@@ -2791,7 +2791,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 1.2e-30 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-28: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e29",
       "group": "numeric",
@@ -2808,7 +2808,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 1.2e-31 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-29: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k21_1e30",
       "group": "numeric",
@@ -2825,7 +2825,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 1.2e-32 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-30: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e18",
       "group": "numeric",
@@ -2842,7 +2842,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 7.4e-18 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-18: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e19",
       "group": "numeric",
@@ -2859,7 +2859,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 7.4e-19 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-19: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e20",
       "group": "numeric",
@@ -2876,7 +2876,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 7.4e-20 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-20: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e21",
       "group": "numeric",
@@ -2893,7 +2893,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 7.4e-21 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-21: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e22",
       "group": "numeric",
@@ -2910,7 +2910,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 7.4e-22 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-22: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e23",
       "group": "numeric",
@@ -2927,7 +2927,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 7.4e-23 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-23: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e24",
       "group": "numeric",
@@ -2944,7 +2944,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 7.4e-24 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-24: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e25",
       "group": "numeric",
@@ -2961,7 +2961,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 7.4e-25 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-25: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e26",
       "group": "numeric",
@@ -2978,7 +2978,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 7.4e-26 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-26: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e27",
       "group": "numeric",
@@ -2995,7 +2995,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 7.4e-27 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-27: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e28",
       "group": "numeric",
@@ -3012,7 +3012,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 7.4e-28 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-28: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e29",
       "group": "numeric",
@@ -3029,7 +3029,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 7.4e-29 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-29: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k31_1e30",
       "group": "numeric",
@@ -3046,7 +3046,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 7.4e-30 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-30: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e17",
       "group": "numeric",
@@ -3063,7 +3063,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-17: the root rounds onto the pole (relative offset 1.2e-19 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-17: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e18",
       "group": "numeric",
@@ -3080,7 +3080,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 1.2e-20 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-18: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e19",
       "group": "numeric",
@@ -3097,7 +3097,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 1.2e-21 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-19: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e20",
       "group": "numeric",
@@ -3114,7 +3114,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 1.2e-22 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-20: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e21",
       "group": "numeric",
@@ -3131,7 +3131,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 1.2e-23 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-21: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e22",
       "group": "numeric",
@@ -3148,7 +3148,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 1.2e-24 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-22: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e23",
       "group": "numeric",
@@ -3165,7 +3165,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 1.2e-25 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-23: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e24",
       "group": "numeric",
@@ -3182,7 +3182,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 1.2e-26 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-24: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e25",
       "group": "numeric",
@@ -3199,7 +3199,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 1.2e-27 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-25: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e26",
       "group": "numeric",
@@ -3216,7 +3216,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 1.2e-28 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-26: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e27",
       "group": "numeric",
@@ -3233,7 +3233,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 1.2e-29 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-27: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e28",
       "group": "numeric",
@@ -3250,7 +3250,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 1.2e-30 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-28: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e29",
       "group": "numeric",
@@ -3267,7 +3267,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 1.2e-31 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-29: alpha rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_alpha_onto_k31_1e30",
       "group": "numeric",
@@ -3284,7 +3284,24 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
-      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 1.2e-32 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-30: alpha rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e17",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 5e-17,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-17: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e18",
       "group": "numeric",
@@ -3301,7 +3318,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 6.3e-18 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-18: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e19",
       "group": "numeric",
@@ -3318,7 +3335,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 6.3e-19 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-19: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e20",
       "group": "numeric",
@@ -3335,7 +3352,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 6.3e-20 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-20: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e21",
       "group": "numeric",
@@ -3352,7 +3369,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 6.3e-21 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-21: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e22",
       "group": "numeric",
@@ -3369,7 +3386,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 6.3e-22 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-22: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e23",
       "group": "numeric",
@@ -3386,7 +3403,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 6.3e-23 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-23: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e24",
       "group": "numeric",
@@ -3403,7 +3420,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 6.3e-24 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-24: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e25",
       "group": "numeric",
@@ -3420,7 +3437,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 6.3e-25 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-25: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e26",
       "group": "numeric",
@@ -3437,7 +3454,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 6.3e-26 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-26: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e27",
       "group": "numeric",
@@ -3454,7 +3471,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 6.3e-27 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-27: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e28",
       "group": "numeric",
@@ -3471,7 +3488,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 6.3e-28 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-28: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e29",
       "group": "numeric",
@@ -3488,7 +3505,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 6.3e-29 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-29: gamma rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "numeric_coupling_gamma_onto_k21_1e30",
       "group": "numeric",
@@ -3505,7 +3522,313 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
-      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 6.3e-30 < 2^-55): DegenerateExponents"
+      "reason": "coupling product 1e-30: gamma rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_alpha_onto_k21_bottom_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.1,
+        "k12": 8.483010212646095e-17,
+        "k21": 1,
+        "k13": 0.05,
+        "k31": 0.02,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1: alpha rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_alpha_onto_k21_mid_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.15,
+        "k12": 8.483010212646095e-17,
+        "k21": 1.5,
+        "k13": 0.07500000000000001,
+        "k31": 0.03,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.5: alpha rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_alpha_onto_k21_top_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.19999999999999998,
+        "k12": 8.483010212646095e-17,
+        "k21": 1.9999999999999998,
+        "k13": 0.09999999999999999,
+        "k31": 0.039999999999999994,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.9999999999999998: alpha rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_gamma_onto_k31_bottom_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 5,
+        "k12": 2.5,
+        "k21": 5,
+        "k13": 1.6861512186494565e-16,
+        "k31": 1,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1: gamma rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_gamma_onto_k31_mid_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 7.5,
+        "k12": 3.75,
+        "k21": 7.5,
+        "k13": 3.372302437298913e-16,
+        "k31": 1.5,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.5: gamma rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_gamma_onto_k31_top_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 9.999999999999998,
+        "k12": 4.999999999999999,
+        "k21": 9.999999999999998,
+        "k13": 3.372302437298913e-16,
+        "k31": 1.9999999999999998,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.9999999999999998: gamma rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_alpha_onto_k31_bottom_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.1,
+        "k12": 0.05,
+        "k21": 0.02,
+        "k13": 8.483010212646095e-17,
+        "k31": 1,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1: alpha rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_alpha_onto_k31_mid_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.15,
+        "k12": 0.07500000000000001,
+        "k21": 0.03,
+        "k13": 8.483010212646095e-17,
+        "k31": 1.5,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.5: alpha rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_alpha_onto_k31_top_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.19999999999999998,
+        "k12": 0.09999999999999999,
+        "k21": 0.039999999999999994,
+        "k13": 8.483010212646095e-17,
+        "k31": 1.9999999999999998,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.9999999999999998: alpha rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_gamma_onto_k21_bottom_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 5,
+        "k12": 1.9729116299843983e-16,
+        "k21": 1,
+        "k13": 2.5,
+        "k31": 50,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1: gamma rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_gamma_onto_k21_mid_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 7.5,
+        "k12": 3.945823259968797e-16,
+        "k21": 1.5,
+        "k13": 3.75,
+        "k31": 75,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.5: gamma rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_coupling_edge_gamma_onto_k21_top_inside",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 9.999999999999998,
+        "k12": 3.945823259968796e-16,
+        "k21": 1.9999999999999998,
+        "k13": 4.999999999999999,
+        "k31": 99.99999999999999,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "offset 0.90 times half the spacing at the pole 1.9999999999999998: gamma rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_beta_onto_k21_1e17",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 1e-17,
+        "k21": 1,
+        "k13": 0.7875,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_beta_onto_k21_1e18",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 1e-18,
+        "k21": 1,
+        "k13": 0.7875,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_beta_onto_k31_1e17",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 0.7875,
+        "k21": 0.2,
+        "k13": 1e-17,
+        "k31": 1,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_beta_onto_k31_1e18",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 0.7875,
+        "k21": 0.2,
+        "k13": 1e-18,
+        "k31": 1,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_beta_onto_k21_1e300",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 1e-300,
+        "k21": 0.5,
+        "k13": 0.7875,
+        "k31": 1,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
+    }, {
+      "id": "numeric_beta_onto_k31_1e300",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 0.7875,
+        "k21": 1,
+        "k13": 1e-300,
+        "k31": 0.5,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "probe: beta rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e17",
       "group": "macro",
@@ -4024,5 +4347,5 @@
     "deSolve": "1.42",
     "gmp": "0.7.5.1"
   },
-  "n_values": 234
+  "n_values": 253
 }

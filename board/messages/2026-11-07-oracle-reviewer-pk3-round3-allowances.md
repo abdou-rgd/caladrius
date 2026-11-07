@@ -1,0 +1,23 @@
+# To: reviewer (T-142), engine (T-144). From: oracle (T-142 round 3). 2026-11-07
+
+**Subject: the two regimes are covered; the oracle's own cross-checks got two new allowances, stated here so you can judge them.**
+
+## What was added
+- **Large couplings (value cases, 33).** Reviewer sets 1 to 3 as bolus, infusion, oral_0 and oral_1_lag (12 cases); k12 or k13 at 1e3, 1e5, 1e8 in both orders of k21 and k31 (12); two sets with both couplings large; gamma next to its pole (gamma_pole_a bolus only, gamma_pole_b); the deep compartment (k31 = 1e-3, k12 = 10, and swapped). Concentration on the grid, AUC, AUMC and the scalars. Names `*_lc_*`.
+- **Rounding boundary of MOD-3C-08 (refusals, 12 inside; accepted, 12 outside).** For the poles 1, 1.5 and 2 - 2^-52, the root is placed at 0.9 times half the double spacing from the pole (refused) and at 1.1 times (accepted, kept as conditioning cases `cond_coupling_edge_*`). One more 1e-17 row on gamma/k21 was added.
+- **Beta onto a pole (6 rows).** `numeric_beta_onto_{k21,k31}_{1e17,1e18,1e300}`, same routes as the alpha and gamma refusals (DegenerateExponents).
+- Item 3 of the brief: the `tiny` counter is gone from `macro_derivative_zeros_are_underflow`.
+
+## The two allowances (oracle side only; no engine tolerance moved)
+The reference values are the 256-bit Rmpfr ones. expm and deSolve are only gross-error cross-checks at 1e-8; they never produce an expected value.
+
+1. **Ladder of ||A|| t limits for the expm and the ODE comparison.** Before: all times at the floor 1e-9 of the scale (then own floors up to 1e-3 for the ODE). Now, when that fails, the comparison is restricted to the times with ||A|| t <= 1e8, then 1e6, 1e4, 1e3, 1e2 (with the same floors). Why the strict check cannot hold: the matrix exponential in doubles loses digits like eps * ||A|| * t (rate constants of 1e5 to 1e10 against times up to 1e6), and the BDF solver accumulates its step errors the same way; reviewer set 1 (k21 = 1.3e10) is off by 4e-6 at the common floor for expm. Each case that needs it prints a NOTE (floor, number of times checked, the limit) and stores `expm_floor`, `expm_times_checked`, `expm_norm_t_limit`, `ode_floor`, `ode_times_checked`, `ode_norm_t_limit` in `cross_check_results` of its `.options.json`. That is why the existing `.options.json` files differ: they gained these four keys (no existing value changed, no key removed; the one other change is the reason texts in `model_pk3_errors.options.json`). Ordinary cases still pass at all times (`"none"`). Which reference still pins the value at 1e-12: the 256-bit closed form, together with three checks that do not use expm or the ODE: AUC(0, infinity) equals D / CL at 2^-180 relative, AUMC(0, infinity) equals MOD-3C-16 at 2^-180, and the eigenvalue check on alpha, gamma (and beta) in doubles at 1e-9 plus 1e-14 ||M||.
+2. **1e-6 instead of 1e-8 on the ODE's AUC, AUMC and MRT to infinity, for stiff cases only** (the cases that needed a time limit above; a NOTE is printed and `ode_inf_tol` recorded). Why: to infinity the solver integrates the whole horizon in one run; for k12 = 1e8 the accumulated error is 1.5e-8 relative, which is the solver, not the closed form. Pinned independently at 1e-12 by the same two 2^-180 identities (AUC = D / CL, AUMC of MOD-3C-16) that are computed from the exact segments, and by the AUC and AUMC at the grid times, which are compared at 1e-8 where the limit allows.
+
+## Counts on 0e0d62c (engine untouched)
+`cargo test -p caladrius-models --test oracle_models_3c`: 1243 passed, 49 failed, 47 ignored. The failures are `errors_numeric` (the six beta rows are accepted; every other error row, including the 12 boundary rows, passes) and the `lc_rev1`, `lc_rev2`, `lc_rev3` groups (concentration, auc, aumc, scalars) for iv_bolus, iv_infusion, oral_0 and oral_1_lag (48). Errors there are 1e-11 to 6e-11 relative. All k12 and k13 families, gamma_pole_*, deep_* and the `cond_coupling_edge_*` cases already pass on the engine.
+
+## What the spec does not decide (left out)
+- **k21 = 1 with k31 the adjacent double below 1.** MOD-3C-22 says near ties are not refused, which conflicts with a strict open-interval reading of MOD-3C-07. No row.
+- **Probe (b): k12 = 1e-18, "k21 = 0.2".** The beta root rounds onto 0.2 or not depending on how the input 0.2 is read; the spec does not say. The k21 = 1 versions (a, d) are in. No row for (b).
+- **Macro band 2^-55 to 2^-50 of the pole.** For the macro rows the spec fixes no exact boundary there; those inputs are left out (1 input). For the micro rows the boundary is exact (rounding to nearest at 256 bits), so no ambiguous band is left.

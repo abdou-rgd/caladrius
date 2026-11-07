@@ -139,35 +139,107 @@ err("numeric_underflow_a0", "numeric", N3, "pk3.iv_bolus", 100, list(k10 = 1e-11
 err("numeric_overflow_c0", "numeric", "MOD-3C-26", "pk3.iv_bolus", 1e300, with_p(cl3, list(vc = 1e-300, cl = 3e-300, q2 = 9.5e-300, q3 = 6.3e-300)), list(c("overflow", "finite")), "D / vc overflows: an Overflow error, never an infinity")
 err("numeric_overflow_derived_rate", "numeric", N3, "pk3.iv_bolus", 100, with_p(cl3, list(q2 = 1e300, vp2 = 1e-300)), list(c("q2", "vp2", "k21", "overflow", "finite")), "q2 / vp2 is not finite")
 err("numeric_overflow_macro_sum", "numeric", "MOD-3C-26", "pk3.iv_bolus", 100, with_p(ma3, list(a = 1e308, b = 1e308, c = 1e308)), list(c("a", "b", "c", "vc", "overflow", "finite")), "a + b + c overflows")
-# Couplings so small that a root rounds onto a pole (item 5 of MOD-3C-06, MOD-3C-08; OM-22). The test is
-# made at 256 bits on the exact roots: a row is a refusal when alpha, or gamma, differs from the nearest
-# pole by less than 2^-55 relative (it rounds onto the pole in doubles whatever the rounding of the
-# engine), a value case (see models_3c_closed_form.R) when it differs by more than 2^-50, and the
-# few inputs in between, where the answer depends on the last bit of the engine, are left out and counted.
-BAND_LO <- 2^-55
-BAND_HI <- 2^-50
-N_BAND_OMITTED <- 0L
+# Couplings so small that a root rounds onto a pole (item 5 of MOD-3C-06, MOD-3C-08; OM-22). MOD-3C-08
+# states the criterion as a rounding: the engine refuses when a root "rounds onto" a pole in doubles
+# (outside the exact tie of MOD-3C-22). It is decided here at 256 bits on the exact roots: the root is
+# rounded to the nearest double and compared with the two poles. A row is a refusal when that happens to
+# any of alpha, beta, gamma (round to nearest, so the boundary is exactly half the spacing of the doubles at
+# the pole: above it at d, below it at d, which is half as wide when d is a power of two), a conditioning
+# case (accepted) when it does not.
 N_COUPLING_REFUSALS <- 0L
 N_COUPLING_ACCEPTED <- 0L
+N_BAND_OMITTED <- 0L
+roots_onto_pole <- function(p) {
+  q <- derive_q3("micro", p, 100, list())
+  vapply(1:3, function(i) { x <- asNumeric(q$l[i]); x == p$k21 || x == p$k31 }, TRUE)
+}
+coupling_pair <- function(p, tiny) if (tiny == "k12") c("k12", "k21") else c("k13", "k31")
 coupling_families <- list(
-  alpha_onto_k21 = function(pr) list(k10 = 1, k12 = pr / 10, k21 = 10, k13 = 0.5, k31 = 0.2, vc = 1),
-  gamma_onto_k31 = function(pr) list(k10 = 1, k12 = 0.5, k21 = 1, k13 = pr / 0.2, k31 = 0.2, vc = 1),
-  alpha_onto_k31 = function(pr) list(k10 = 1, k12 = 0.5, k21 = 0.2, k13 = pr / 10, k31 = 10, vc = 1),
-  gamma_onto_k21 = function(pr) list(k10 = 1, k12 = pr / 0.2, k21 = 0.2, k13 = 0.5, k31 = 10, vc = 1))
-coupling_words <- function(fam) {
-  pair <- if (fam %in% c("alpha_onto_k21", "gamma_onto_k21")) c("k12", "k21") else c("k13", "k31")
-  list(c("degenerate", "exponent", "offset"), pair)
+  alpha_onto_k21 = list(tiny = "k12", root = "alpha", f = function(d, c) list(k10 = d / 10, k12 = c, k21 = d, k13 = 0.05 * d, k31 = 0.02 * d, vc = 1)),
+  gamma_onto_k31 = list(tiny = "k13", root = "gamma", f = function(d, c) list(k10 = 5 * d, k12 = 2.5 * d, k21 = 5 * d, k13 = c, k31 = d, vc = 1)),
+  alpha_onto_k31 = list(tiny = "k13", root = "alpha", f = function(d, c) list(k10 = d / 10, k12 = 0.05 * d, k21 = 0.02 * d, k13 = c, k31 = d, vc = 1)),
+  gamma_onto_k21 = list(tiny = "k12", root = "gamma", f = function(d, c) list(k10 = 5 * d, k12 = c, k21 = d, k13 = 2.5 * d, k31 = 50 * d, vc = 1)))
+add_coupling_row <- function(id, p, tiny, root, note) {
+  onto <- roots_onto_pole(p)
+  if (any(onto)) {
+    N_COUPLING_REFUSALS <<- N_COUPLING_REFUSALS + 1L
+    err(id, "numeric", paste(M3, "item 5", "MOD-3C-08"), "pk3.iv_bolus", 100, p,
+        list(c("degenerate", "exponent", "offset"), coupling_pair(p, tiny)),
+        sprintf("%s: %s rounds onto a pole (DegenerateExponents)", note, paste(c("alpha", "beta", "gamma")[onto], collapse = " and ")))
+    TRUE
+  } else {
+    N_COUPLING_ACCEPTED <<- N_COUPLING_ACCEPTED + 1L
+    FALSE
+  }
 }
 for (fam in names(coupling_families)) for (e in 17:30) {
-  p <- coupling_families[[fam]](10^-e)
-  m <- min(rel_offsets("micro", p))
-  if (m < BAND_LO) {
-    N_COUPLING_REFUSALS <- N_COUPLING_REFUSALS + 1L
-    err(sprintf("numeric_coupling_%s_1e%d", fam, e), "numeric", paste(M3, "item 5", "MOD-3C-08"), "pk3.iv_bolus", 100, p,
-        coupling_words(fam), sprintf("coupling product 1e-%d: the root rounds onto the pole (relative offset %.2g < 2^-55): DegenerateExponents", e, m))
-  } else if (m < BAND_HI) N_BAND_OMITTED <- N_BAND_OMITTED + 1L
-  else N_COUPLING_ACCEPTED <- N_COUPLING_ACCEPTED + 1L
+  F <- coupling_families[[fam]]
+  d <- switch(fam, alpha_onto_k21 = 10, gamma_onto_k31 = 0.2, alpha_onto_k31 = 10, gamma_onto_k21 = 0.2)
+  pr <- 10^-e
+  p <- F$f(d, if (F$tiny == "k12") pr / (if (fam == "alpha_onto_k21") 10 else 0.2) else pr / (if (fam == "alpha_onto_k31") 10 else 0.2))
+  add_coupling_row(sprintf("numeric_coupling_%s_1e%d", fam, e), p, F$tiny, F$root, sprintf("coupling product 1e-%d", e))
 }
+# the boundary itself (MOD-3C-08 "rounds onto"): the coupling is tuned at 256 bits so that the offset of the
+# root from the pole is 0.9 (refused) or 1.1 (accepted) times half the spacing of the doubles on that side of
+# the pole, for poles at the bottom, the middle and the top of a binade and for the four families.
+spacing_side <- function(d, above) {
+  e <- floor(log2(d)); u <- 2^(e - 52)
+  if (above || d != 2^e) u else u / 2
+}
+tune_coupling <- function(F, fam, d, target) {
+  cpl <- 1e-17
+  for (it in 1:8) {
+    p <- F$f(d, cpl)
+    m <- rel_offsets("micro", p)[[F$root]] * d
+    cpl <- cpl * target / m
+  }
+  p <- F$f(d, cpl)
+  m <- rel_offsets("micro", p)[[F$root]] * d
+  check(abs(m / target - 1) < 1e-3, "edge tuning of ", fam, " d = ", d, ": offset ", m, " target ", target)
+  p
+}
+N_EDGE_REFUSALS <- 0L; N_EDGE_ACCEPTED <- 0L
+EDGE_ACCEPTED <- list()
+POLES <- c(bottom = 1, mid = 1.5, top = 2 - 2^-52)
+for (fam in names(coupling_families)) for (pl in names(POLES)) {
+  d0 <- POLES[[pl]]
+  F <- coupling_families[[fam]]
+  for (fr in c(0.9, 1.1)) {
+    target <- fr * spacing_side(d0, F$root == "alpha") / 2
+    p <- tune_coupling(F, fam, d0, target)
+    id <- sprintf("numeric_coupling_edge_%s_%s_%s", fam, pl, if (fr < 1) "inside" else "outside")
+    refused <- add_coupling_row(id, p, F$tiny, F$root, sprintf("offset %.2f times half the spacing at the pole %.17g", fr, d0))
+    check(refused == (fr < 1), id, ": the rounding of the 256-bit root disagrees with the tuning")
+    if (refused) N_EDGE_REFUSALS <- N_EDGE_REFUSALS + 1L else {
+      N_EDGE_ACCEPTED <- N_EDGE_ACCEPTED + 1L
+      EDGE_ACCEPTED[[sub("^numeric_", "", id)]] <- p
+    }
+  }
+}
+# the inputs just outside the boundary are accepted: conditioning cases (exponents, weights and curve at 256 bits)
+for (nm in names(EDGE_ACCEPTED))
+  add_cond(nm, "micro", EDGE_ACCEPTED[[nm]], 100,
+           "offset of the root from the pole 1.1 times half the spacing of the doubles at the pole: the root rounds to the next double, so the model is accepted (MOD-3C-08)")
+# beta onto a pole (round 3 of T-142): the root that sits next to a pole is beta, not alpha or gamma, when the
+# remaining part of F has the other sign; MOD-3C-07 puts beta strictly inside (d_min, d_max) and MOD-3C-08
+# refuses a root that rounds onto a pole, so the probes below are refusals when beta (or the root next to
+# the pole) rounds onto it. Each probe is classified at 256 bits like the rows above.
+beta_probes <- list(
+  beta_onto_k21_1e17 = list(p = list(k10 = 0.375, k12 = 1e-17, k21 = 1, k13 = 0.7875, k31 = 0.2, vc = 1), tiny = "k12"),
+  beta_onto_k21_1e18 = list(p = list(k10 = 0.375, k12 = 1e-18, k21 = 1, k13 = 0.7875, k31 = 0.2, vc = 1), tiny = "k12"),
+  beta_onto_k31_1e17 = list(p = list(k10 = 0.375, k12 = 0.7875, k21 = 0.2, k13 = 1e-17, k31 = 1, vc = 1), tiny = "k13"),
+  beta_onto_k31_1e18 = list(p = list(k10 = 0.375, k12 = 0.7875, k21 = 0.2, k13 = 1e-18, k31 = 1, vc = 1), tiny = "k13"),
+  beta_onto_k21_1e300 = list(p = list(k10 = 0.375, k12 = 1e-300, k21 = 0.5, k13 = 0.7875, k31 = 1, vc = 1), tiny = "k12"),
+  beta_onto_k31_1e300 = list(p = list(k10 = 0.375, k12 = 0.7875, k21 = 1, k13 = 1e-300, k31 = 0.5, vc = 1), tiny = "k13"))
+for (nm in names(beta_probes)) {
+  b <- beta_probes[[nm]]
+  onto <- roots_onto_pole(b$p)
+  check(onto[2], nm, ": the probe is meant to put beta onto a pole, but beta does not round onto it")
+  add_coupling_row(paste0("numeric_", nm), b$p, b$tiny, "beta", "probe")
+  N_BETA_PROBES <- (if (exists("N_BETA_PROBES")) N_BETA_PROBES else 0L) + 1L
+}
+BAND_LO <- 2^-55
+BAND_HI <- 2^-50
 # the same through the macro set (item 3): a weight so small that the micro constants returned put a root on a pole
 macro_words <- list(c("degenerate", "macro", "valid"), c("a", "b", "c", "offset", "exponent"))
 for (nm in c("a", "c")) for (e in 17:30) {
@@ -181,8 +253,8 @@ for (nm in c("a", "c")) for (e in 17:30) {
   } else if (m < BAND_HI) N_BAND_OMITTED <- N_BAND_OMITTED + 1L
   else N_COUPLING_ACCEPTED <- N_COUPLING_ACCEPTED + 1L
 }
-cat(sprintf("coupling refusals: %d rows; %d inputs accepted (not refused); %d in the ambiguous band left out
-", N_COUPLING_REFUSALS, N_COUPLING_ACCEPTED, N_BAND_OMITTED))
+cat(sprintf("coupling refusals: %d rows (%d at the rounding boundary, %d beta probes); %d inputs accepted (not refused; %d of them at the boundary); %d macro inputs in the ambiguous band left out
+", N_COUPLING_REFUSALS, N_EDGE_REFUSALS, N_BETA_PROBES, N_COUPLING_ACCEPTED, N_EDGE_ACCEPTED, N_BAND_OMITTED))
 # times (MOD-GEN-04)
 err("times_nan", "times", "MOD-GEN-04", "pk3.iv_bolus", 100, cl3, list(c("time", "nan", "finite")), "a NaN time is refused", times = list(1, "NaN"))
 err("times_infinite", "times", "MOD-GEN-04", "pk3.iv_bolus", 100, cl3, list(c("time", "infinite", "finite")), "an infinite time is refused", times = list("Infinity"))

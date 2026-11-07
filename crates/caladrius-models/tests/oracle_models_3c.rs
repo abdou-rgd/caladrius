@@ -321,7 +321,6 @@ const UNDERFLOW_EXPONENT: f64 = 700.0;
 #[test]
 fn macro_derivative_zeros_are_underflow() {
     let mut zeros = 0_usize;
-    let mut tiny = 0_usize;
     for name in list_pk3_cases().unwrap() {
         if !name.starts_with("model_pk3_deriv_") {
             continue;
@@ -352,10 +351,9 @@ fn macro_derivative_zeros_are_underflow() {
                 x >= UNDERFLOW_EXPONENT,
                 "{name}: {column} at {group} is written 0 but its exponential factor is exp(-{x}), far above the underflow"
             );
-            tiny += 1;
         }
     }
-    assert!(zeros > 0 && zeros == tiny, "the guard checked no zero");
+    assert!(zeros > 0, "the guard checked no zero");
 }
 
 /// Guards the guard: every case file of the three-compartment oracle is run by a test above, and

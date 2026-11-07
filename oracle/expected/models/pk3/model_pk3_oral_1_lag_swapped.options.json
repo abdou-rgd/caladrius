@@ -75,9 +75,14 @@
   },
   "cross_check_results": {
     "expm_floor": 1e-09,
+    "expm_times_checked": 36,
+    "expm_norm_t_limit": "none",
     "expm_max_rel_gap": 1.28e-13,
     "ode_floor": 1e-09,
+    "ode_times_checked": 36,
+    "ode_norm_t_limit": "none",
     "ode_max_rel_gap": 6.08e-10,
+    "ode_inf_tol": 1e-08,
     "ode_gap_at_common_floor": 6.08e-10
   },
   "versions": {

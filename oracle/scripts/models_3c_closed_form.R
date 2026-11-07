@@ -167,6 +167,33 @@ for (e in c(3, 6, 9, 12)) {
 add_cond("both_tiny", "micro", mic(0.4, 1e-9, 1, 1e-9, 0.2, 10), 100, "both couplings tiny")
 add_cond("ratio_1e6", "macro", points$ratio_1e6$p, 100, "alpha / gamma = 1e6")
 add_cond("close_exp", "micro", points$close_exp$p, 100, "three very close exponents")
+# ---- well-conditioned sets with one large coupling (T-142 round 3): k12 or k13 many orders above beta,
+# kappa about 1 for the exponents, so the engine must keep 1e-12 relative on beta and on gamma next to its pole
+# (the first three are the sets measured by the reviewer against a 300-bit reference). Value cases with a
+# time grid: the bolus for every set, the two other inputs for the reviewer sets and the deep compartment.
+LC <- list()
+add_lc <- function(name, p, note, ids = "pk3.iv_bolus") {
+  pn <- paste0("lc_", name)
+  points[[pn]] <<- list(set = "micro", p = p, dose = 100)
+  for (id in ids) add_case(id, pn, pn, note = paste("large coupling:", note))
+}
+EXTRA_IDS <- c("pk3.iv_bolus", "pk3.oral_1_lag", "pk3.oral_0", "pk3.iv_infusion")
+add_lc("rev1", mic(7.83e-1, 4.52e5, 1.27e10, 1.69e-4, 1.08e-1, 2), "k12 = 4.5e5, k21 = 1.3e10 (reviewer set 1)", EXTRA_IDS)
+add_lc("rev2", mic(5.38e-5, 1.04e3, 9.03e2, 2.65e-5, 1.72e-4, 2), "k12 = 1e3, k21 = 9e2 (reviewer set 2)", EXTRA_IDS)
+add_lc("rev3", mic(1.16e-6, 3.35, 12.2, 1.51e-11, 6.01e-9, 2), "k13 = 1.5e-11, k31 = 6e-9 (reviewer set 3)", EXTRA_IDS)
+for (e in c(3, 5, 8)) {
+  add_lc(sprintf("k12_1e%d_a", e), mic(0.4, 10^e, 1, 0.5, 0.2, 5), sprintf("k12 = 1e%d, k21 > k31", e))
+  add_lc(sprintf("k12_1e%d_b", e), mic(0.4, 10^e, 0.2, 0.5, 1, 5), sprintf("k12 = 1e%d, k21 < k31", e))
+  add_lc(sprintf("k13_1e%d_a", e), mic(0.4, 0.5, 1, 10^e, 0.2, 5), sprintf("k13 = 1e%d, k21 > k31", e))
+  add_lc(sprintf("k13_1e%d_b", e), mic(0.4, 0.5, 0.2, 10^e, 1, 5), sprintf("k13 = 1e%d, k21 < k31", e))
+}
+add_lc("both_1e4_1e6", mic(0.4, 1e4, 1, 1e6, 0.2, 5), "k12 = 1e4 and k13 = 1e6")
+add_lc("both_1e7_1e5", mic(0.4, 1e7, 1, 1e5, 0.2, 5), "k12 = 1e7 and k13 = 1e5")
+add_lc("gamma_pole_a", mic(0.4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large and gamma within a relative 1e-9 of its pole k31")
+add_lc("gamma_pole_b", mic(0.4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large and gamma within a relative 1e-9 of its pole k21")
+add_lc("deep_a", mic(0.3, 10, 5, 0.01, 1e-3, 10), "realistic deep compartment: k31 = 1e-3, k12 = 10", EXTRA_IDS)
+add_lc("deep_b", mic(0.3, 0.01, 1e-3, 10, 5, 10), "realistic deep compartment, peripherals swapped")
+# END-LARGE-COUPLING
 
 # ---------------------------------------------------------------- conversions (OM-23)
 n_conv <- 0L
