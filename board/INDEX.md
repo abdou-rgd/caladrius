@@ -157,6 +157,6 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-146 | Progress and cancel in the engine and the CLI (Engine::begin and finish, one running job) | interface | done | T-143 |
 | T-147 | Specs for brick 2: maximum-likelihood fit with an estimated error model, IWRES, the population dataset | reader | done | T-139 |
 | T-148 | Oracle for brick 2: maximum-likelihood fits, IWRES, population dataset files, failing tests | oracle | done | T-147 |
-| T-149 | caladrius-fit maximum likelihood with an estimated error model (objective = ml), IWRES | engine | todo | T-148 |
-| T-150 | caladrius-project population dataset, the event table (DAT-*) | interface | todo | T-148 |
+| T-149 | caladrius-fit maximum likelihood with an estimated error model (objective = ml), IWRES | engine | in progress | T-148 |
+| T-150 | caladrius-project population dataset, the event table (DAT-*) | interface | in progress | T-148 |
 | T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | todo | T-149, T-150 |
