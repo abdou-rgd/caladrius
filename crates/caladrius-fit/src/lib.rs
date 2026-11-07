@@ -448,6 +448,8 @@ pub fn run_model(model: &dyn FitModel, input: &FitInput) -> Result<FitResult, Fi
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_ml;
+#[cfg(test)]
 mod tests_outputs;
 #[cfg(test)]
 mod tests_pinned;

@@ -117,7 +117,13 @@ impl ErrorModel {
     /// The error parameters in the user's units, from the moved variables.
     pub(crate) fn user_values(&self, xi: &[f64]) -> Vec<f64> {
         xi.iter()
-            .map(|&x| if self.is_variance_scale() { x.sqrt() } else { x })
+            .map(|&x| {
+                if self.is_variance_scale() {
+                    x.sqrt()
+                } else {
+                    x
+                }
+            })
             .collect()
     }
 
@@ -202,7 +208,10 @@ mod tests {
         assert_eq!(ErrorModel::Additive.sigma(&[4.0], -3.0), 2.0);
         assert_eq!(ErrorModel::Proportional.sigma(&[4.0], -3.0), 6.0);
         assert_eq!(ErrorModel::Combined.sigma(&[9.0, 16.0], 0.0), 3.0);
-        assert_eq!(ErrorModel::Combined.sigma(&[9.0, 16.0], 0.75), 18.0_f64.sqrt());
+        assert_eq!(
+            ErrorModel::Combined.sigma(&[9.0, 16.0], 0.75),
+            18.0_f64.sqrt()
+        );
         assert_eq!(ErrorModel::CombinedSd.sigma(&[1.0, 2.0], -3.0), 7.0);
     }
 

@@ -79,7 +79,9 @@ pub(crate) fn spec(o: &FitOptions, weighting: Weighting) -> Result<Option<Spec>,
                 if let Some(bad) = init.iter().find(|x| !(x.is_finite() && **x > 0.0)) {
                     return Err(invalid_option(
                         "error_init",
-                        &format!("{bad} must be a finite number > 0 (the error parameters are standard deviations or fractions of the prediction)"),
+                        &format!(
+                            "{bad} must be a finite number > 0 (the error parameters are standard deviations or fractions of the prediction)"
+                        ),
                     ));
                 }
             }
@@ -187,8 +189,8 @@ fn system(
         .collect();
     let mut rhs = z.clone();
     rhs.extend(z.iter().map(|z| (z * z - 1.0) / root2));
-    let finite = cols.iter().all(|c| c.iter().all(|x| x.is_finite()))
-        && rhs.iter().all(|x| x.is_finite());
+    let finite =
+        cols.iter().all(|c| c.iter().all(|x| x.is_finite())) && rhs.iter().all(|x| x.is_finite());
     finite.then_some(System { cols, rhs })
 }
 
@@ -290,7 +292,12 @@ impl Frame {
     }
 }
 
-fn point<M: FitModel>(problem: &Problem<M>, frame: &Frame, error_model: ErrorModel, ev: Eval) -> Option<Point> {
+fn point<M: FitModel>(
+    problem: &Problem<M>,
+    frame: &Frame,
+    error_model: ErrorModel,
+    ev: Eval,
+) -> Option<Point> {
     let theta = ev.zeta.get(..frame.p)?;
     let jacobian = problem.jacobian(theta, &ev.pred)?;
     let sys = system(error_model, frame.p, frame.q, &ev, &jacobian, &problem.y)?;
@@ -317,6 +324,106 @@ fn point<M: FitModel>(problem: &Problem<M>, frame: &Frame, error_model: ErrorMod
         gn,
         singular,
     })
+}
+
+// ---------------------------------------------------------------- the endgame
+
+/// Newton steps tried after the criterion is met (FIT-ML-08, OF-19).
+const POLISH_STEPS: usize = 12;
+/// Below this decrement the iterate is as exact as the arithmetic allows.
+const POLISH_FLOOR: f64 = 1e-26;
+/// Relative step of the central differences of the score.
+const POLISH_H: f64 = 1e-5;
+
+fn dot(a: &[f64], b: &[f64]) -> f64 {
+    a.iter().zip(b).map(|(x, y)| x * y).sum()
+}
+
+/// The score g = 𝒥ᵀR at ζ (the gradient of −2LL is −2g), or `None` when ζ is not usable.
+fn score<M: FitModel>(
+    problem: &Problem<M>,
+    frame: &Frame,
+    error_model: ErrorModel,
+    zeta: &[f64],
+) -> Option<Vec<f64>> {
+    let ev = evaluate(problem, error_model, zeta)?;
+    let jacobian = problem.jacobian(ev.zeta.get(..frame.p)?, &ev.pred)?;
+    let sys = system(error_model, frame.p, frame.q, &ev, &jacobian, &problem.y)?;
+    Some(sys.cols.iter().map(|c| dot(c, &sys.rhs)).collect())
+}
+
+impl MlRun {
+    /// The endgame of OF-19. The scoring step has a linear rate where the expected and the observed
+    /// information differ, so the test Δ ≤ ε can fire with the estimates still about 1e-5
+    /// standard errors from the optimum. From a converged iterate this takes Newton steps with the
+    /// observed information (central differences of the analytic score, the free variables only)
+    /// for as long as they lower Δ. The fixed point is the same as the scoring iteration's, only
+    /// the distance to it changes, and the step is kept only if Δ falls.
+    pub(crate) fn polish<M: FitModel>(&mut self, problem: &Problem<M>) {
+        let em = self.spec.error_model;
+        for _ in 0..POLISH_STEPS {
+            let Some(before) = self.point.decrement() else {
+                return;
+            };
+            if before <= POLISH_FLOOR || self.point.free.is_empty() {
+                return;
+            }
+            let Some(trial) = self.newton_point(problem, em) else {
+                return;
+            };
+            if !trial.decrement().is_some_and(|after| after < before) {
+                return;
+            }
+            self.point = trial;
+            self.values = self.values_at(&self.point.ev.zeta);
+        }
+    }
+
+    fn newton_point<M: FitModel>(&self, problem: &Problem<M>, em: ErrorModel) -> Option<Point> {
+        let free = &self.point.free;
+        let zeta = &self.point.ev.zeta;
+        let n = free.len();
+        let mut grad = Vec::with_capacity(n);
+        for &j in free {
+            grad.push(-2.0 * dot(self.point.sys.cols.get(j)?, &self.point.sys.rhs));
+        }
+        // Observed information: central differences of the gradient, column by column.
+        let mut hessian = Mat::zeros(n, n);
+        for (c, &j) in free.iter().enumerate() {
+            let x = zeta.get(j).copied()?;
+            let h = if x == 0.0 { 1e-8 } else { POLISH_H * x.abs() };
+            let mut up = zeta.clone();
+            let mut down = zeta.clone();
+            *up.get_mut(j)? = x + h;
+            *down.get_mut(j)? = x - h;
+            let g_up = score(problem, &self.frame, em, &up)?;
+            let g_down = score(problem, &self.frame, em, &down)?;
+            for (r, &i) in free.iter().enumerate() {
+                let d = -2.0 * (g_up.get(i)? - g_down.get(i)?) / (2.0 * h);
+                hessian.set(r, c, d);
+            }
+        }
+        // Symmetric, scaled to a unit diagonal, solved by QR.
+        let diag: Vec<f64> = (0..n).map(|j| hessian.at(j, j).abs().sqrt()).collect();
+        if diag.iter().any(|d| !(d.is_finite() && *d > 0.0)) {
+            return None;
+        }
+        let mut scaled_h = Mat::zeros(n, n);
+        for a in 0..n {
+            for b in 0..n {
+                let sym = 0.5 * (hessian.at(a, b) + hessian.at(b, a));
+                scaled_h.set(a, b, sym / (diag.get(a)? * diag.get(b)?));
+            }
+        }
+        let rhs: Vec<f64> = grad.iter().zip(&diag).map(|(g, d)| -g / d).collect();
+        let (step, _) = least_squares(&scaled_h, &rhs)?;
+        let mut moved = zeta.clone();
+        for ((&j, s), d) in free.iter().zip(&step).zip(&diag) {
+            *moved.get_mut(j)? += s / d;
+        }
+        let ev = evaluate(problem, em, &self.frame.project(&moved))?;
+        point(problem, &self.frame, em, ev)
+    }
 }
 
 // ---------------------------------------------------------------- the run
@@ -440,11 +547,10 @@ impl MlRun {
             let xi = initial_xi(em, &problem.y, pred, spec.error_init.as_deref());
             if index == 0 {
                 // FIT-ML-14b: a standard deviation that is 0 or not finite at the start.
-                let bad = problem
-                    .y
-                    .iter()
-                    .zip(pred)
-                    .position(|(_, &f)| !em.sigma(&xi, f).is_finite() || em.sigma(&xi, f) <= 0.0);
+                let bad =
+                    problem.y.iter().zip(pred).position(|(_, &f)| {
+                        !em.sigma(&xi, f).is_finite() || em.sigma(&xi, f) <= 0.0
+                    });
                 if let Some(i) = bad {
                     return Err(FitError::NonPositiveSigma {
                         error_model: em.id().to_string(),
@@ -498,6 +604,9 @@ impl MlRun {
             eps: problem.options.convergence,
             start,
         };
+        if run.converged() {
+            run.polish(problem);
+        }
         run.values = run.values_at(&run.point.ev.zeta);
         let row = run.trace_row(problem, 0, None, 0.0, 0);
         Ok((run, row))
@@ -587,6 +696,9 @@ impl MlRun {
             lam / LAMBDA_FACTOR
         };
         self.point = point;
+        if self.converged() {
+            self.polish(problem);
+        }
         self.values = self.values_at(&self.point.ev.zeta);
         trace.push(self.trace_row(problem, iteration, Some(nu), lam, halvings));
         Advance::Committed {

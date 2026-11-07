@@ -478,3 +478,33 @@ fn a_cancel_returns_the_trace_up_to_that_iteration() {
     }
     assert!(cancels >= 15, "{cancels} cancels");
 }
+
+/// FIT-CNV-05 (T-143, review minor): a fit with predicted-value weights converges through the
+/// contraction ratio ρ = √(decrease / previous decrease) < 1, not through a decrease of exactly 0.
+/// With ε = 0.01 the test is met at iteration 3 although iteration 4 would still lower the WRSS (by
+/// 2e-11 relative): a loop that forgot the previous decrease (reset it at every iteration) never
+/// meets the test, goes on to iteration 4 and ends later with a longer trace.
+#[test]
+fn a_predicted_value_fit_converges_through_rho_below_one() {
+    let (_, mut i) = cases()
+        .into_iter()
+        .find(|(n, _)| n.starts_with("pk1.iv_bolus 1/yhat, reference"))
+        .unwrap();
+    i.options.convergence = 1e-2;
+    let r = reference(&i);
+    assert_eq!(r.status(), FitStatus::Converged);
+    let rows = r.trace();
+    assert_eq!(rows.len(), 4, "converged at iteration 3");
+    let last = rows[3].relative_decrease.unwrap();
+    let prev = rows[2].relative_decrease.unwrap();
+    assert!(last > 0.0, "not the relative == 0 shortcut");
+    let rho = (last / prev).sqrt();
+    assert!(rho < 1.0, "rho = {rho}");
+    assert!(
+        last <= 1e-2 * (1.0 - rho) * (1.0 - rho),
+        "the FIT-CNV-05 test"
+    );
+    // The same fit with the usual ε needs the next iteration too: the criterion is what stops it.
+    i.options.convergence = 1e-4;
+    assert_eq!(reference(&i).trace().len(), 5);
+}
