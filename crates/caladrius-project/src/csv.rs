@@ -7,6 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::dataset::{self, Dataset};
 use crate::error::{ProjectError, Result};
 use crate::worksheet::{Column, ColumnData, ColumnRole};
 
@@ -18,6 +19,10 @@ pub struct CsvOptions {
     pub delimiter: Option<char>,
     /// Read `,` as the decimal mark; `None`: yes when the delimiter is not a comma.
     pub decimal_comma: Option<bool>,
+    /// The columns the user declares as covariates (DAT-COV-01), by name. No column becomes a
+    /// covariate by its name alone. A declared column that has a role already keeps it, with a note.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub covariates: Vec<String>,
 }
 
 /// The result of reading a CSV: the columns and what was guessed.
@@ -75,6 +80,13 @@ impl ImportedTable {
         }
         let mut notes = Vec::new();
         let mut columns = Vec::with_capacity(width);
+        // DAT-LAY-01: the layout is decided by a column recognised as `event`, and by nothing else.
+        // The names added for the event layout are recognised only in that layout, so a file without
+        // an event column reads exactly as it always did (DAT-LEG-02).
+        let event_layout = header
+            .iter()
+            .enumerate()
+            .any(|(i, head)| is_event_name(&split_header(head, i).0));
         for (i, (head, values)) in header.iter().zip(cells).enumerate() {
             let (name, unit) = split_header(head, i);
             if let Some(u) = &unit {
@@ -84,11 +96,32 @@ impl ImportedTable {
             }
             // Only a concentration or an unnamed column can hold BLQ cells: in a time, dose,
             // subject or route column such a word stays text (NCA-DAT-05c).
+            let role = role_of(&name, event_layout);
             let blq_allowed = matches!(
-                role_of(&name),
+                role,
                 None | Some(ColumnRole::Concentration | ColumnRole::Other)
             );
-            let (data, blq) = type_column(&name, values, decimal_comma, blq_allowed, &mut notes);
+            // An optional numeric column of the event layout that is empty everywhere (a `RATE`
+            // column with no infusion) is numbers with no value, not text.
+            let optional_numbers = event_layout
+                && matches!(
+                    role,
+                    Some(
+                        ColumnRole::Rate
+                            | ColumnRole::Dur
+                            | ColumnRole::Mdv
+                            | ColumnRole::Cens
+                            | ColumnRole::Limit
+                    )
+                );
+            let (data, blq) = type_column(
+                &name,
+                values,
+                decimal_comma,
+                blq_allowed,
+                optional_numbers,
+                &mut notes,
+            );
             columns.push(Column {
                 name,
                 role: ColumnRole::Other,
@@ -97,7 +130,11 @@ impl ImportedTable {
                 blq,
             });
         }
-        assign_roles(&mut columns, &mut notes);
+        assign_roles(&mut columns, &mut notes, event_layout);
+        declare_covariates(&mut columns, &options.covariates, &mut notes);
+        if event_layout {
+            event_layout_notes(&columns, &mut notes);
+        }
         Ok(ImportedTable {
             columns,
             delimiter,
@@ -303,6 +340,7 @@ fn type_column(
     values: Vec<String>,
     decimal_comma: bool,
     blq_allowed: bool,
+    optional_numbers: bool,
     notes: &mut Vec<String>,
 ) -> (ColumnData, Vec<usize>) {
     let cells: Vec<Cell> = values
@@ -317,6 +355,9 @@ fn type_column(
         .filter(|c| matches!(c, Cell::Number(_)))
         .count();
     let n_text = cells.iter().filter(|c| matches!(c, Cell::Text)).count();
+    if optional_numbers && cells.iter().all(|c| matches!(c, Cell::Missing)) {
+        return (ColumnData::Number(vec![None; cells.len()]), Vec::new());
+    }
     if n_numbers > 0 && n_text == 0 {
         if decimal_comma {
             if let Some(example) = values.iter().find(|v| looks_like_thousands(v)) {
@@ -363,14 +404,22 @@ fn type_column(
     (ColumnData::Text(values), Vec::new())
 }
 
-fn key(name: &str) -> String {
+pub(crate) fn key(name: &str) -> String {
     name.chars()
         .filter(|c| c.is_alphanumeric())
         .flat_map(char::to_lowercase)
         .collect()
 }
 
-fn role_of(name: &str) -> Option<ColumnRole> {
+/// The names that make a file the event layout (DAT-REC-01).
+fn is_event_name(name: &str) -> bool {
+    matches!(key(name).as_str(), "evid" | "event" | "eventtype" | "evt")
+}
+
+/// The role a column name suggests. The names added for the event layout (DAT-REC-01) count only
+/// when the file has an event column: in a profile-layout file a column called `limit` or `rate`
+/// stays `other`, as it always did (DAT-LEG-02, the legacy behaviour wins).
+fn role_of(name: &str, event_layout: bool) -> Option<ColumnRole> {
     let k = key(name);
     if k.starts_with("time")
         || matches!(
@@ -399,22 +448,83 @@ fn role_of(name: &str) -> Option<ColumnRole> {
         Some(ColumnRole::Dose)
     } else if matches!(k.as_str(), "route" | "admin" | "administration") {
         Some(ColumnRole::Route)
-    } else {
+    } else if !event_layout {
         None
+    } else {
+        match k.as_str() {
+            "evid" | "event" | "eventtype" | "evt" => Some(ColumnRole::Event),
+            "cmt" | "compartment" | "cmpt" => Some(ColumnRole::Cmt),
+            "rate" | "infusionrate" => Some(ColumnRole::Rate),
+            "dur" | "duration" | "tinf" => Some(ColumnRole::Dur),
+            "mdv" | "missing" => Some(ColumnRole::Mdv),
+            "cens" | "censored" | "censoring" => Some(ColumnRole::Cens),
+            "limit" | "lloq" | "loq" => Some(ColumnRole::Limit),
+            _ => None,
+        }
     }
 }
 
-fn assign_roles(columns: &mut [Column], notes: &mut Vec<String>) {
+/// The notes of the event layout: columns that carry information this version does not use
+/// (DAT-REC-02), and an amount without a unit (DAT-UNI-01).
+fn event_layout_notes(columns: &[Column], notes: &mut Vec<String>) {
+    for column in columns {
+        if column.role != ColumnRole::Other {
+            continue;
+        }
+        let what = match key(&column.name).as_str() {
+            "addl" => "holds additional doses; additional doses are not used yet, so each dose row is one dose",
+            "ii" => "holds interdose intervals; interdose intervals are not used yet, so each dose row is one dose",
+            "ss" => "holds steady-state flags; steady state is not used yet, so each dose row is one dose",
+            "occ" | "occasion" => "holds occasions; occasions are not used yet",
+            "ytype" | "dvid" => "holds response types; response types are not used yet",
+            _ => continue,
+        };
+        notes.push(format!("column `{}` {what}", column.name));
+    }
+    if let Some(amount) = columns.iter().find(|c| c.role == ColumnRole::Dose) {
+        if amount.unit.is_none() {
+            notes.push(format!(
+                "the unit of the amount is not given (column `{}`); results quote the amount without a unit",
+                amount.name
+            ));
+        }
+    }
+}
+
+/// DAT-COV-01: the columns the user declares as covariates take that role, unless they have a role.
+fn declare_covariates(columns: &mut [Column], declared: &[String], notes: &mut Vec<String>) {
+    for name in declared {
+        match columns.iter_mut().find(|c| &c.name == name) {
+            None => notes.push(format!(
+                "covariate `{name}` was declared but the file has no column of that name"
+            )),
+            Some(column) if column.role != ColumnRole::Other => notes.push(format!(
+                "covariate `{name}` was declared but the column is the {} column; it keeps that role",
+                column.role.id()
+            )),
+            Some(column) => column.role = ColumnRole::Covariate,
+        }
+    }
+}
+
+fn assign_roles(columns: &mut [Column], notes: &mut Vec<String>, event_layout: bool) {
     for column in columns.iter_mut() {
-        let Some(role) = role_of(&column.name) else {
+        let Some(role) = role_of(&column.name, event_layout) else {
             continue;
         };
         let numbers = matches!(column.data, ColumnData::Number(_));
         let usable = match role {
-            ColumnRole::Time | ColumnRole::Concentration | ColumnRole::Dose => numbers,
+            ColumnRole::Time
+            | ColumnRole::Concentration
+            | ColumnRole::Dose
+            | ColumnRole::Rate
+            | ColumnRole::Dur
+            | ColumnRole::Mdv
+            | ColumnRole::Cens
+            | ColumnRole::Limit => numbers,
             ColumnRole::Route => !numbers,
-            ColumnRole::Subject => true,
-            ColumnRole::Other => false,
+            ColumnRole::Subject | ColumnRole::Event | ColumnRole::Cmt => true,
+            ColumnRole::Covariate | ColumnRole::Other => false,
         };
         if !usable {
             notes.push(format!(
@@ -429,7 +539,7 @@ fn assign_roles(columns: &mut [Column], notes: &mut Vec<String>) {
     // At most one column per role: the first keeps it.
     let mut seen: Vec<ColumnRole> = Vec::new();
     for column in columns.iter_mut() {
-        if column.role == ColumnRole::Other {
+        if column.role.can_repeat() {
             continue;
         }
         if seen.contains(&column.role) {
@@ -460,7 +570,8 @@ fn assign_roles(columns: &mut [Column], notes: &mut Vec<String>) {
 /// A problem with one way of reading a file, found by looking at what it gives.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReadingCheck {
-    /// `time_not_increasing` or `duplicate_times`.
+    /// `time_not_increasing`, `duplicate_times`, or a refusal of the dataset (`dose_without_amount`,
+    /// `covariate_varies`, `different_doses`...).
     pub code: String,
     /// What was found and what to do.
     pub message: String,
@@ -472,8 +583,13 @@ pub struct ReadingCheck {
 pub struct Reading {
     /// The table this reading gives (its `delimiter` and `decimal_comma` say how).
     pub table: ImportedTable,
-    /// Problems of the result; a reading with none is plausible.
+    /// Problems of the result; a reading with none is plausible. The refusals of the dataset
+    /// (`specs/data.md`, DAT-ERR-02 to 06) come first, then the time checks.
     pub checks: Vec<ReadingCheck>,
+    /// The records of the table: doses and observations of each subject, and which subjects a
+    /// problem touches.
+    #[serde(default)]
+    pub dataset: Dataset,
 }
 
 fn numbers_of(column: &Column) -> Option<&Vec<Option<f64>>> {
@@ -484,8 +600,17 @@ fn numbers_of(column: &Column) -> Option<&Vec<Option<f64>>> {
 }
 
 /// The checks on one table: within each subject the times must not go back, and must not repeat.
+#[cfg(test)]
 pub(crate) fn check_table(table: &ImportedTable) -> Vec<ReadingCheck> {
+    check_times(table, None)
+}
+
+/// [`check_table`] where `observations`, when given, says for each row whether it is an observation
+/// row (the event layout): only those rows are compared for repeated times, so that a dose and an
+/// observation can share a time (DAT-ORD-01). Times going back are checked over every row.
+fn check_times(table: &ImportedTable, observations: Option<&[bool]>) -> Vec<ReadingCheck> {
     let mut out = Vec::new();
+    let is_observation = |row: usize| observations.is_none_or(|o| o.get(row).copied().unwrap_or(true));
     let Some(time) = table
         .columns
         .iter()
@@ -529,6 +654,12 @@ pub(crate) fn check_table(table: &ImportedTable) -> Vec<ReadingCheck> {
                         of(key)
                     ));
                 }
+            }
+        }
+        let observed: Vec<&(usize, f64)> =
+            rows.iter().filter(|(row, _)| is_observation(*row)).collect();
+        for pair in observed.windows(2) {
+            if let [(_, a), (row, b)] = pair {
                 if b == a && repeated.is_none() {
                     repeated = Some(format!(
                         "time {b} appears twice at row {}{}; duplicated times are an error for an NCA (keep one row, or give them to different subjects)",
@@ -582,6 +713,7 @@ pub fn readings(bytes: &[u8], options: &CsvOptions) -> Result<Vec<Reading>> {
             let candidate = CsvOptions {
                 delimiter: Some(d),
                 decimal_comma: Some(decimal_comma),
+                covariates: options.covariates.clone(),
             };
             if let Ok(t) = ImportedTable::from_csv(bytes, &candidate) {
                 if !tables.iter().any(|x| x.columns == t.columns) {
@@ -602,8 +734,14 @@ pub fn readings(bytes: &[u8], options: &CsvOptions) -> Result<Vec<Reading>> {
         .into_iter()
         .filter(usable)
         .map(|table| {
-            let checks = check_table(&table);
-            Reading { table, checks }
+            let built = dataset::build(&table);
+            let mut checks = built.checks;
+            checks.extend(check_times(&table, built.observation_rows.as_deref()));
+            Reading {
+                table,
+                checks,
+                dataset: built.dataset,
+            }
         })
         .collect();
     if out.is_empty() {

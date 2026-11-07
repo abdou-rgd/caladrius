@@ -33,6 +33,24 @@ pub enum ColumnRole {
     Dose,
     /// Route of administration (text: `extravascular`, `iv_bolus`).
     Route,
+    /// Record type of the event layout (DAT-TYP-01): 0 or `obs`, 1 or `dose`.
+    Event,
+    /// Rate of an infusion, dose rows only (event layout, DAT-TYP-02; numbers).
+    Rate,
+    /// Duration of an infusion, dose rows only (event layout, DAT-TYP-02; numbers).
+    Dur,
+    /// Compartment of a record (event layout, DAT-CMT-01).
+    Cmt,
+    /// Observation not to be used when 1 (event layout, DAT-CEN-01; numbers).
+    Mdv,
+    /// Censoring code of an observation: 0, or 1 for left-censored (event layout, DAT-CEN-02;
+    /// numbers).
+    Cens,
+    /// Limit of the censoring interval (event layout, DAT-CEN-02; numbers).
+    Limit,
+    /// A covariate declared by the user (DAT-COV-01): one value per subject. Unlike the other roles,
+    /// several columns can have it.
+    Covariate,
     /// Anything else; not used by the analyses.
     Other,
 }
@@ -46,6 +64,14 @@ impl ColumnRole {
             ColumnRole::Subject => "subject",
             ColumnRole::Dose => "dose",
             ColumnRole::Route => "route",
+            ColumnRole::Event => "event",
+            ColumnRole::Rate => "rate",
+            ColumnRole::Dur => "dur",
+            ColumnRole::Cmt => "cmt",
+            ColumnRole::Mdv => "mdv",
+            ColumnRole::Cens => "cens",
+            ColumnRole::Limit => "limit",
+            ColumnRole::Covariate => "covariate",
             ColumnRole::Other => "other",
         }
     }
@@ -53,8 +79,21 @@ impl ColumnRole {
     fn needs_numbers(&self) -> bool {
         matches!(
             self,
-            ColumnRole::Time | ColumnRole::Concentration | ColumnRole::Dose
+            ColumnRole::Time
+                | ColumnRole::Concentration
+                | ColumnRole::Dose
+                | ColumnRole::Rate
+                | ColumnRole::Dur
+                | ColumnRole::Mdv
+                | ColumnRole::Cens
+                | ColumnRole::Limit
         )
+    }
+
+    /// True for the roles that several columns can have: a covariate. Every other role, `other`
+    /// included, is held by at most one column (`other` has no such limit; it means no role).
+    pub(crate) fn can_repeat(&self) -> bool {
+        matches!(self, ColumnRole::Covariate | ColumnRole::Other)
     }
 }
 
@@ -260,7 +299,7 @@ impl Worksheet {
                         ),
                     ));
                 }
-                if matches!(c.role, ColumnRole::Time | ColumnRole::Dose) {
+                if c.role.needs_numbers() && c.role != ColumnRole::Concentration {
                     return Err(ProjectError::new(
                         "blq_role",
                         format!(
@@ -291,7 +330,7 @@ impl Worksheet {
                     ));
                 }
             }
-            if c.role != ColumnRole::Other
+            if !c.role.can_repeat()
                 && self.columns.iter().skip(i + 1).any(|d| d.role == c.role)
             {
                 return Err(ProjectError::new(
@@ -397,7 +436,7 @@ impl Worksheet {
     pub fn set_role(&mut self, column: &str, role: ColumnRole) -> Result<()> {
         let index = self.column_index(column)?;
         let mut candidate = self.clone();
-        if role != ColumnRole::Other {
+        if !role.can_repeat() {
             for c in &mut candidate.columns {
                 if c.role == role {
                     c.role = ColumnRole::Other;

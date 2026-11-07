@@ -721,6 +721,7 @@ fn fixed_options_restrict_the_readings_and_nothing_usable_is_an_error() {
     let only = CsvOptions {
         delimiter: Some(';'),
         decimal_comma: Some(false),
+        ..CsvOptions::default()
     };
     // With a point as decimal mark the comma numbers are text: no usable reading.
     assert!(readings(b"time;conc\n0,25;3,4\n", &only).is_err());
