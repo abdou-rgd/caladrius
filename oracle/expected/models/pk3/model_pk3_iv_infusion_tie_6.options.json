@@ -67,9 +67,17 @@
   "scalar_ill_names": ["b", "w_beta"],
   "method": {
     "closed_form": "independent implementation of the explicit sums of exponentials (MOD-3C-10 to 14), 256-bit arithmetic (Rmpfr); the exponents are the roots of the cubic found by Newton inside the brackets given by the critical points of the cubic, the weights the product-of-differences form (checked against the sum-of-positive-terms form), AUC and AUMC exact integrals of the terms; the confluent limit is used when |ka - lambda| is below 2^-150",
-    "cross_checks": ["matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve lsoda, rtol 1e-12) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha and gamma always, beta when the gaps exceed 1e-3)"],
+    "cross_checks": ["matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha and gamma always, beta when the gaps exceed 1e-3)"],
     "cross_check_tolerance": 1e-08,
+    "cross_check_floor": "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case; the floors actually used are in cross_check_results",
     "kappa_max": 1000
+  },
+  "cross_check_results": {
+    "expm_floor": 1e-09,
+    "expm_max_rel_gap": 6.69e-14,
+    "ode_floor": 1e-09,
+    "ode_max_rel_gap": 6.39e-10,
+    "ode_gap_at_common_floor": 6.39e-10
   },
   "versions": {
     "R": "R version 4.5.2 (2025-10-31 ucrt)",

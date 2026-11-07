@@ -151,6 +151,14 @@ for (dl in c(1e-2, 1e-4, 1e-6, 1e-9, 1e-12))
 add_cond("tie_exact", "micro", mic(0.375, 1.1875, 1, 0.7875, 1, 8), 100, "exact tie k21 = k31: beta = k21, w_beta = 0 exactly (structural)")
 add_cond("tie_ulp", "micro", mic(0.375, 1.1875, 1, 0.7875, 1 - 2^-53, 8), 100, "k31 one ulp below k21")
 add_cond("tie_ulp_up", "micro", mic(0.375, 1.1875, 1, 0.7875, 1 + 2^-52, 8), 100, "k31 one ulp above k21")
+# couplings small but not too small: the roots still differ from the poles in doubles, so the model must be
+# ACCEPTED and its exponents and weights returned (MOD-3C-08); the refusals start further down (models_3c_more.R)
+for (pr in c(1e-12, 1e-13))
+  add_cond(sprintf("coupling_alpha_1e%d", round(log10(pr))), "micro", mic(1, pr / 10, 10, 0.5, 0.2, 1), 100,
+           sprintf("k12 * k21 = %g: alpha is above k21 by a relative %.2g, still representable: accepted", pr, rel_offsets("micro", mic(1, pr / 10, 10, 0.5, 0.2, 1))[["alpha"]]))
+for (pr in c(1e-12, 1e-15))
+  add_cond(sprintf("coupling_gamma_1e%d", round(log10(pr))), "micro", mic(1, 0.5, 1, pr / 0.2, 0.2, 1), 100,
+           sprintf("k13 * k31 = %g: gamma is below k31 by a relative %.2g, still representable: accepted", pr, rel_offsets("micro", mic(1, 0.5, 1, pr / 0.2, 0.2, 1))[["gamma"]]))
 add_cond("tie_swapped_9", "micro", mic(0.375, 0.7875, 1 - 1e-9, 1.1875, 1, 8), 100, "k21 just below k31")
 for (e in c(3, 6, 9, 12)) {
   add_cond(sprintf("k12_%d", e), "micro", mic(0.4, 10^-e, 1, 0.5, 0.2, 10), 100, paste("k12 = 1e-", e, sep = ""))
@@ -178,7 +186,7 @@ for (pn in conv_points) {
   err <- min(err, err_sw)
   roundtrip_err <- c(roundtrip_err, err)
   gap <- min(asNumeric((q0$l[2] - q0$l[3]) / q0$l[2]), asNumeric(abs(q0$k21 - q0$k31) / q0$k21))
-  check(err < 1e-20 || gap < 1e-6, pn, ": round trip error ", err)
+  check(err < 1e-20, pn, ": round trip error ", err)
   # a swapped labelling: when k21 < k31 the macro -> micro conversion returns the pair swapped (MOD-3C-05)
   for (set in c("clearance", "micro", "macro")) {
     if (set == "macro" && gap < 1e-3) next

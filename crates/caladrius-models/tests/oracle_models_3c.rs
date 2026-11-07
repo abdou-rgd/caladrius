@@ -107,9 +107,6 @@ fn check(case_name: &str, kind: Pk3Kind, quantity: &str) {
     let case = &loaded.case;
     let input = input_of(case);
     let expected = expected_of(case, quantity);
-    if quantity == "scalar_ill" && expected.is_empty() {
-        return; // nothing ill-conditioned at this point
-    }
     assert!(
         !expected.is_empty(),
         "{case_name}: nothing expected for {quantity}"
@@ -227,9 +224,6 @@ macro_rules! value_tests {
                 fn aumc() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::Values, "aumc"); }
                 #[test]
                 fn scalars() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::Values, "scalar"); }
-                #[test]
-                #[ignore = "ill-conditioned scalars (kappa > 1e3): the tolerance decision is the orchestrator's"]
-                fn scalars_ill_conditioned() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::Values, "scalar_ill"); }
             }
         )*
     };
@@ -243,9 +237,6 @@ macro_rules! conditioning_tests {
                     use super::super::{check, Pk3Kind};
                     #[test]
                     fn scalars() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::Conditioning, "scalar"); }
-                    #[test]
-                    #[ignore = "ill-conditioned scalars (kappa > 1e3): the tolerance decision is the orchestrator's"]
-                    fn scalars_ill_conditioned() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::Conditioning, "scalar_ill"); }
                 }
             )*
         }
@@ -260,9 +251,23 @@ macro_rules! conversion_tests {
                     use super::super::{check, Pk3Kind};
                     #[test]
                     fn scalars() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::Conversion, "scalar"); }
+                }
+            )*
+        }
+    };
+}
+
+/// The scalars with a condition number above 1e3 (`scalar_ill`), for the cases that have such rows only
+/// (the generated lists `ILL_*`): the tolerance decision is the orchestrator's, so the tests are ignored.
+macro_rules! ill_tests {
+    ($module:ident, $kind:ident; $($case:ident),* $(,)?) => {
+        mod $module {
+            $(
+                mod $case {
+                    use super::super::{check, Pk3Kind};
                     #[test]
                     #[ignore = "ill-conditioned scalars (kappa > 1e3): the tolerance decision is the orchestrator's"]
-                    fn scalars_ill_conditioned() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::Conversion, "scalar_ill"); }
+                    fn scalars() { check(concat!("model_pk3_", stringify!($case)), Pk3Kind::$kind, "scalar_ill"); }
                 }
             )*
         }
@@ -320,6 +325,30 @@ fn every_pk3_case_has_tests() {
     assert_eq!(
         on_disk, listed,
         "the cases on disk and the cases tested differ"
+    );
+    // the ignored tests of ill-conditioned scalars exist exactly for the cases that have such rows
+    let mut with_rows: Vec<String> = on_disk
+        .iter()
+        .filter(|n| {
+            let c = load_pk3_case(n).unwrap();
+            c.case
+                .expected
+                .iter()
+                .any(|(group, _, _)| group == "scalar_ill")
+        })
+        .cloned()
+        .collect();
+    with_rows.sort();
+    let mut ill_listed: Vec<String> = ILL_VALUE_CASES
+        .iter()
+        .chain(ILL_CONDITIONING_CASES)
+        .chain(ILL_CONVERSION_CASES)
+        .map(|c| format!("model_pk3_{c}"))
+        .collect();
+    ill_listed.sort();
+    assert_eq!(
+        with_rows, ill_listed,
+        "the cases with scalar_ill rows and the cases with an ignored test differ"
     );
     let md_on_disk = list_pk3_md_cases().unwrap();
     let mut md_listed: Vec<String> = MD_CASES.iter().map(|c| format!("model_pk3_{c}")).collect();

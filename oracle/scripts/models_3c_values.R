@@ -13,6 +13,7 @@ tonum <- function(x) {
 num <- function(x) if (is.null(x)) NA_real_ else as.numeric(x)
 REG <- new.env()    # case name -> kind, for the .cases file
 register <- function(name, kind) assign(name, kind, envir = REG)
+ILLREG <- new.env() # case names that have scalar_ill rows
 
 SET_NAMES <- list(clearance = c("cl", "vc", "q2", "vp2", "q3", "vp3"),
                   micro = c("k10", "k12", "k21", "k13", "k31", "vc"),
@@ -82,7 +83,12 @@ expm_solution <- function(model, nq, times) {
     c(s[2] / nq$V, s[5], t * s[5] - s[6])
   })
 }
-desolve_solution <- function(model, nq, times, t_end, auc_inf, aumc_inf) {
+# Settings of the adaptive solver (T-142 review): relative 1e-13, absolute 1e-18 of the natural scale of
+# each state, so that the tail of a profile is held to a relative error and not to an absolute one.
+ODE_RTOL <- 1e-13
+ODE_ATOL <- 1e-18
+ODE_MAXSTEPS <- 5e6
+desolve_solution <- function(model, nq, times, t_end, auc_inf, aumc_inf, method = "bdf") {
   kd <- model_kind(model)
   bp <- breakpoints(model, nq)
   start <- bp[1]
@@ -94,16 +100,34 @@ desolve_solution <- function(model, nq, times, t_end, auc_inf, aumc_inf) {
     list(c(dG, dA1, nq$k12 * y[2] - nq$k21 * y[3], nq$k13 * y[2] - nq$k31 * y[4],
            y[2] / nq$V, t * y[2] / nq$V))
   }
+  jac <- function(t, y, parms) {
+    J <- matrix(0, 6, 6)
+    if (kd$first_order) { J[1, 1] <- -nq$ka; J[2, 1] <- nq$ka }
+    J[2, 2] <- -(nq$k10 + nq$k12 + nq$k13); J[2, 3] <- nq$k21; J[2, 4] <- nq$k31
+    J[3, 2] <- nq$k12; J[3, 3] <- -nq$k21
+    J[4, 2] <- nq$k13; J[4, 4] <- -nq$k31
+    J[5, 2] <- 1 / nq$V; J[6, 2] <- t / nq$V
+    J
+  }
   y <- c(if (kd$first_order) nq$D else 0, if (kd$bolus) nq$D else 0, 0, 0, 0, 0)
-  atol <- 1e-14 * c(nq$D, nq$D, nq$D, nq$D, auc_inf, aumc_inf)
+  atol <- ODE_ATOL * c(nq$D, nq$D, nq$D, nq$D, auc_inf, aumc_inf)
   grid <- sort(unique(c(start, bp, times[times > start], t_end)))
   out <- list()
   out[[as.character(start)]] <- y
   for (i in seq_len(length(grid) - 1L)) {
     a <- grid[i]; b <- grid[i + 1L]
     inside <- kd$zero_order && a >= bp[1] && b <= bp[2]
-    sol <- ode(y = y, times = c(a, b), func = rhs, parms = if (inside) rate_in else 0,
-               method = "lsoda", rtol = 1e-12, atol = atol, maxsteps = 1e6)
+    # amounts below 1e-40 of the dose are flushed to 0 (far below any floor of the checks): the solver
+    # otherwise chases denormal numbers; when nothing is left the areas no longer change
+    y[1:4][abs(y[1:4]) < 1e-40 * nq$D] <- 0
+    if (!inside && (!kd$zero_order || a >= bp[2]) && all(y[1:4] == 0)) { out[[as.character(b)]] <- y; next }
+    # an early return of the solver (steps exhausted, "Returning early") is an error, never a result
+    sol <- withCallingHandlers(
+      ode(y = y, times = c(a, b), func = rhs, parms = if (inside) rate_in else 0,
+          method = method, rtol = ODE_RTOL, atol = atol, maxsteps = ODE_MAXSTEPS,
+          jacfunc = jac, jactype = "fullusr"),
+      warning = function(w) stop("deSolve ", method, " warning on [", a, ", ", b, "]: ", conditionMessage(w), call. = FALSE))
+    check(nrow(sol) == 2L && sol[2, 1] == b, "deSolve returned at t = ", sol[nrow(sol), 1], " instead of ", b)
     y <- as.numeric(sol[2, -1])
     out[[as.character(b)]] <- y
   }
@@ -114,7 +138,22 @@ desolve_solution <- function(model, nq, times, t_end, auc_inf, aumc_inf) {
        },
        final = out[[as.character(grid[length(grid)])]])
 }
-rel_ok <- function(a, b, scale, tol = 1e-8) all(abs(a - b) <= tol * pmax(abs(b), 1e-3 * scale))
+# Relative agreement with a floor: |a - b| <= tol * max(|b|, floor * scale). The default floor 1e-3 is
+# the loose one of the multiple-dosing cross-checks; the value cases pass a floor of 1e-9 (below).
+rel_ok <- function(a, b, scale, tol = 1e-8, floor = 1e-3) all(abs(a - b) <= tol * pmax(abs(b), floor * scale))
+rel_gap_f <- function(a, b, scale, floor) max(abs(a - b) / pmax(abs(b), floor * scale))
+FLOOR_EXPM <- 1e-9    # value cases: expm agrees to 1e-8 relative down to 1e-9 of the largest value
+FLOOR_ODE <- 1e-9     # value cases: the solver likewise
+GAPS <- list()        # name -> measured gaps, written to the options files
+
+# Relative offsets of alpha above max(k21, k31) and of gamma below min(k21, k31), 256 bits (MOD-3C-08):
+# the engine must refuse when either rounds onto the pole in doubles.
+rel_offsets <- function(set, p) {
+  q <- derive_q3(set, p, 100, list())
+  hi <- if (q$k21 > q$k31) q$k21 else q$k31
+  lo <- if (q$k21 > q$k31) q$k31 else q$k21
+  c(alpha = asNumeric((q$l[1] - hi) / hi), gamma = asNumeric((lo - q$l[3]) / lo))
+}
 
 # ---------------------------------------------------------------- time grids
 make_times <- function(model, q, extra) {
@@ -169,20 +208,30 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
     if (length(times) > 0) {
       scale <- max(abs(conc)); sa <- max(abs(auc)); sm <- max(abs(aumc))
       ex <- expm_solution(model, nq, times)
-      check(rel_ok(ex[1, ], conc, scale), name, ": expm concentration")
-      check(rel_ok(ex[2, ], auc, sa), name, ": expm AUC")
-      check(rel_ok(ex[3, ], aumc, sm), name, ": expm AUMC")
+      eg <- c(conc = rel_gap_f(ex[1, ], conc, scale, FLOOR_EXPM), auc = rel_gap_f(ex[2, ], auc, sa, FLOOR_EXPM),
+              aumc = rel_gap_f(ex[3, ], aumc, sm, FLOOR_EXPM))
+      for (qn in names(eg)) check(eg[[qn]] <= 1e-8, name, ": expm ", qn, ", gap ", eg[[qn]], " at the floor ", FLOOR_EXPM)
       t_end <- (if (is.null(extra$tlag)) 0 else extra$tlag) + (if (is.null(extra$dur)) 0 else extra$dur) +
         80 / min(nq$k10, nq$k21, nq$k31, num(q$l[3]), if (is.null(extra$ka)) Inf else extra$ka)
       ds <- desolve_solution(model, nq, times, t_end, scn[["auc_inf"]], scn[["aumc_inf"]])
       dv <- sapply(times, ds$at)
-      check(rel_ok(dv[1, ], conc, scale), name, ": lsoda concentration")
-      check(rel_ok(dv[2, ], auc, sa), name, ": lsoda AUC")
-      check(rel_ok(dv[3, ], aumc, sm), name, ": lsoda AUMC")
+      og <- function(fl) c(conc = rel_gap_f(dv[1, ], conc, scale, fl), auc = rel_gap_f(dv[2, ], auc, sa, fl),
+                           aumc = rel_gap_f(dv[3, ], aumc, sm, fl))
+      ode_floor <- FLOOR_ODE
+      # a case the solver cannot hold to the common floor gets its own, stated and recorded (never silent)
+      for (fl in c(FLOOR_ODE, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)) {
+        ode_floor <- fl
+        if (max(og(fl)) <= 1e-8) break
+      }
+      if (ode_floor > FLOOR_ODE) cat(sprintf("  NOTE %s: ODE solver holds 1e-8 only down to %g of the scale (common floor %g)", name, ode_floor, FLOOR_ODE), "\n")
+      check(max(og(ode_floor)) <= 1e-8, name, ": ODE solver, gap ", max(og(ode_floor)), " at the floor ", ode_floor)
+      GAPS[[name]] <<- list(expm_floor = FLOOR_EXPM, expm_max_rel_gap = signif(max(eg), 3),
+                            ode_floor = ode_floor, ode_max_rel_gap = signif(max(og(ode_floor)), 3),
+                            ode_gap_at_common_floor = signif(max(og(FLOOR_ODE)), 3))
       fin <- ds$final
-      check(abs(fin[5] - scn[["auc_inf"]]) <= 1e-8 * scn[["auc_inf"]], name, ": lsoda AUC to infinity")
-      check(abs(fin[6] - scn[["aumc_inf"]]) <= 1e-8 * scn[["aumc_inf"]], name, ": lsoda AUMC to infinity")
-      check(abs(fin[6] / fin[5] - scn[["mrt"]]) <= 1e-8 * scn[["mrt"]], name, ": lsoda MRT")
+      check(abs(fin[5] - scn[["auc_inf"]]) <= 1e-8 * scn[["auc_inf"]], name, ": ODE solver AUC to infinity")
+      check(abs(fin[6] - scn[["aumc_inf"]]) <= 1e-8 * scn[["aumc_inf"]], name, ": ODE solver AUMC to infinity")
+      check(abs(fin[6] / fin[5] - scn[["mrt"]]) <= 1e-8 * scn[["mrt"]], name, ": ODE solver MRT")
       if (!is.null(extra$ka)) {
         f <- function(t) num(conc_vec(segs, mp(t), FALSE))
         lo <- extra$tlag %||% 0
@@ -213,6 +262,7 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
                match(rows$parameter, c("conc", "auc", "aumc", names(scn))))
   rows <- rows[ord, ]
   base <- paste0("model_pk3_", gsub("[^A-Za-z0-9_]", "_", name))
+  if (length(ill) > 0L) assign(base, TRUE, envir = ILLREG)
   write_lines_lf(c("subject,parameter,value", sprintf("%s,%s,%s", rows$subject, rows$parameter, num17(rows$value))),
                  file.path(exp_dir, paste0(base, ".csv")))
   if (is.null(textbook_ok)) textbook_ok <- textbook_flag(q, extra)
@@ -238,10 +288,12 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
     scalar_ill_names = arr(ill),
     method = list(
       closed_form = "independent implementation of the explicit sums of exponentials (MOD-3C-10 to 14), 256-bit arithmetic (Rmpfr); the exponents are the roots of the cubic found by Newton inside the brackets given by the critical points of the cubic, the weights the product-of-differences form (checked against the sum-of-positive-terms form), AUC and AUMC exact integrals of the terms; the confluent limit is used when |ka - lambda| is below 2^-150",
-      cross_checks = list("matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve lsoda, rtol 1e-12) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha and gamma always, beta when the gaps exceed 1e-3)"),
+      cross_checks = list("matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha and gamma always, beta when the gaps exceed 1e-3)"),
       cross_check_tolerance = 1e-8,
+      cross_check_floor = "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case; the floors actually used are in cross_check_results",
       kappa_max = KAPPA_MAX
     ),
+    cross_check_results = if (is.null(GAPS[[name]])) list(none = "dose 0 or no time: nothing to integrate") else GAPS[[name]],
     versions = versions,
     n_values = nrow(rows),
     quantities_per_time = 3L,

@@ -180,7 +180,6 @@ fn the_naive_forms_reproduce_the_well_conditioned_cases() {
             ) else {
                 panic!("{}: the naive implementation refuses the case", c.case.name)
             };
-            let scale = c.case.expected.get(key, "conc").flatten().unwrap_or(0.0);
             // far in the tail the cancellation of the naive forms loses digits: compare relative to
             // the largest value of the case
             let big = |q: &str| {
@@ -192,9 +191,8 @@ fn the_naive_forms_reproduce_the_well_conditioned_cases() {
             };
             for (q, v) in [("conc", conc), ("auc", auc), ("aumc", aumc)] {
                 let want = c.case.expected.get(key, q).flatten().unwrap();
-                let floor = 1e-9 * big(q);
                 assert!(
-                    (v - want).abs() <= 1e-8 * want.abs() + 1e-11 * big(q).max(floor) + scale * 0.0,
+                    (v - want).abs() <= 1e-8 * want.abs() + 1e-11 * big(q),
                     "{} {key} {q}: naive {v:e}, oracle {want:e}",
                     c.case.name
                 );
@@ -391,13 +389,7 @@ fn the_base_derivatives_agree_with_finite_differences() {
     assert!(checked >= 200, "only {checked} derivative entries checked");
 }
 
-fn sum_doses(
-    model: &str,
-    set: &str,
-    c: &caladrius_testkit::MdCase,
-    t: f64,
-    steady: Option<f64>,
-) -> [f64; 2] {
+fn sum_doses(model: &str, set: &str, c: &caladrius_testkit::MdCase, t: f64) -> [f64; 2] {
     let mut p = c.case.parameters.clone();
     let mut doses: Vec<(f64, f64, Option<f64>)> = Vec::new();
     match c.regimen.kind {
@@ -411,13 +403,9 @@ fn sum_doses(
         RegimenKind::SteadyState => {
             let tau = c.regimen.tau.unwrap();
             // 400 past doses: far more than the slowest exponent needs for the textbook cases
-            doses.extend((0..400).map(|j| {
-                (
-                    -f64::from(j) * tau + steady.unwrap_or(0.0) * 0.0,
-                    c.case.dose,
-                    p.get("dur").copied(),
-                )
-            }));
+            doses.extend(
+                (0..400).map(|j| (-f64::from(j) * tau, c.case.dose, p.get("dur").copied())),
+            );
         }
     }
     let (mut conc, mut auc) = (0.0, 0.0);
@@ -447,7 +435,7 @@ fn the_multiple_dosing_cases_agree_with_a_naive_superposition() {
         let model = c.case.model.as_str();
         for (i, &t) in c.case.times.iter().enumerate() {
             let key = &c.case.time_keys[i];
-            let [conc, auc] = sum_doses(model, &c.parameterisation, &c, t, Some(t));
+            let [conc, auc] = sum_doses(model, &c.parameterisation, &c, t);
             let want = c.case.expected.get(key, "conc").flatten().unwrap();
             let big = c
                 .case
@@ -462,7 +450,7 @@ fn the_multiple_dosing_cases_agree_with_a_naive_superposition() {
             if c.regimen.kind != RegimenKind::SteadyState {
                 let want = c.case.expected.get(key, "auc").flatten().unwrap();
                 assert!(
-                    (auc - want).abs() <= 1e-8 * want.abs().max(1e-6 * want.abs()),
+                    (auc - want).abs() <= 1e-8 * want.abs(),
                     "{name} {key}: naive AUC {auc:e}, oracle {want:e}"
                 );
             }

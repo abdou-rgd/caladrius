@@ -2589,6 +2589,1383 @@
       "message_contains": [["a", "b", "c", "vc", "overflow", "finite"]],
       "reason": "a + b + c overflows"
     }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e17",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-18,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-17: the root rounds onto the pole (relative offset 1.2e-19 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e18",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1.0000000000000001e-19,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 1.2e-20 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e19",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-20,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 1.2e-21 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e20",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-21,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 1.2e-22 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e21",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 9.999999999999999e-23,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 1.2e-23 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e22",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1.0000000000000001e-23,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 1.2e-24 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e23",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-24,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 1.2e-25 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e24",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 9.999999999999999e-26,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 1.2e-26 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e25",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-26,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 1.2e-27 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e26",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-27,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 1.2e-28 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e27",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1.0000000000000001e-28,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 1.2e-29 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e28",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-29,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 1.2e-30 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e29",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 9.999999999999999e-31,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 1.2e-31 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k21_1e30",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 1e-31,
+        "k21": 10,
+        "k13": 0.5,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 1.2e-32 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e18",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 5e-18,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 7.4e-18 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e19",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 4.999999999999999e-19,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 7.4e-19 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e20",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 4.999999999999999e-20,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 7.4e-20 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e21",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 4.999999999999999e-21,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 7.4e-21 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e22",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 5e-22,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 7.4e-22 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e23",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 4.9999999999999997e-23,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 7.4e-23 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e24",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 4.999999999999999e-24,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 7.4e-24 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e25",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 5e-25,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 7.4e-25 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e26",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 5e-26,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 7.4e-26 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e27",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 5e-27,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 7.4e-27 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e28",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 4.999999999999999e-28,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 7.4e-28 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e29",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 4.9999999999999993e-29,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 7.4e-29 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k31_1e30",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 1,
+        "k13": 5.0000000000000004e-30,
+        "k31": 0.2,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 7.4e-30 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e17",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-18,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-17: the root rounds onto the pole (relative offset 1.2e-19 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e18",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1.0000000000000001e-19,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 1.2e-20 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e19",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-20,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 1.2e-21 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e20",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-21,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 1.2e-22 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e21",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 9.999999999999999e-23,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 1.2e-23 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e22",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1.0000000000000001e-23,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 1.2e-24 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e23",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-24,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 1.2e-25 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e24",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 9.999999999999999e-26,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 1.2e-26 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e25",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-26,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 1.2e-27 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e26",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-27,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 1.2e-28 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e27",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1.0000000000000001e-28,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 1.2e-29 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e28",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-29,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 1.2e-30 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e29",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 9.999999999999999e-31,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 1.2e-31 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_alpha_onto_k31_1e30",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 0.5,
+        "k21": 0.2,
+        "k13": 1e-31,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 1.2e-32 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e18",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 5e-18,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-18: the root rounds onto the pole (relative offset 6.3e-18 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e19",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 4.999999999999999e-19,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-19: the root rounds onto the pole (relative offset 6.3e-19 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e20",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 4.999999999999999e-20,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-20: the root rounds onto the pole (relative offset 6.3e-20 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e21",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 4.999999999999999e-21,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-21: the root rounds onto the pole (relative offset 6.3e-21 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e22",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 5e-22,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-22: the root rounds onto the pole (relative offset 6.3e-22 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e23",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 4.9999999999999997e-23,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-23: the root rounds onto the pole (relative offset 6.3e-23 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e24",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 4.999999999999999e-24,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-24: the root rounds onto the pole (relative offset 6.3e-24 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e25",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 5e-25,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-25: the root rounds onto the pole (relative offset 6.3e-25 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e26",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 5e-26,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-26: the root rounds onto the pole (relative offset 6.3e-26 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e27",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 5e-27,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-27: the root rounds onto the pole (relative offset 6.3e-27 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e28",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 4.999999999999999e-28,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-28: the root rounds onto the pole (relative offset 6.3e-28 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e29",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 4.9999999999999993e-29,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-29: the root rounds onto the pole (relative offset 6.3e-29 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "numeric_coupling_gamma_onto_k21_1e30",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 1,
+        "k12": 5.0000000000000004e-30,
+        "k21": 0.2,
+        "k13": 0.5,
+        "k31": 10,
+        "vc": 1
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k12", "k21"]],
+      "reason": "coupling product 1e-30: the root rounds onto the pole (relative offset 6.3e-30 < 2^-55): DegenerateExponents"
+    }, {
+      "id": "macro_weight_a_1e17",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-17,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-17: the micro constants of the macro set put a root on a pole (relative offset 2.2e-17 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e18",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-18,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-18: the micro constants of the macro set put a root on a pole (relative offset 2.2e-18 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e19",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-19,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-19: the micro constants of the macro set put a root on a pole (relative offset 2.2e-19 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e20",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-20,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-20: the micro constants of the macro set put a root on a pole (relative offset 2.2e-20 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e21",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-21,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-21: the micro constants of the macro set put a root on a pole (relative offset 2.2e-21 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e22",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-22,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-22: the micro constants of the macro set put a root on a pole (relative offset 2.2e-22 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e23",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-23,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-23: the micro constants of the macro set put a root on a pole (relative offset 2.2e-23 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e24",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-24,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-24: the micro constants of the macro set put a root on a pole (relative offset 2.2e-24 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e25",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-25,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-25: the micro constants of the macro set put a root on a pole (relative offset 2.2e-25 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e26",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-26,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-26: the micro constants of the macro set put a root on a pole (relative offset 2.2e-26 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e27",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-27,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-27: the micro constants of the macro set put a root on a pole (relative offset 2.2e-27 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e28",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-28,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-28: the micro constants of the macro set put a root on a pole (relative offset 2.2e-28 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e29",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-29,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-29: the micro constants of the macro set put a root on a pole (relative offset 2.2e-29 < 2^-55)"
+    }, {
+      "id": "macro_weight_a_1e30",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-30,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `a` = 1e-30: the micro constants of the macro set put a root on a pole (relative offset 2.2e-30 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e18",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-18,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-18: the micro constants of the macro set put a root on a pole (relative offset 2.2e-17 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e19",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-19,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-19: the micro constants of the macro set put a root on a pole (relative offset 2.2e-18 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e20",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-20,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-20: the micro constants of the macro set put a root on a pole (relative offset 2.2e-19 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e21",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-21,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-21: the micro constants of the macro set put a root on a pole (relative offset 2.2e-20 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e22",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-22,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-22: the micro constants of the macro set put a root on a pole (relative offset 2.2e-21 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e23",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-23,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-23: the micro constants of the macro set put a root on a pole (relative offset 2.2e-22 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e24",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-24,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-24: the micro constants of the macro set put a root on a pole (relative offset 2.2e-23 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e25",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-25,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-25: the micro constants of the macro set put a root on a pole (relative offset 2.2e-24 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e26",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-26,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-26: the micro constants of the macro set put a root on a pole (relative offset 2.2e-25 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e27",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-27,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-27: the micro constants of the macro set put a root on a pole (relative offset 2.2e-26 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e28",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-28,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-28: the micro constants of the macro set put a root on a pole (relative offset 2.2e-27 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e29",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-29,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-29: the micro constants of the macro set put a root on a pole (relative offset 2.2e-28 < 2^-55)"
+    }, {
+      "id": "macro_weight_c_1e30",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1e-30,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "weight `c` = 1e-30: the micro constants of the macro set put a root on a pole (relative offset 2.2e-29 < 2^-55)"
+    }, {
       "id": "times_nan",
       "group": "times",
       "spec": "MOD-GEN-04",
@@ -2647,5 +4024,5 @@
     "deSolve": "1.42",
     "gmp": "0.7.5.1"
   },
-  "n_values": 153
+  "n_values": 234
 }

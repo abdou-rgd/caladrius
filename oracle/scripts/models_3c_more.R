@@ -139,6 +139,50 @@ err("numeric_underflow_a0", "numeric", N3, "pk3.iv_bolus", 100, list(k10 = 1e-11
 err("numeric_overflow_c0", "numeric", "MOD-3C-26", "pk3.iv_bolus", 1e300, with_p(cl3, list(vc = 1e-300, cl = 3e-300, q2 = 9.5e-300, q3 = 6.3e-300)), list(c("overflow", "finite")), "D / vc overflows: an Overflow error, never an infinity")
 err("numeric_overflow_derived_rate", "numeric", N3, "pk3.iv_bolus", 100, with_p(cl3, list(q2 = 1e300, vp2 = 1e-300)), list(c("q2", "vp2", "k21", "overflow", "finite")), "q2 / vp2 is not finite")
 err("numeric_overflow_macro_sum", "numeric", "MOD-3C-26", "pk3.iv_bolus", 100, with_p(ma3, list(a = 1e308, b = 1e308, c = 1e308)), list(c("a", "b", "c", "vc", "overflow", "finite")), "a + b + c overflows")
+# Couplings so small that a root rounds onto a pole (item 5 of MOD-3C-06, MOD-3C-08; OM-22). The test is
+# made at 256 bits on the exact roots: a row is a refusal when alpha, or gamma, differs from the nearest
+# pole by less than 2^-55 relative (it rounds onto the pole in doubles whatever the rounding of the
+# engine), a value case (see models_3c_closed_form.R) when it differs by more than 2^-50, and the
+# few inputs in between, where the answer depends on the last bit of the engine, are left out and counted.
+BAND_LO <- 2^-55
+BAND_HI <- 2^-50
+N_BAND_OMITTED <- 0L
+N_COUPLING_REFUSALS <- 0L
+N_COUPLING_ACCEPTED <- 0L
+coupling_families <- list(
+  alpha_onto_k21 = function(pr) list(k10 = 1, k12 = pr / 10, k21 = 10, k13 = 0.5, k31 = 0.2, vc = 1),
+  gamma_onto_k31 = function(pr) list(k10 = 1, k12 = 0.5, k21 = 1, k13 = pr / 0.2, k31 = 0.2, vc = 1),
+  alpha_onto_k31 = function(pr) list(k10 = 1, k12 = 0.5, k21 = 0.2, k13 = pr / 10, k31 = 10, vc = 1),
+  gamma_onto_k21 = function(pr) list(k10 = 1, k12 = pr / 0.2, k21 = 0.2, k13 = 0.5, k31 = 10, vc = 1))
+coupling_words <- function(fam) {
+  pair <- if (fam %in% c("alpha_onto_k21", "gamma_onto_k21")) c("k12", "k21") else c("k13", "k31")
+  list(c("degenerate", "exponent", "offset"), pair)
+}
+for (fam in names(coupling_families)) for (e in 17:30) {
+  p <- coupling_families[[fam]](10^-e)
+  m <- min(rel_offsets("micro", p))
+  if (m < BAND_LO) {
+    N_COUPLING_REFUSALS <- N_COUPLING_REFUSALS + 1L
+    err(sprintf("numeric_coupling_%s_1e%d", fam, e), "numeric", paste(M3, "item 5", "MOD-3C-08"), "pk3.iv_bolus", 100, p,
+        coupling_words(fam), sprintf("coupling product 1e-%d: the root rounds onto the pole (relative offset %.2g < 2^-55): DegenerateExponents", e, m))
+  } else if (m < BAND_HI) N_BAND_OMITTED <- N_BAND_OMITTED + 1L
+  else N_COUPLING_ACCEPTED <- N_COUPLING_ACCEPTED + 1L
+}
+# the same through the macro set (item 3): a weight so small that the micro constants returned put a root on a pole
+macro_words <- list(c("degenerate", "macro", "valid"), c("a", "b", "c", "offset", "exponent"))
+for (nm in c("a", "c")) for (e in 17:30) {
+  w <- list(a = 0.7, b = 0.3, c = 0.1); w[[nm]] <- 10^-e
+  p <- c(w, list(alpha = 3, beta = 0.5, gamma = 0.05))
+  m <- min(rel_offsets("macro", p))
+  if (m < BAND_LO) {
+    N_COUPLING_REFUSALS <- N_COUPLING_REFUSALS + 1L
+    err(sprintf("macro_weight_%s_1e%d", nm, e), "macro", paste(M3, "item 3", "MOD-3C-08"), "pk3.iv_bolus", 100, p,
+        macro_words, sprintf("weight `%s` = 1e-%d: the micro constants of the macro set put a root on a pole (relative offset %.2g < 2^-55)", nm, e, m))
+  } else if (m < BAND_HI) N_BAND_OMITTED <- N_BAND_OMITTED + 1L
+  else N_COUPLING_ACCEPTED <- N_COUPLING_ACCEPTED + 1L
+}
+cat(sprintf("coupling refusals: %d rows; %d inputs accepted (not refused); %d in the ambiguous band left out
+", N_COUPLING_REFUSALS, N_COUPLING_ACCEPTED, N_BAND_OMITTED))
 # times (MOD-GEN-04)
 err("times_nan", "times", "MOD-GEN-04", "pk3.iv_bolus", 100, cl3, list(c("time", "nan", "finite")), "a NaN time is refused", times = list(1, "NaN"))
 err("times_infinite", "times", "MOD-GEN-04", "pk3.iv_bolus", 100, cl3, list(c("time", "infinite", "finite")), "an infinite time is refused", times = list("Infinity"))
