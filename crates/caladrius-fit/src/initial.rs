@@ -165,6 +165,17 @@ pub fn initial_estimates(
                 "automatic initial estimates are not available for two-compartment models yet; give an initial value for every parameter",
             ));
         }
+        ModelId::Pk3IvBolus
+        | ModelId::Pk3IvInfusion
+        | ModelId::Pk3Oral1
+        | ModelId::Pk3Oral1Lag
+        | ModelId::Pk3Oral0
+        | ModelId::Pk3Oral0Lag => {
+            // No stripping rule for three compartments (specs/fit.md OF-08 covers two at most).
+            return Err(unavailable(
+                "automatic initial estimates are not available for three-compartment models yet; give an initial value for every parameter",
+            ));
+        }
         ModelId::IvInfusion | ModelId::Oral0 | ModelId::Oral0Lag => {
             // FIT-INI-04: terminal phase after the end of the input.
             let dur = fixed.get("dur").copied().ok_or_else(|| {
