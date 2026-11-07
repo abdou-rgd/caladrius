@@ -43,6 +43,13 @@
 //! parameter value (the sample at the dose time of an oral dose) is refused before fitting; the message
 //! names the rows (time 0) and says to exclude them or to use the additive model. The other subjects
 //! of the dataset fit as before (cases `ml_theoph_t0_combined` and `ml_theoph_t0_combined_sd`).
+//! On a route with a lag (`pk1.oral_1_lag`, `pk1.oral_0_lag`) the prediction is 0 for every t <= tlag, and
+//! `tlag` has no upper bound by default, so under `combined`, `combined_sd` or `proportional` a row with
+//! y = 0 at a time t0 > 0 is refused too when every observation at a time <= t0 is also 0 and the domain
+//! of `tlag` reaches t0 (no upper bound, or an upper bound >= t0; a fixed `tlag` counts as both bounds):
+//! rows `ml6f_*`, each with controls that must not be refused with this code (`controls` of the row;
+//! an upper bound below t0, a zero that follows a nonzero sample, a fixed `tlag` below t0). The proof
+//! at 256 bits is in `oracle/scripts/ml_lag_unbounded.R`; `lag_rule_rows` below is the rule itself.
 //!
 //! Tolerances: estimates and statistics `FIT_PARAMETERS` (1e-4 relative; `FIT_PARAMETERS_SMALL_CASE`,
 //! 1e-6, on the five-point F data, as for the least-squares oracle); the residual sum of squares
@@ -444,18 +451,22 @@ fn check_refusal(name: &str) {
         .find(|c| c.case == name)
         .unwrap_or_else(|| panic!("{name}: not in errors.json"));
     // Control: the same observations with valid maximum-likelihood options are accepted, so that a
-    // refusal below cannot be the refusal of an option the engine does not know yet.
-    let control = input_value(
-        &case.model,
-        case.dose,
-        &case.time,
-        &case.conc,
-        "uniform",
-        &case.initial,
-        json!({"objective": "ml", "error_model": "additive"}),
-    );
-    parse_input(&control)
-        .unwrap_or_else(|e| panic!("{name}: valid maximum-likelihood options are refused: {e}"));
+    // refusal below cannot be the refusal of an option the engine does not know yet. A row with its own
+    // `control_options` is checked by that control instead (a lagged route needs its fixed parameters).
+    if case.control_options.is_none() {
+        let control = input_value(
+            &case.model,
+            case.dose,
+            &case.time,
+            &case.conc,
+            "uniform",
+            &case.initial,
+            json!({"objective": "ml", "error_model": "additive"}),
+        );
+        parse_input(&control).unwrap_or_else(|e| {
+            panic!("{name}: valid maximum-likelihood options are refused: {e}")
+        });
+    }
     // A control that differs from the refused input only in what is refused (a valid `error_init`,
     // the additive model for the unbounded likelihood) is accepted and fitted. Without it an engine
     // that does not know the option could pass the refusal through "unknown field".
@@ -473,6 +484,34 @@ fn check_refusal(name: &str) {
             .unwrap_or_else(|e| panic!("{name}: the control input is refused: {e}"));
         if let Err(e) = run(&input) {
             panic!("{name}: the control input {control_options:?} is refused: {e}");
+        }
+    }
+    // Variants that must not be refused as an unbounded likelihood (the lagged routes, ml6f_*): the
+    // engine may fit them or refuse them for another reason, but with another code.
+    for (i, k) in case.controls.iter().enumerate() {
+        assert_eq!(k.expect, "not_unbounded_likelihood", "{name} control {i}");
+        let control = input_value(
+            &case.model,
+            case.dose,
+            k.time.as_deref().unwrap_or(&case.time),
+            k.conc.as_deref().unwrap_or(&case.conc),
+            &case.weighting,
+            &case.initial,
+            Value::Object(k.options.clone().into_iter().collect()),
+        );
+        let input = parse_input(&control).unwrap_or_else(|e| {
+            panic!(
+                "{name} control {i} ({}): the input is refused: {e}",
+                k.description
+            )
+        });
+        if let Err(e) = run(&input) {
+            assert_ne!(
+                error_code(&e),
+                "unbounded_likelihood",
+                "{name} control {i} ({}): refused as an unbounded likelihood: {e}",
+                k.description
+            );
         }
     }
     let options = Value::Object(case.options.clone().into_iter().collect());
@@ -1077,4 +1116,105 @@ fn every_subject_left_out_of_a_case_has_its_refusal() {
     }
     assert_eq!(left_out, rows.len(), "refusal rows without a case");
     assert!(left_out > 0, "no subject is refused");
+}
+
+/// FIT-ML-13c on a route with a lag (decision on the review of T-149), written down without the engine.
+/// On a route whose model name ends in `_lag`, under `combined`, `combined_sd` or `proportional`, a row
+/// with y = 0 at a time t0 > 0 is refused when (1) every observation at a time <= t0 is also 0 and
+/// (2) the domain of `tlag` reaches t0: no upper bound, or an upper bound >= t0, a fixed `tlag` counting
+/// as both bounds. Returns the times of the rows that the rule refuses.
+fn lag_rule_rows(
+    model: &str,
+    options: &BTreeMap<String, Value>,
+    time: &[f64],
+    conc: &[f64],
+) -> Vec<f64> {
+    let error_model = options.get("error_model").and_then(Value::as_str);
+    if !model.ends_with("_lag")
+        || !matches!(
+            error_model,
+            Some("combined" | "combined_sd" | "proportional")
+        )
+    {
+        return Vec::new();
+    }
+    let fixed = options
+        .get("fixed")
+        .and_then(|f| f.get("tlag"))
+        .and_then(Value::as_f64);
+    let upper = fixed.or_else(|| {
+        options
+            .get("bounds")
+            .and_then(|b| b.get("tlag"))
+            .and_then(|t| t.get("upper"))
+            .and_then(Value::as_f64)
+    });
+    let mut rows = Vec::new();
+    for (&t0, &y) in time.iter().zip(conc) {
+        let leading =
+            y == 0.0 && t0 > 0.0 && time.iter().zip(conc).all(|(&t, &c)| t > t0 || c == 0.0);
+        if leading && upper.is_none_or(|u| u >= t0) {
+            rows.push(t0);
+        }
+    }
+    rows
+}
+
+/// The `ml6f_*` rows are the rule above applied to their data, and their controls break one of its two
+/// conditions: no row is refused that the rule lets through, and no control is refused by the rule.
+#[test]
+fn the_lagged_rows_follow_the_rule() {
+    let rows: Vec<_> = load_fit_ml_errors()
+        .unwrap()
+        .into_iter()
+        .filter(|c| c.case.starts_with("ml6f_"))
+        .collect();
+    assert_eq!(rows.len(), 10, "ml6f rows");
+    let mut controls = 0usize;
+    for row in &rows {
+        let refused = lag_rule_rows(&row.model, &row.options, &row.time, &row.conc);
+        assert_eq!(
+            refused,
+            vec![0.5],
+            "{}: the rule refuses {refused:?}",
+            row.case
+        );
+        assert!(
+            row.error.words.iter().any(|w| w == "time 0.5"),
+            "{}: the sentence does not name the row",
+            row.case
+        );
+        assert_eq!(row.error.code, "unbounded_likelihood", "{}", row.case);
+        for k in &row.controls {
+            controls += 1;
+            let time = k.time.as_deref().unwrap_or(&row.time);
+            let conc = k.conc.as_deref().unwrap_or(&row.conc);
+            let kept = lag_rule_rows(&row.model, &k.options, time, conc);
+            assert!(
+                kept.is_empty(),
+                "{}: the control {:?} is refused by the rule at {kept:?}",
+                row.case,
+                k.description
+            );
+        }
+    }
+    // six base rows with two controls each, the fixed-parameter row with one (ten rows in all)
+    assert_eq!(controls, 13);
+    // the zero after a nonzero sample, and a zero beyond a nonzero sample, are not leading zeros
+    let options: BTreeMap<String, Value> = [("error_model".to_string(), json!("combined"))].into();
+    assert!(lag_rule_rows("pk1.oral_1_lag", &options, &[0.5, 1.0], &[1.0, 0.0]).is_empty());
+    assert_eq!(
+        lag_rule_rows("pk1.oral_1_lag", &options, &[0.5, 1.0], &[0.0, 0.0]).len(),
+        2
+    );
+    // not a lagged route, additive model, upper bound below the time
+    assert!(lag_rule_rows("pk1.oral_1", &options, &[0.5], &[0.0]).is_empty());
+    let additive: BTreeMap<String, Value> = [("error_model".to_string(), json!("additive"))].into();
+    assert!(lag_rule_rows("pk1.oral_1_lag", &additive, &[0.5], &[0.0]).is_empty());
+    let bounded: BTreeMap<String, Value> = [
+        ("error_model".to_string(), json!("combined")),
+        ("bounds".to_string(), json!({"tlag": {"upper": 0.49}})),
+    ]
+    .into();
+    assert!(lag_rule_rows("pk1.oral_1_lag", &bounded, &[0.5], &[0.0]).is_empty());
 }

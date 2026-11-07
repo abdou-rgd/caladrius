@@ -43,9 +43,9 @@ pub use md::{
 };
 pub use ml::{
     AbsoluteTolerance, FIT_ML_ERRORS, ML_ERROR_MODELS, ML_LS_FORMULA_RELATIVE,
-    ML_STRUCTURAL_ZERO_CUTOFF, MlCase, MlErrorCase, MlExpectedError, MlFitOptions, MlGroup,
-    NaiveMl, fit_ml_dir, list_fit_ml_cases, load_fit_ml_case, load_fit_ml_errors, load_fit_ml_gnls,
-    naive_ml,
+    ML_STRUCTURAL_ZERO_CUTOFF, MlCase, MlControl, MlErrorCase, MlExpectedError, MlFitOptions,
+    MlGroup, NaiveMl, fit_ml_dir, list_fit_ml_cases, load_fit_ml_case, load_fit_ml_errors,
+    load_fit_ml_gnls, naive_ml,
 };
 pub use oracle::{OracleCase, OracleError, Profile, list_cases, load_case};
 pub use pk2::{

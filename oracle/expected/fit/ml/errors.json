@@ -811,6 +811,492 @@
         "objective": "ml",
         "error_model": "additive"
       }
+    },
+    {
+      "case": "ml6f_leading_zero_combined_oral_1_lag",
+      "description": "ML6f: pk1.oral_1_lag, one subject, observation 0 at time 0.5 as the first sample and tlag without an upper bound, combined error: tlag at 0.5 predicts the row exactly and the likelihood is unbounded",
+      "model": "pk1.oral_1_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 3.79792491138336, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "ka": 1,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined"
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive"
+      },
+      "controls": [
+        {
+          "description": "the same data with an upper bound of 0.4 on tlag, below the time of the zero (0.5): the prediction of that row stays above 0",
+          "options": {
+            "objective": "ml",
+            "error_model": "combined",
+            "bounds": {
+              "tlag": {
+                "upper": 0.4
+              }
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "the first two samples swapped: the zero is at time 1 and is preceded by a nonzero sample (tlag at 1 would predict that sample as 0)",
+          "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+          "conc": [3.79792491138336, 0, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+          "options": {
+            "objective": "ml",
+            "error_model": "combined"
+          },
+          "expect": "not_unbounded_likelihood"
+        }
+      ]
+    },
+    {
+      "case": "ml6f_leading_zero_combined_sd_oral_1_lag",
+      "description": "ML6f: pk1.oral_1_lag, one subject, observation 0 at time 0.5 as the first sample and tlag without an upper bound, combined_sd error: tlag at 0.5 predicts the row exactly and the likelihood is unbounded",
+      "model": "pk1.oral_1_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 3.79792491138336, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "ka": 1,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined_sd"
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive"
+      },
+      "controls": [
+        {
+          "description": "the same data with an upper bound of 0.4 on tlag, below the time of the zero (0.5): the prediction of that row stays above 0",
+          "options": {
+            "objective": "ml",
+            "error_model": "combined_sd",
+            "bounds": {
+              "tlag": {
+                "upper": 0.4
+              }
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "the first two samples swapped: the zero is at time 1 and is preceded by a nonzero sample (tlag at 1 would predict that sample as 0)",
+          "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+          "conc": [3.79792491138336, 0, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+          "options": {
+            "objective": "ml",
+            "error_model": "combined_sd"
+          },
+          "expect": "not_unbounded_likelihood"
+        }
+      ]
+    },
+    {
+      "case": "ml6f_leading_zero_proportional_oral_1_lag",
+      "description": "ML6f: pk1.oral_1_lag, one subject, observation 0 at time 0.5 as the first sample and tlag without an upper bound, proportional error: tlag at 0.5 predicts the row exactly and the likelihood is unbounded",
+      "model": "pk1.oral_1_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 3.79792491138336, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "ka": 1,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "proportional"
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive"
+      },
+      "controls": [
+        {
+          "description": "the same data with an upper bound of 0.4 on tlag, below the time of the zero (0.5): the prediction of that row stays above 0",
+          "options": {
+            "objective": "ml",
+            "error_model": "proportional",
+            "bounds": {
+              "tlag": {
+                "upper": 0.4
+              }
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "the first two samples swapped: the zero is at time 1 and is preceded by a nonzero sample (tlag at 1 would predict that sample as 0)",
+          "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+          "conc": [3.79792491138336, 0, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+          "options": {
+            "objective": "ml",
+            "error_model": "proportional"
+          },
+          "expect": "not_unbounded_likelihood"
+        }
+      ]
+    },
+    {
+      "case": "ml6f_leading_zero_combined_oral_0_lag",
+      "description": "ML6f: pk1.oral_0_lag, one subject, observation 0 at time 0.5 as the first sample and tlag without an upper bound, combined error: tlag at 0.5 predicts the row exactly and the likelihood is unbounded",
+      "model": "pk1.oral_0_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 2.42370894802073, 5.9364855478458, 7.08313357480261, 4.22872089556732, 2.5147180223579, 1.29758635315719, 0.149660393911145],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined",
+        "fixed": {
+          "dur": 2
+        }
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive",
+        "fixed": {
+          "dur": 2
+        }
+      },
+      "controls": [
+        {
+          "description": "the same data with an upper bound of 0.4 on tlag, below the time of the zero (0.5): the prediction of that row stays above 0",
+          "options": {
+            "objective": "ml",
+            "error_model": "combined",
+            "fixed": {
+              "dur": 2
+            },
+            "bounds": {
+              "tlag": {
+                "upper": 0.4
+              }
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "the first two samples swapped: the zero is at time 1 and is preceded by a nonzero sample (tlag at 1 would predict that sample as 0)",
+          "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+          "conc": [2.42370894802073, 0, 5.9364855478458, 7.08313357480261, 4.22872089556732, 2.5147180223579, 1.29758635315719, 0.149660393911145],
+          "options": {
+            "objective": "ml",
+            "error_model": "combined",
+            "fixed": {
+              "dur": 2
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        }
+      ]
+    },
+    {
+      "case": "ml6f_leading_zero_combined_sd_oral_0_lag",
+      "description": "ML6f: pk1.oral_0_lag, one subject, observation 0 at time 0.5 as the first sample and tlag without an upper bound, combined_sd error: tlag at 0.5 predicts the row exactly and the likelihood is unbounded",
+      "model": "pk1.oral_0_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 2.42370894802073, 5.9364855478458, 7.08313357480261, 4.22872089556732, 2.5147180223579, 1.29758635315719, 0.149660393911145],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined_sd",
+        "fixed": {
+          "dur": 2
+        }
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive",
+        "fixed": {
+          "dur": 2
+        }
+      },
+      "controls": [
+        {
+          "description": "the same data with an upper bound of 0.4 on tlag, below the time of the zero (0.5): the prediction of that row stays above 0",
+          "options": {
+            "objective": "ml",
+            "error_model": "combined_sd",
+            "fixed": {
+              "dur": 2
+            },
+            "bounds": {
+              "tlag": {
+                "upper": 0.4
+              }
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "the first two samples swapped: the zero is at time 1 and is preceded by a nonzero sample (tlag at 1 would predict that sample as 0)",
+          "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+          "conc": [2.42370894802073, 0, 5.9364855478458, 7.08313357480261, 4.22872089556732, 2.5147180223579, 1.29758635315719, 0.149660393911145],
+          "options": {
+            "objective": "ml",
+            "error_model": "combined_sd",
+            "fixed": {
+              "dur": 2
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        }
+      ]
+    },
+    {
+      "case": "ml6f_leading_zero_proportional_oral_0_lag",
+      "description": "ML6f: pk1.oral_0_lag, one subject, observation 0 at time 0.5 as the first sample and tlag without an upper bound, proportional error: tlag at 0.5 predicts the row exactly and the likelihood is unbounded",
+      "model": "pk1.oral_0_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 2.42370894802073, 5.9364855478458, 7.08313357480261, 4.22872089556732, 2.5147180223579, 1.29758635315719, 0.149660393911145],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "proportional",
+        "fixed": {
+          "dur": 2
+        }
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive",
+        "fixed": {
+          "dur": 2
+        }
+      },
+      "controls": [
+        {
+          "description": "the same data with an upper bound of 0.4 on tlag, below the time of the zero (0.5): the prediction of that row stays above 0",
+          "options": {
+            "objective": "ml",
+            "error_model": "proportional",
+            "fixed": {
+              "dur": 2
+            },
+            "bounds": {
+              "tlag": {
+                "upper": 0.4
+              }
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        },
+        {
+          "description": "the first two samples swapped: the zero is at time 1 and is preceded by a nonzero sample (tlag at 1 would predict that sample as 0)",
+          "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+          "conc": [2.42370894802073, 0, 5.9364855478458, 7.08313357480261, 4.22872089556732, 2.5147180223579, 1.29758635315719, 0.149660393911145],
+          "options": {
+            "objective": "ml",
+            "error_model": "proportional",
+            "fixed": {
+              "dur": 2
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        }
+      ]
+    },
+    {
+      "case": "ml6f_upper_equal_combined_oral_1_lag",
+      "description": "ML6f: pk1.oral_1_lag, upper bound of 0.5 on tlag, equal to the time of the zero: the domain reaches it (combined)",
+      "model": "pk1.oral_1_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 3.79792491138336, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "ka": 1,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined",
+        "bounds": {
+          "tlag": {
+            "upper": 0.5
+          }
+        }
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive"
+      }
+    },
+    {
+      "case": "ml6f_upper_equal_proportional_oral_1_lag",
+      "description": "ML6f: pk1.oral_1_lag, upper bound of 0.5 on tlag, equal to the time of the zero: tlag goes to 0.5 from below (proportional)",
+      "model": "pk1.oral_1_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 3.79792491138336, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "ka": 1,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "proportional",
+        "bounds": {
+          "tlag": {
+            "upper": 0.5
+          }
+        }
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive"
+      }
+    },
+    {
+      "case": "ml6f_upper_above_combined_sd_oral_1_lag",
+      "description": "ML6f: pk1.oral_1_lag, upper bound of 2 on tlag, above the time of the zero (combined_sd)",
+      "model": "pk1.oral_1_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 3.79792491138336, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "ka": 1,
+        "tlag": 0.3
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined_sd",
+        "bounds": {
+          "tlag": {
+            "upper": 2
+          }
+        }
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive"
+      }
+    },
+    {
+      "case": "ml6f_fixed_at_time_combined_oral_1_lag",
+      "description": "ML6f: pk1.oral_1_lag, tlag fixed at 0.5, the time of the zero: a fixed parameter counts as both bounds (combined)",
+      "model": "pk1.oral_1_lag",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 6, 8, 12, 24],
+      "conc": [0, 3.79792491138336, 5.92874530938021, 6.76328785919108, 4.24622365507244, 2.55028470079971, 1.31887178825001, 0.151549503416764],
+      "initial": {
+        "v": 10,
+        "k": 0.2,
+        "ka": 1
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined",
+        "fixed": {
+          "tlag": 0.5
+        }
+      },
+      "error": {
+        "code": "unbounded_likelihood",
+        "words": ["time 0.5", "lag", "exclude", "additive"]
+      },
+      "control_options": {
+        "objective": "ml",
+        "error_model": "additive",
+        "fixed": {
+          "tlag": 0.5
+        }
+      },
+      "controls": [
+        {
+          "description": "tlag fixed at 0.3, below the time of the zero: the prediction of that row stays above 0",
+          "options": {
+            "objective": "ml",
+            "error_model": "combined",
+            "fixed": {
+              "tlag": 0.3
+            }
+          },
+          "expect": "not_unbounded_likelihood"
+        }
+      ]
     }
   ]
 }

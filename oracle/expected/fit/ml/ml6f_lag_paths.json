@@ -1,0 +1,979 @@
+{
+  "schema": 1,
+  "kind": "fit_ml_lag_paths",
+  "generated_by": "oracle/scripts/fit_ml.R",
+  "note": "-2LL at 256 bits along the paths of ML6f (ml_lag_unbounded.R); leading_zero decreases without limit, zero_after_nonzero increases without limit, upper_bound_below_t0 converges; j is the exponent of 10^-j",
+  "truth": {
+    "v": 10,
+    "k": 0.2,
+    "ka": 1,
+    "dur": 2,
+    "tlag": 0.5,
+    "a": 0.05,
+    "b": 0.1,
+    "dose": 100
+  },
+  "times": [0.5, 1, 2, 4, 6, 8, 12, 24],
+  "records": [
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 1,
+      "m2ll": -1.87666584982316,
+      "row_term": -2.76729311957875,
+      "other_rows": 0.890627269755589,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 2,
+      "m2ll": -4.66307845967931,
+      "row_term": -7.37246330556684,
+      "other_rows": 2.70938484588753,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 5,
+      "m2ll": -14.220712648482,
+      "row_term": -21.1879738635311,
+      "other_rows": 6.96726121504913,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 10,
+      "m2ll": -37.2465557791772,
+      "row_term": -44.2138247934716,
+      "other_rows": 6.96726901429441,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 20,
+      "m2ll": -83.2982576390581,
+      "row_term": -90.2655266533525,
+      "other_rows": 6.96726901429441,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 50,
+      "m2ll": -221.453363218701,
+      "row_term": -228.420632232995,
+      "other_rows": 6.96726901429441,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 1,
+      "m2ll": 1438.05984597002,
+      "row_term": -2.76729311957875,
+      "other_rows": 1440.8271390896,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 2,
+      "m2ll": 144227.398401676,
+      "row_term": -7.37246330556684,
+      "other_rows": 144234.770864982,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 5,
+      "m2ll": 144242336283.649,
+      "row_term": -21.1879738635311,
+      "other_rows": 144242336304.837,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 10,
+      "m2ll": 1.44242336325063e+21,
+      "row_term": -44.2138247934716,
+      "other_rows": 1.44242336325063e+21,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 20,
+      "m2ll": 1.44242336325063e+41,
+      "row_term": -90.2655266533525,
+      "other_rows": 1.44242336325063e+41,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 50,
+      "m2ll": 1.44242336325063e+101,
+      "row_term": -228.420632232995,
+      "other_rows": 1.44242336325063e+101,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 1,
+      "m2ll": 47.7215579578695,
+      "row_term": 44.8847834652465,
+      "other_rows": 2.83677449262299,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 2,
+      "m2ll": 101.706962427452,
+      "row_term": 96.0101078387736,
+      "other_rows": 5.69685458867828,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 5,
+      "m2ll": 107.994200446992,
+      "row_term": 97.1132390696863,
+      "other_rows": 10.8809613773056,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 10,
+      "m2ll": 107.994211185128,
+      "row_term": 97.113240185313,
+      "other_rows": 10.880970999815,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 20,
+      "m2ll": 107.994211185128,
+      "row_term": 97.113240185313,
+      "other_rows": 10.880970999815,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 50,
+      "m2ll": 107.994211185128,
+      "row_term": 97.113240185313,
+      "other_rows": 10.880970999815,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 1,
+      "m2ll": -0.339109658228427,
+      "row_term": -2.76729311957875,
+      "other_rows": 2.42818346135032,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 2,
+      "m2ll": -6.90354681158597,
+      "row_term": -7.37246330556684,
+      "other_rows": 0.468916493980868,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 5,
+      "m2ll": -14.2382390558033,
+      "row_term": -21.1879738635311,
+      "other_rows": 6.94973480772777,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 10,
+      "m2ll": -37.2465559547686,
+      "row_term": -44.2138247934716,
+      "other_rows": 6.967268838703,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 20,
+      "m2ll": -83.2982576390581,
+      "row_term": -90.2655266533525,
+      "other_rows": 6.96726901429441,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 50,
+      "m2ll": -221.453363218701,
+      "row_term": -228.420632232995,
+      "other_rows": 6.96726901429441,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 1,
+      "m2ll": 1438.9503777707,
+      "row_term": -2.76729311957875,
+      "other_rows": 1441.71767089028,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 2,
+      "m2ll": 144226.851668042,
+      "row_term": -7.37246330556684,
+      "other_rows": 144234.224131348,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 5,
+      "m2ll": 144242336283.644,
+      "row_term": -21.1879738635311,
+      "other_rows": 144242336304.832,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 10,
+      "m2ll": 1.44242336325063e+21,
+      "row_term": -44.2138247934716,
+      "other_rows": 1.44242336325063e+21,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 20,
+      "m2ll": 1.44242336325063e+41,
+      "row_term": -90.2655266533525,
+      "other_rows": 1.44242336325063e+41,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 50,
+      "m2ll": 1.44242336325063e+101,
+      "row_term": -228.420632232995,
+      "other_rows": 1.44242336325063e+101,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 1,
+      "m2ll": 25.912136647418,
+      "row_term": 22.0895571594767,
+      "other_rows": 3.82257948794127,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 2,
+      "m2ll": 81.9347014428163,
+      "row_term": 79.0424346649748,
+      "other_rows": 2.89226677784144,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 5,
+      "m2ll": 107.95185026837,
+      "row_term": 97.0922247960826,
+      "other_rows": 10.8596254722878,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 10,
+      "m2ll": 107.994210761181,
+      "row_term": 97.1132399751254,
+      "other_rows": 10.8809707860552,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 20,
+      "m2ll": 107.994211185128,
+      "row_term": 97.113240185313,
+      "other_rows": 10.880970999815,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 50,
+      "m2ll": 107.994211185128,
+      "row_term": 97.113240185313,
+      "other_rows": 10.880970999815,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 1,
+      "m2ll": 107.994211185128,
+      "row_term": 97.113240185313,
+      "other_rows": 10.880970999815,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 2,
+      "m2ll": 99.8246344738503,
+      "row_term": 92.6155420277636,
+      "other_rows": 7.20909244608668,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 5,
+      "m2ll": 85.7795017422347,
+      "row_term": 78.8120141364742,
+      "other_rows": 6.9674876057605,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 10,
+      "m2ll": 62.7534442228885,
+      "row_term": 55.7861752064084,
+      "other_rows": 6.96726901648008,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 20,
+      "m2ll": 16.7017423609419,
+      "row_term": 9.73447334664751,
+      "other_rows": 6.96726901429441,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 50,
+      "m2ll": -121.453363218701,
+      "row_term": -128.420632232995,
+      "other_rows": 6.96726901429441,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 1,
+      "m2ll": 1026.08723060612,
+      "row_term": 100.115389089115,
+      "other_rows": 925.97184151701,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 2,
+      "m2ll": 138541.17414337,
+      "row_term": 99.8930407673314,
+      "other_rows": 138441.281102602,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 5,
+      "m2ll": 144236471533.062,
+      "row_term": 99.8649268373817,
+      "other_rows": 144236471433.197,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 10,
+      "m2ll": 1.44242336266414e+21,
+      "row_term": 99.8648983061452,
+      "other_rows": 1.44242336266414e+21,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 20,
+      "m2ll": 1.44242336325063e+41,
+      "row_term": 99.8648983058599,
+      "other_rows": 1.44242336325063e+41,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 50,
+      "m2ll": 1.44242336325063e+101,
+      "row_term": 99.8648983058599,
+      "other_rows": 1.44242336325063e+101,
+      "model": "pk1.oral_1_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 1,
+      "m2ll": -2.64296549252069,
+      "row_term": -2.76729311957875,
+      "other_rows": 0.124327627058054,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 2,
+      "m2ll": -5.44562375061169,
+      "row_term": -7.37246330556684,
+      "other_rows": 1.92683955495515,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 5,
+      "m2ll": -14.7718546878725,
+      "row_term": -21.1879738635311,
+      "other_rows": 6.41611917565859,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 10,
+      "m2ll": -37.797697275547,
+      "row_term": -44.2138247934716,
+      "other_rows": 6.41612751792459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 20,
+      "m2ll": -83.8493991354279,
+      "row_term": -90.2655266533525,
+      "other_rows": 6.41612751792459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 50,
+      "m2ll": -222.004504715071,
+      "row_term": -228.420632232995,
+      "other_rows": 6.41612751792459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 1,
+      "m2ll": 591.308802285477,
+      "row_term": -2.76729311957875,
+      "other_rows": 594.076095405056,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 2,
+      "m2ll": 58737.4240894651,
+      "row_term": -7.37246330556684,
+      "other_rows": 58744.7965527706,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 5,
+      "m2ll": 58743650614.5579,
+      "row_term": -21.1879738635311,
+      "other_rows": 58743650635.7459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 10,
+      "m2ll": 5.87436506471575e+20,
+      "row_term": -44.2138247934716,
+      "other_rows": 5.87436506471575e+20,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 20,
+      "m2ll": 5.87436506471575e+40,
+      "row_term": -90.2655266533525,
+      "other_rows": 5.87436506471575e+40,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 50,
+      "m2ll": 5.87436506471575e+100,
+      "row_term": -228.420632232995,
+      "other_rows": 5.87436506471575e+100,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 1,
+      "m2ll": 21.2337340482062,
+      "row_term": 17.1343348941426,
+      "other_rows": 4.09939915406357,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 2,
+      "m2ll": 99.1106423581127,
+      "row_term": 91.9457625567293,
+      "other_rows": 7.16487980138345,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 5,
+      "m2ll": 108.444603494298,
+      "row_term": 95.8264418126611,
+      "other_rows": 12.6181616816366,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 10,
+      "m2ll": 108.444617804903,
+      "row_term": 95.8264458525236,
+      "other_rows": 12.6181719523792,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 20,
+      "m2ll": 108.444617804903,
+      "row_term": 95.8264458525236,
+      "other_rows": 12.6181719523792,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 50,
+      "m2ll": 108.444617804903,
+      "row_term": 95.8264458525236,
+      "other_rows": 12.6181719523792,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 1,
+      "m2ll": -0.961674850534354,
+      "row_term": -2.76729311957875,
+      "other_rows": 1.80561826904439,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 2,
+      "m2ll": -7.70952024313762,
+      "row_term": -7.37246330556684,
+      "other_rows": -0.337056937570782,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 5,
+      "m2ll": -14.7902720162013,
+      "row_term": -21.1879738635311,
+      "other_rows": 6.39770184732982,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 10,
+      "m2ll": -37.7976974600698,
+      "row_term": -44.2138247934716,
+      "other_rows": 6.41612733340173,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 20,
+      "m2ll": -83.8493991354279,
+      "row_term": -90.2655266533525,
+      "other_rows": 6.41612751792459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "combined_sd",
+      "path": "tlag = t0, a = 10^-j, b fixed",
+      "j": 50,
+      "m2ll": -222.004504715071,
+      "row_term": -228.420632232995,
+      "other_rows": 6.41612751792459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 1,
+      "m2ll": 589.668683522457,
+      "row_term": -2.76729311957875,
+      "other_rows": 592.435976642036,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 2,
+      "m2ll": 58736.4534402111,
+      "row_term": -7.37246330556684,
+      "other_rows": 58743.8259035167,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 5,
+      "m2ll": 58743650614.552,
+      "row_term": -21.1879738635311,
+      "other_rows": 58743650635.74,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 10,
+      "m2ll": 5.87436506471575e+20,
+      "row_term": -44.2138247934716,
+      "other_rows": 5.87436506471575e+20,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 20,
+      "m2ll": 5.87436506471575e+40,
+      "row_term": -90.2655266533525,
+      "other_rows": 5.87436506471575e+40,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "combined_sd",
+      "path": "tlag = time of the zero (1), a = 10^-j",
+      "j": 50,
+      "m2ll": 5.87436506471575e+100,
+      "row_term": -228.420632232995,
+      "other_rows": 5.87436506471575e+100,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 1,
+      "m2ll": 13.5800701078073,
+      "row_term": 9.00095098761411,
+      "other_rows": 4.57911912019322,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 2,
+      "m2ll": 69.619197861765,
+      "row_term": 65.4072032523681,
+      "other_rows": 4.2119946093969,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 5,
+      "m2ll": 108.382121993129,
+      "row_term": 95.7864607304427,
+      "other_rows": 12.5956612626858,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 10,
+      "m2ll": 108.444617179498,
+      "row_term": 95.8264454525504,
+      "other_rows": 12.6181717269477,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 20,
+      "m2ll": 108.444617804903,
+      "row_term": 95.8264458525236,
+      "other_rows": 12.6181719523792,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "upper_bound_below_t0",
+      "error_model": "combined_sd",
+      "path": "tlag = 0.4, a = 10^-j",
+      "j": 50,
+      "m2ll": 108.444617804903,
+      "row_term": 95.8264458525236,
+      "other_rows": 12.6181719523792,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 1,
+      "m2ll": 108.444617804903,
+      "row_term": 95.8264458525236,
+      "other_rows": 12.6181719523792,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 2,
+      "m2ll": 98.002461902545,
+      "row_term": 91.2392426666466,
+      "other_rows": 6.76321923589841,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 5,
+      "m2ll": 83.8421625176485,
+      "row_term": 77.4257297753493,
+      "other_rows": 6.41643274229914,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 10,
+      "m2ll": 60.8160083663649,
+      "row_term": 54.3998808453885,
+      "other_rows": 6.4161275209764,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 20,
+      "m2ll": 14.7643065034522,
+      "row_term": 8.34817898552762,
+      "other_rows": 6.41612751792459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "leading_zero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j, b fixed",
+      "j": 50,
+      "m2ll": -123.390799076191,
+      "row_term": -129.806926594115,
+      "other_rows": 6.41612751792459,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 1,
+      "m2ll": 1624.33302109639,
+      "row_term": 99.3111313137904,
+      "other_rows": 1525.0218897826,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 2,
+      "m2ll": 225938.412172037,
+      "row_term": 99.0037605236054,
+      "other_rows": 225839.408411513,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 5,
+      "m2ll": 234965377876.547,
+      "row_term": 98.9661596409976,
+      "other_rows": 234965377777.581,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 10,
+      "m2ll": 2.34974602496381e+21,
+      "row_term": 98.9661216084498,
+      "other_rows": 2.34974602496381e+21,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 20,
+      "m2ll": 2.3497460258863e+41,
+      "row_term": 98.9661216080695,
+      "other_rows": 2.3497460258863e+41,
+      "model": "pk1.oral_0_lag"
+    },
+    {
+      "kind": "zero_after_nonzero",
+      "error_model": "proportional",
+      "path": "tlag = t0 - 10^-j",
+      "j": 50,
+      "m2ll": 2.3497460258863e+101,
+      "row_term": 98.9661216080695,
+      "other_rows": 2.3497460258863e+101,
+      "model": "pk1.oral_0_lag"
+    }
+  ]
+}

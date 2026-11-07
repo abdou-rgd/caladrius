@@ -6,15 +6,16 @@
 # fit_ml.R has written (oracle/expected/fit/ml/<case>.csv and .options.json) and, for every subject of
 # every combined case without a user bound that has one component on its bound, finds the
 # one-parameter case with the same dataset, model and `observations` rule (and no bound and no
-# error_init), then compares at the tolerances of the Rust test (-2LL: absolute 1e-7; estimates:
-# relative 1e-4). It stops on a mismatch, or when there is no such one-parameter case (or several).
+# error_init), then compares at the tolerances of the Rust test (-2LL: absolute 1e-7; estimates: relative to the
+# one-parameter value, as Tolerance::accepts(actual, expected) does, with expected = the one-parameter fit;
+# rel 1e-4, 1e-6 for the F data, abs 1e-12 for an expected 0). It stops on a mismatch, or when there is no such one-parameter case (or several).
 #
 # Sourced at the end of fit_ml.R, or run by itself:  Rscript oracle/scripts/ml_collapse_check.R
 # Setting COLLAPSE_PARTNER_BY_NAME=1 pairs by the case name only (ml_<data>_<one-parameter model>),
 # which is how the first version of the test paired them; it was used once to show that the check
 # catches the Theoph mismatch (10 rows against 11).
 
-collapse_check <- function(exp_dir, by_name = FALSE, m2ll_abs = 1e-7, est_rel = 1e-4) {
+collapse_check <- function(exp_dir, by_name = FALSE, m2ll_abs = 1e-7, est_abs = 1e-12) {
   suppressPackageStartupMessages(library(jsonlite))
   files <- list.files(exp_dir, pattern = "[.]options[.]json$", full.names = TRUE)
   opts <- lapply(files, function(f) fromJSON(f, simplifyVector = FALSE))
@@ -62,7 +63,11 @@ collapse_check <- function(exp_dir, by_name = FALSE, m2ll_abs = 1e-7, est_rel = 
       pars <- c(setdiff(names(o$initial_estimates[[s]]), character(0)), if (alone == "additive") "error_a" else "error_b")
       for (p in pars) {
         a <- val(o$case, s, paste0("estimate.", p)); b <- val(q$case, s, paste0("estimate.", p))
-        if (abs(a - b) > est_rel * max(abs(a), abs(b)))
+        # the rule of the Rust test (Tolerance::accepts(actual = combined, expected = one-parameter)):
+        # |a - b| <= rel * |b|, and |a| <= abs when b is exactly 0; rel is 1e-4 (FIT_PARAMETERS), 1e-6 on
+        # the five-point F data (FIT_PARAMETERS_SMALL_CASE), abs is 1e-12
+        est_rel <- if (identical(o$dataset, "f")) 1e-6 else 1e-4
+        if (!(if (b == 0) abs(a) <= est_abs else abs(a - b) <= est_rel * abs(b)))
           fail(o$case, " subject ", s, ": estimate.", p, " ", format(a, digits = 15), " against ", q$case, " ",
                format(b, digits = 15), msg_rows)
       }

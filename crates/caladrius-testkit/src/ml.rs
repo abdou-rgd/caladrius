@@ -425,7 +425,25 @@ pub struct MlErrorCase {
     /// the same observations with them, so that the refusal cannot come from an option it does not know.
     #[serde(default)]
     pub control_options: Option<BTreeMap<String, Value>>,
+    /// Variants of the refused input that must not be refused for the same reason (the lagged routes of
+    /// `ml6f_*`: an upper bound on `tlag` below the zero, a zero that follows a nonzero sample).
+    #[serde(default)]
+    pub controls: Vec<MlControl>,
     pub error: MlExpectedError,
+}
+
+/// A variant of a refused input (FIT-ML-13c on a route with a lag). `time` and `conc` replace those of
+/// the row when present; `options` replace its options. `expect` is `not_unbounded_likelihood`: the
+/// engine may fit it or refuse it for another reason, but not with the code `unbounded_likelihood`.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct MlControl {
+    pub description: String,
+    #[serde(default)]
+    pub time: Option<Vec<f64>>,
+    #[serde(default)]
+    pub conc: Option<Vec<f64>>,
+    pub options: BTreeMap<String, Value>,
+    pub expect: String,
 }
 
 /// The refusal expected: the `code` of the error (the snake_case tag of `FitError`) and words that
@@ -919,6 +937,59 @@ mod tests {
             };
             assert_eq!(values.len(), wanted, "{}", c.case);
             assert!(values.iter().all(|v| v.as_f64().is_some_and(|x| x > 0.0)));
+        }
+    }
+
+    #[test]
+    fn the_lagged_refusals_carry_their_controls() {
+        let errors = load_fit_ml_errors().expect("errors");
+        let rows: Vec<&MlErrorCase> = errors
+            .iter()
+            .filter(|c| c.case.starts_with("ml6f_"))
+            .collect();
+        assert_eq!(rows.len(), 10, "ml6f rows");
+        for model in ["pk1.oral_1_lag", "pk1.oral_0_lag"] {
+            for em in ["combined", "combined_sd", "proportional"] {
+                let base = rows
+                    .iter()
+                    .filter(|c| {
+                        c.model == model
+                            && c.case.starts_with("ml6f_leading_zero_")
+                            && c.options.get("error_model").and_then(Value::as_str) == Some(em)
+                    })
+                    .count();
+                assert_eq!(base, 1, "{model} {em}: {base} base rows");
+            }
+        }
+        for c in &rows {
+            assert_eq!(c.error.code, "unbounded_likelihood", "{}", c.case);
+            assert!(c.model.ends_with("_lag"), "{}", c.case);
+            assert!(c.error.words.iter().any(|w| w == "time 0.5"), "{}", c.case);
+            let control = c.control_options.as_ref().expect("control");
+            assert_eq!(
+                control.get("error_model").and_then(Value::as_str),
+                Some("additive"),
+                "{}",
+                c.case
+            );
+            for k in &c.controls {
+                assert_eq!(k.expect, "not_unbounded_likelihood", "{}", c.case);
+                assert_eq!(k.time.is_some(), k.conc.is_some(), "{}", c.case);
+            }
+        }
+        // the six base rows carry two controls each: a bound below the zero, a zero after a nonzero sample
+        for c in rows
+            .iter()
+            .filter(|c| c.case.starts_with("ml6f_leading_zero_"))
+        {
+            assert_eq!(c.controls.len(), 2, "{}", c.case);
+            assert!(
+                c.controls[0].options.contains_key("bounds"),
+                "{}: the first control has no bound",
+                c.case
+            );
+            let conc = c.controls[1].conc.as_ref().expect("conc");
+            assert!(conc[0] != 0.0 && conc[1] == 0.0, "{}", c.case);
         }
     }
 
