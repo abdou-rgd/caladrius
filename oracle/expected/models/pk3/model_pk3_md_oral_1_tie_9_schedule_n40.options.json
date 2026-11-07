@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "kind": "model_md",
+  "case": "model_pk3_md_oral_1_tie_9_schedule_n40",
+  "generated_by": "oracle/scripts/models_3c_closed_form.R",
+  "model": "pk3.oral_1",
+  "group": "schedule",
+  "parameterisation": "micro",
+  "dose": 100,
+  "parameters": {
+    "k10": 0.375,
+    "k12": 1.1875,
+    "k21": 1,
+    "k13": 0.7875,
+    "k31": 0.999999999,
+    "vc": 8,
+    "ka": 1.5
+  },
+  "regimen": {
+    "kind": "schedule",
+    "records": [{
+        "time": 0,
+        "dose": 50
+      }, {
+        "time": 6,
+        "dose": 60
+      }, {
+        "time": 14,
+        "dose": 70
+      }, {
+        "time": 24,
+        "dose": 80
+      }, {
+        "time": 36,
+        "dose": 90
+      }, {
+        "time": 43,
+        "dose": 50
+      }, {
+        "time": 49,
+        "dose": 60
+      }, {
+        "time": 57,
+        "dose": 70
+      }, {
+        "time": 67,
+        "dose": 80
+      }, {
+        "time": 79,
+        "dose": 90
+      }, {
+        "time": 86,
+        "dose": 50
+      }, {
+        "time": 92,
+        "dose": 60
+      }, {
+        "time": 100,
+        "dose": 70
+      }, {
+        "time": 110,
+        "dose": 80
+      }, {
+        "time": 122,
+        "dose": 90
+      }, {
+        "time": 129,
+        "dose": 50
+      }, {
+        "time": 135,
+        "dose": 60
+      }, {
+        "time": 143,
+        "dose": 70
+      }, {
+        "time": 153,
+        "dose": 80
+      }, {
+        "time": 165,
+        "dose": 90
+      }, {
+        "time": 172,
+        "dose": 50
+      }, {
+        "time": 178,
+        "dose": 60
+      }, {
+        "time": 186,
+        "dose": 70
+      }, {
+        "time": 196,
+        "dose": 80
+      }, {
+        "time": 208,
+        "dose": 90
+      }, {
+        "time": 215,
+        "dose": 50
+      }, {
+        "time": 221,
+        "dose": 60
+      }, {
+        "time": 229,
+        "dose": 70
+      }, {
+        "time": 239,
+        "dose": 80
+      }, {
+        "time": 251,
+        "dose": 90
+      }, {
+        "time": 258,
+        "dose": 50
+      }, {
+        "time": 264,
+        "dose": 60
+      }, {
+        "time": 272,
+        "dose": 70
+      }, {
+        "time": 282,
+        "dose": 80
+      }, {
+        "time": 294,
+        "dose": 90
+      }, {
+        "time": 301,
+        "dose": 50
+      }, {
+        "time": 307,
+        "dose": 60
+      }, {
+        "time": 315,
+        "dose": 70
+      }, {
+        "time": 325,
+        "dose": 80
+      }, {
+        "time": 337,
+        "dose": 90
+      }]
+  },
+  "times": [-1, 0, 1.8, 4, 5.4, 6, 12, 14, 24, 36, 38.1, 42.3, 43, 49, 57, 67, 70.6, 77.8, 79, 86, 92, 100, 103, 109, 110, 122, 129, 135, 137.4, 142.2, 143, 153, 165, 172, 173.8, 177.4, 178, 186, 196, 208, 210.1, 214.3, 215, 221, 229, 239, 242.6, 249.8, 251, 258, 264, 272, 275, 281, 282, 294, 301, 307, 309.4, 314.2, 315, 325, 337, 338, 342, 357, 417, 637],
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "note": "multiple dosing, schedule_n40 , point tie_9",
+  "textbook_double_ok": false,
+  "quantities": {
+    "conc": "concentration of the central compartment at the time t of the origin shared by the dose times: the sum of the single-dose functions of every dose (0 before the first dose; a bolus exactly at its dose time counts)",
+    "auc": "sum of the single-dose areas, each from its own dose time (not from its lag), to the time",
+    "scalar": "auc_inf = sum of the doses / CL"
+  },
+  "method": {
+    "closed_form": "plain sum of the single-dose closed forms of the model (MOD-3C-10..14, the lag as a delay), 256-bit arithmetic (Rmpfr), rounded once to double; areas are the exact integrals of the terms; steady state is the sum over j = 0..N with the tail below 2^-70 of the smallest value; the area over one interval is checked against D/CL",
+    "cross_checks": ["adaptive ODE solver (deSolve lsoda, rtol 1e-12) with the doses as events and a state for the AUC", "steady state: a long train of dosing events read after the last dose"],
+    "cross_check_tolerance": 1e-08
+  },
+  "results_of_checks": {
+    "ode_events": {
+      "conc_max_rel_gap": 2.2e-10,
+      "auc_max_rel_gap": 3.8e-14
+    }
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "expm": "1.0.1",
+    "deSolve": "1.42",
+    "gmp": "0.7.5.1"
+  },
+  "n_values": 137,
+  "n_times": 68
+}

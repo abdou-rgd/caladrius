@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "kind": "model_md",
+  "case": "model_pk3_md_oral_1_lag_base_steady_tau12",
+  "generated_by": "oracle/scripts/models_3c_closed_form.R",
+  "model": "pk3.oral_1_lag",
+  "group": "steady_state",
+  "parameterisation": "clearance",
+  "dose": 100,
+  "parameters": {
+    "cl": 3,
+    "vc": 8,
+    "q2": 9.5,
+    "vp2": 9.5,
+    "q3": 6.3,
+    "vp3": 31.5,
+    "ka": 1.5,
+    "tlag": 0.5
+  },
+  "regimen": {
+    "kind": "steady_state",
+    "tau": 12
+  },
+  "times": [0, 1.2e-05, 0.12, 0.2, 0.5, 0.512, 0.6, 1, 1.2, 2, 3, 3.5, 4.8, 6, 7.2, 9, 10.8, 11.88, 12],
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "note": "multiple dosing, steady_tau12 , point base",
+  "textbook_double_ok": true,
+  "quantities": {
+    "conc": "concentration of the central compartment at the time s since the last dose, 0 <= s <= tau, at steady state: the sum over j >= 0 of the single-dose function at s + j*tau (a bolus at s = 0 includes the dose; at s = tau it is the value just before the next one)",
+    "auc": "area under the steady-state profile from s = 0 to s (D/CL at s = tau)",
+    "accum_c": "C_ss(s) / C_1(s), the ratio to the single-dose concentration at the same time since the dose; not available where C_1(s) = 0",
+    "scalar": "cmax_ss, tmax_ss (time since the dose in [0, tau); not available when the maximum is attained at several times), cmin_ss, cav_ss = D/(CL*tau), auc_tau_ss = D/CL, accum_cmax = cmax_ss / (single-dose Cmax), accum_auc = (D/CL) / AUC(0, tau) of one dose (not available when that area is 0)"
+  },
+  "method": {
+    "closed_form": "plain sum of the single-dose closed forms of the model (MOD-3C-10..14, the lag as a delay), 256-bit arithmetic (Rmpfr), rounded once to double; areas are the exact integrals of the terms; steady state is the sum over j = 0..N with the tail below 2^-70 of the smallest value; the area over one interval is checked against D/CL",
+    "cross_checks": ["adaptive ODE solver (deSolve lsoda, rtol 1e-12) with the doses as events and a state for the AUC", "steady state: a long train of dosing events read after the last dose"],
+    "cross_check_tolerance": 1e-08
+  },
+  "results_of_checks": {
+    "ode_long_train": {
+      "doses": 59,
+      "conc_max_rel_gap": 2.4e-12,
+      "auc_max_rel_gap": 2.3e-12
+    },
+    "steady_state": {
+      "terms_in_sum": 117,
+      "tmax_ss_is_not_unique": false
+    }
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "expm": "1.0.1",
+    "deSolve": "1.42",
+    "gmp": "0.7.5.1"
+  },
+  "n_values": 64,
+  "n_times": 19
+}

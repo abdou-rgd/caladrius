@@ -17,6 +17,8 @@
 //! - [`naive`]: independent, deliberately simple computations (second implementation for cross-checks).
 //! - [`naive2c`]: the same for the two-compartment models (task T-032), in double precision.
 //! - [`pk2`]: loaders for the two-compartment oracle (`oracle/expected/models/pk2/`): values, derivatives, error cases.
+//! - [`naive3c`]: the same for the three-compartment models (task T-142), in double precision.
+//! - [`pk3`]: loaders for the three-compartment oracle (`oracle/expected/models/pk3/`): values, conditioning, conversions, derivatives, multiple dosing, error cases.
 //! - [`md`]: loaders for the multiple-dosing and steady-state oracle (`oracle/expected/models/md/`, task T-047): schedules, regular regimens, steady state, error cases.
 //!
 //! Nothing here panics: loaders return [`oracle::OracleError`], comparisons return a
@@ -26,8 +28,10 @@ pub mod compare;
 pub mod md;
 pub mod naive;
 pub mod naive2c;
+pub mod naive3c;
 pub mod oracle;
 pub mod pk2;
+pub mod pk3;
 pub mod step3;
 pub mod tolerance;
 
@@ -37,12 +41,16 @@ pub use compare::{
 };
 pub use md::{
     DoseRecord, MD_ERRORS, MdCase, PrintedForm, Regimen, RegimenKind, dose_parameters,
-    list_md_cases, load_md_case, load_md_errors, md_dir,
+    list_md_cases, load_md_case, load_md_case_in, load_md_errors, md_dir,
 };
 pub use oracle::{OracleCase, OracleError, Profile, list_cases, load_case};
 pub use pk2::{
     PK2_ERRORS, Pk2Case, Pk2ErrorCase, Pk2Kind, list_pk2_cases, load_pk2_case, load_pk2_errors,
     pk2_dir,
+};
+pub use pk3::{
+    PK3_ERRORS, Pk3Case, Pk3Kind, list_pk3_cases, list_pk3_md_cases, load_pk3_case,
+    load_pk3_errors, load_pk3_md_case, pk3_dir,
 };
 pub use step3::{
     FitCase, FitCaseOptions, GaussNewtonStep, ModelCase, Observations, list_fit_cases,

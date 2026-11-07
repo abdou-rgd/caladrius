@@ -1,0 +1,224 @@
+# Caladrius three-compartment model oracle (task T-142): ground truth for specs/models.md section 14
+# (MOD-3C-01 to 27) before any engine code exists.
+#
+#   Rscript oracle/scripts/models_3c_closed_form.R        (from the repository root; deterministic, no random number)
+#
+# Writes oracle/expected/models/pk3/model_pk3_*.{csv,options.json} and
+# crates/caladrius-models/tests/oracle_models_3c.cases. Parts:
+#   models_3c_common.R       roots, weights, explicit forms, scalars (256 bits)
+#   models_3c_values.R       value cases, conditions, expm / deSolve / eigenvalue cross-checks
+#   models_3c_derivatives.R  derivatives (OM-21), refusals (OM-26), multiple dosing (OM-28), the .cases file
+#
+# Conventions of oracle/scripts/models_2c_closed_form.R are kept: long CSV subject,parameter,value;
+# subject t=<time> or scalar; options JSON with the parameters, times, method and tool versions.
+
+args <- commandArgs(trailingOnly = FALSE)
+here <- sub("^--file=", "", args[grep("^--file=", args)])
+script_dir <- if (length(here)) dirname(normalizePath(here)) else file.path(getwd(), "oracle", "scripts")
+root <- normalizePath(file.path(script_dir, "..", ".."))
+exp_dir <- file.path(root, "oracle", "expected", "models", "pk3")
+dir.create(exp_dir, recursive = TRUE, showWarnings = FALSE)
+T_START <- Sys.time()
+options(warn = 1)
+source(file.path(script_dir, "models_3c_common.R"))
+source(file.path(script_dir, "models_3c_values.R"))
+
+# ---------------------------------------------------------------- parameter points
+clr <- function(cl, vc, q2, vp2, q3, vp3) list(cl = cl, vc = vc, q2 = q2, vp2 = vp2, q3 = q3, vp3 = vp3)
+mic <- function(k10, k12, k21, k13, k31, vc) list(k10 = k10, k12 = k12, k21 = k21, k13 = k13, k31 = k31, vc = vc)
+points <- list(
+  base = list(set = "clearance", p = clr(3, 8, 9.5, 9.5, 6.3, 31.5), dose = 100),
+  fast_dist = list(set = "clearance", p = clr(2, 5, 60, 10, 15, 40), dose = 250),
+  small2_3 = list(set = "micro", p = mic(0.4, 1e-3, 1, 0.5, 0.2, 10), dose = 100),
+  small2_6 = list(set = "micro", p = mic(0.4, 1e-6, 1, 0.5, 0.2, 10), dose = 100),
+  small2_9 = list(set = "micro", p = mic(0.4, 1e-9, 1, 0.5, 0.2, 10), dose = 100),
+  small2_12 = list(set = "micro", p = mic(0.4, 1e-12, 1, 0.5, 0.2, 10), dose = 100),
+  small3_3 = list(set = "micro", p = mic(0.4, 0.6, 1, 1e-3, 0.2, 10), dose = 100),
+  small3_6 = list(set = "micro", p = mic(0.4, 0.6, 1, 1e-6, 0.2, 10), dose = 100),
+  small3_9 = list(set = "micro", p = mic(0.4, 0.6, 1, 1e-9, 0.2, 10), dose = 100),
+  small3_12 = list(set = "micro", p = mic(0.4, 0.6, 1, 1e-12, 0.2, 10), dose = 100),
+  tie_2 = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 1e-2, 8), dose = 100),
+  tie_4 = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 1e-4, 8), dose = 100),
+  tie_6 = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 1e-6, 8), dose = 100),
+  tie_9 = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 1e-9, 8), dose = 100),
+  tie_12 = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 1e-12, 8), dose = 100),
+  tie_exact = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1, 8), dose = 100),
+  tie_clr = list(set = "clearance", p = clr(3, 8, 9.5, 9.5, 6.3, 6.3), dose = 100),
+  swapped = list(set = "micro", p = mic(0.375, 0.7875, 0.2, 1.1875, 1, 8), dose = 100),
+  ratio_1e3 = list(set = "macro", p = list(a = 7, b = 2, c = 1, alpha = 10, beta = 0.5, gamma = 0.01), dose = 100),
+  ratio_1e6 = list(set = "macro", p = list(a = 7, b = 2, c = 1, alpha = 1000, beta = 1, gamma = 0.001), dose = 100),
+  close_exp = list(set = "micro", p = mic(0.2, 1e-4, 0.2, 1e-4, 0.2 * (1 - 1e-3), 10), dose = 100),
+  slow = list(set = "micro", p = mic(1e-4, 2e-4, 1e-3, 1e-4, 5e-4, 10), dose = 100),
+  fast = list(set = "micro", p = mic(100, 300, 50, 200, 20, 10), dose = 100),
+  base_macro = list(set = "macro", p = list(a = 9.491525423728813, b = 1.6666666666666667, c = 1.3418079096045198,
+                                              alpha = 3, beta = 0.5, gamma = 0.05), dose = 100)
+)
+to_set <- function(pt, set) {
+  if (pt$set == set) return(pt$p)
+  q <- derive_q3(pt$set, pt$p, pt$dose)
+  r <- switch(set,
+    clearance = list(cl = q$cl, vc = q$V, q2 = q$q2, vp2 = q$vp2, q3 = q$q3, vp3 = q$vp3),
+    micro = list(k10 = q$k10, k12 = q$k12, k21 = q$k21, k13 = q$k13, k31 = q$k31, vc = q$V),
+    macro = list(a = q$A[1], b = q$A[2], c = q$A[3], alpha = q$l[1], beta = q$l[2], gamma = q$l[3]))
+  lapply(r, function(x) signif(asNumeric(x), 12))
+}
+
+# scale of the time-like extras of a point
+ext <- function(model, pname, kind = NULL) {
+  pt <- points[[pname]]
+  q <- derive_q3(pt$set, pt$p, pt$dose)
+  l <- asNumeric(q$l)
+  ex <- list()
+  if (is_first_order(model)) ex$ka <- signif(sqrt(l[1] * l[2]) * 1.1, 3)
+  if (is_zero_order(model)) ex$dur <- signif(1 / l[2], 2)
+  if (model %in% c("pk3.oral_0_lag", "pk3.oral_1_lag")) ex$tlag <- signif(0.25 / l[2], 2)
+  ex
+}
+short <- function(model) sub("^pk3\\.", "", model)
+IDS <- c("pk3.iv_bolus", "pk3.iv_infusion", "pk3.oral_1", "pk3.oral_1_lag", "pk3.oral_0", "pk3.oral_0_lag")
+n_rows <- 0L
+add_case <- function(model, name, pname, set = NULL, extra = NULL, dose = NULL, note = "", textbook_ok = NULL) {
+  pt <- points[[pname]]
+  set <- set %||% pt$set
+  extra <- extra %||% ext(model, pname)
+  if (model == "pk3.iv_infusion") extra$tlag <- NULL
+  n_rows <<- n_rows + write_case(paste0(short(model), "_", name), model, set, to_set(pt, set),
+                                  dose %||% pt$dose, extra, note, textbook_ok)
+}
+
+# ---- Q1 to Q5 and the families of OM-19
+base_p <- points$base
+for (id in IDS) {
+  # base case: the worked examples Q1 (bolus), Q2 (ka = 1.5), Q3 (dur = 2)
+  ex <- list()
+  if (is_first_order(id)) ex$ka <- 1.5
+  if (is_zero_order(id)) ex$dur <- 2
+  if (id %in% c("pk3.oral_0_lag", "pk3.oral_1_lag")) ex$tlag <- 0.5
+  add_case(id, "base", "base", extra = ex, note = "worked example of specs/models.md section 14.6 (Q1 bolus, Q2 ka = 1.5, Q3 dur = 2)")
+  for (pn in c("fast_dist", "small2_6", "small2_12", "small3_9", "tie_4", "tie_9", "tie_exact", "tie_clr",
+               "swapped", "ratio_1e3", "ratio_1e6", "close_exp", "slow", "fast", "base_macro"))
+    add_case(id, pn, pn, note = paste("point", pn))
+  add_case(id, "base_micro", "base", set = "micro", extra = ex, note = "base case in the micro set")
+  add_case(id, "base_macro_set", "base", set = "macro", extra = ex, note = "base case in the macro set")
+  add_case(id, "zero_dose", "base", dose = 0, extra = ex, note = "dose 0: every value is 0")
+}
+# the bolus carries every family (no extras to vary)
+for (pn in c("small2_3", "small2_9", "small2_12", "small3_3", "small3_6", "small3_12", "tie_2", "tie_6", "tie_12"))
+  add_case("pk3.iv_bolus", pn, pn, note = paste("point", pn))
+# the other ids carry the near ties and small exchanges at the extreme steps too
+for (id in IDS[-1]) for (pn in c("small3_12", "tie_6", "tie_12"))
+  add_case(id, pn, pn, note = paste("point", pn))
+
+# zero-order variants
+for (id in IDS[is_zero_order(IDS)]) {
+  tl <- if (id == "pk3.oral_0_lag") list(tlag = 0.5) else list()
+  add_case(id, "dur_short", "base", extra = c(list(dur = 0.01), tl), note = "very short input")
+  add_case(id, "dur_long", "base", extra = c(list(dur = 50), tl), note = "input much longer than the mean lives")
+}
+# first-order: ka families (Q2, Q5, OM-19)
+for (id in IDS[is_first_order(IDS)]) {
+  tl <- if (id == "pk3.oral_1_lag") list(tlag = 0.5) else list()
+  eq <- c(alpha = 3, beta = 0.5, gamma = 0.05)
+  for (nm in names(eq))
+    add_case(id, paste0("ka_eq_", nm), "base_macro", extra = c(list(ka = eq[[nm]]), tl),
+             note = paste("ka =", nm, "exactly (macro set): the confluent limit of MOD-3C-12"))
+  for (nm in names(eq)) for (d in c(1e-3, 1e-6, 1e-9)) {
+    if (id == "pk3.oral_1_lag" && !(nm == "beta" || d == 1e-6)) next
+    add_case(id, sprintf("ka_%s_p%s", nm, format(d, scientific = TRUE)), "base",
+             extra = c(list(ka = eq[[nm]] * (1 + d)), tl), note = paste("ka =", nm, "* (1 +", d, ")"))
+  }
+  for (nm in names(eq)) {
+    d <- c(alpha = 1e-9, beta = 1e-6, gamma = 1e-3)[[nm]]
+    add_case(id, sprintf("ka_%s_m%s", nm, format(d, scientific = TRUE)), "base",
+             extra = c(list(ka = eq[[nm]] * (1 - d)), tl), note = paste("ka =", nm, "* (1 -", d, ")"))
+  }
+  add_case(id, "ka_between_ab", "base", extra = c(list(ka = 1.5), tl), note = "ka between alpha and beta (Q2)")
+  add_case(id, "ka_between_bg", "base", extra = c(list(ka = 0.2), tl), note = "ka between beta and gamma")
+  add_case(id, "ka_below_gamma", "base", extra = c(list(ka = 0.01), tl), note = "ka below gamma (flip-flop)")
+  add_case(id, "ka_500_alpha", "base", extra = c(list(ka = 1500), tl), note = "ka / alpha = 500")
+  add_case(id, "ka_near_tie", "tie_6", extra = c(list(ka = 0.9999995), tl), note = "ka at the near-tie exponent, relative 5e-7")
+}
+
+# ---------------------------------------------------------------- conditioning (OM-22)
+n_cond <- 0L
+add_cond <- function(name, set, p, dose, note) {
+  n_cond <<- n_cond + 1L
+  write_case(paste0("cond_", name), "pk3.iv_bolus", set, p, dose, list(), note, conditioning = TRUE)
+}
+for (dl in c(1e-2, 1e-4, 1e-6, 1e-9, 1e-12))
+  add_cond(sprintf("tie_%s", format(dl, scientific = TRUE)), "micro", mic(0.375, 1.1875, 1, 0.7875, 1 - dl, 8), 100,
+           paste("H22 family, k31 = k21 (1 -", dl, "): w_beta is O(delta^2) and ill-conditioned by nature (MOD-3C-08)"))
+add_cond("tie_exact", "micro", mic(0.375, 1.1875, 1, 0.7875, 1, 8), 100, "exact tie k21 = k31: beta = k21, w_beta = 0 exactly (structural)")
+add_cond("tie_ulp", "micro", mic(0.375, 1.1875, 1, 0.7875, 1 - 2^-53, 8), 100, "k31 one ulp below k21")
+add_cond("tie_ulp_up", "micro", mic(0.375, 1.1875, 1, 0.7875, 1 + 2^-52, 8), 100, "k31 one ulp above k21")
+add_cond("tie_swapped_9", "micro", mic(0.375, 0.7875, 1 - 1e-9, 1.1875, 1, 8), 100, "k21 just below k31")
+for (e in c(3, 6, 9, 12)) {
+  add_cond(sprintf("k12_%d", e), "micro", mic(0.4, 10^-e, 1, 0.5, 0.2, 10), 100, paste("k12 = 1e-", e, sep = ""))
+  add_cond(sprintf("k13_%d", e), "micro", mic(0.4, 0.6, 1, 10^-e, 0.2, 10), 100, paste("k13 = 1e-", e, sep = ""))
+}
+add_cond("both_tiny", "micro", mic(0.4, 1e-9, 1, 1e-9, 0.2, 10), 100, "both couplings tiny")
+add_cond("ratio_1e6", "macro", points$ratio_1e6$p, 100, "alpha / gamma = 1e6")
+add_cond("close_exp", "micro", points$close_exp$p, 100, "three very close exponents")
+
+# ---------------------------------------------------------------- conversions (OM-23)
+n_conv <- 0L
+conv_points <- c("base", "fast_dist", "small2_3", "small3_3", "tie_2", "tie_4", "tie_6", "close_exp", "ratio_1e3",
+                 "slow", "fast", "swapped", "base_macro")
+roundtrip_err <- numeric(0)
+for (pn in conv_points) {
+  pt <- points[[pn]]
+  q0 <- derive_q3(pt$set, pt$p, pt$dose)
+  # 256-bit round trip micro -> clearance -> macro -> micro (the macro values are the exact ones)
+  back <- exp_to_micro(q0$l, q0$w, q0$V)
+  err <- max(sapply(c("k10", "k12", "k21", "k13", "k31"), function(n) asNumeric(abs(back[[n]] - q0[[n]]) / q0[[n]])))
+  # the macro set does not tell the two peripheral compartments apart (MOD-3C-05): the pairs
+  # (k12, k21) and (k13, k31) may come back exchanged, which is the same model
+  sw <- c(k10 = "k10", k12 = "k13", k21 = "k31", k13 = "k12", k31 = "k21")
+  err_sw <- max(sapply(names(sw), function(n) asNumeric(abs(back[[sw[[n]]]] - q0[[n]]) / q0[[n]])))
+  err <- min(err, err_sw)
+  roundtrip_err <- c(roundtrip_err, err)
+  gap <- min(asNumeric((q0$l[2] - q0$l[3]) / q0$l[2]), asNumeric(abs(q0$k21 - q0$k31) / q0$k21))
+  check(err < 1e-20 || gap < 1e-6, pn, ": round trip error ", err)
+  # a swapped labelling: when k21 < k31 the macro -> micro conversion returns the pair swapped (MOD-3C-05)
+  for (set in c("clearance", "micro", "macro")) {
+    if (set == "macro" && gap < 1e-3) next
+    n_conv <- n_conv + 1L
+    p <- to_set(pt, set)
+    write_case(paste0("conv_", pn, "_", set), "pk3.iv_bolus", set, p, pt$dose, list(),
+               paste("conversion of point", pn, "given in the", set, "set: the other two sets are the expected scalars; k21_ge_k31 is the labelling flag"),
+               conditioning = TRUE)
+  }
+}
+for (nm in ls(REG)) if (grepl("model_pk3_.*conv_", nm)) NULL
+# the conversion cases carry their kind in the registry
+for (nm in ls(REG)) if (grepl("_conv_", nm)) register(nm, "conversion")
+cat(sprintf("round trip: %d points, largest 256-bit relative error %.3g\n", length(roundtrip_err), max(roundtrip_err)))
+
+# ---------------------------------------------------------------- Q1 to Q5 at the printed digits
+q_ref <- function(file, t, expected, label) {
+  tab <- read.csv(file.path(exp_dir, file), stringsAsFactors = FALSE)
+  got <- tab$value[tab$subject == paste0("t=", num17(t)) & tab$parameter == "conc"]
+  check(length(got) == 1L && abs(got - expected) <= 6e-13, "Q check ", label, ": got ", got, " expected ", expected)
+  cat(sprintf("  %-34s %.12f  (printed %.12f)  ok\n", label, got, expected))
+}
+cat("Q1 to Q5 at the printed digits:\n")
+q_ref("model_pk3_iv_bolus_base.csv", 1, 2.759806823685, "Q1 bolus C(1)")
+q_ref("model_pk3_iv_bolus_base.csv", 12, 0.740531047822, "Q1 bolus C(12)")
+q_ref("model_pk3_oral_1_base.csv", 1, 3.614449561800, "Q2 oral_1 ka = 1.5 C(1)")
+q_ref("model_pk3_oral_1_base.csv", 12, 0.767989856328, "Q2 oral_1 ka = 1.5 C(12)")
+q_ref("model_pk3_iv_infusion_base.csv", 1, 2.813351373178, "Q3 infusion dur = 2 C(1)")
+q_ref("model_pk3_iv_infusion_base.csv", 12, 0.781577082298, "Q3 infusion dur = 2 C(12)")
+q_ref("model_pk3_oral_1_ka_eq_alpha.csv", 1, 3.761216400803, "Q5 oral_1 ka = alpha C(1)")
+{
+  tab <- read.csv(file.path(exp_dir, "model_pk3_iv_bolus_base.csv"), stringsAsFactors = FALSE)
+  sc <- setNames(tab$value[tab$subject == "scalar"], tab$parameter[tab$subject == "scalar"])
+  chk <- c(alpha = 3, beta = 0.5, gamma = 0.05, w_alpha = 0.759322033898, w_beta = 0.133333333333,
+           w_gamma = 0.107344632768, vss = 49, vz = 60, v_extrap = 74.526315789474, mrt_system = 49 / 3)
+  for (n in names(chk)) check(abs(sc[[n]] - chk[[n]]) <= 6e-13 * max(1, chk[[n]]), "Q1 scalar ", n)
+  check(abs(sc[["auc_inf"]] - 100 / 3) < 1e-12 && abs(sc[["aumc_inf"]] - 544.4444444444) < 1e-9, "Q1 areas")
+  cat("  Q1 scalars (roots, weights, volumes, MRT, areas) ok\n")
+}
+
+source(file.path(script_dir, "models_3c_derivatives.R"))
+cat(sprintf("done: runtime %.1f minutes, %d values in value cases, %d values written as 0 below the double range\n",
+            as.numeric(difftime(Sys.time(), T_START, units = "mins")), n_rows, N_UNDERFLOW))

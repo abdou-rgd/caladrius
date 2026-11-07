@@ -1,0 +1,254 @@
+# Caladrius three-compartment oracle (T-142), part 1: value cases, scalars with their conditions and
+# the cross-checks (expm, deSolve, eigenvalues). Sourced by models_3c_closed_form.R.
+
+KAPPA_MAX <- 1e3
+STEP <- mpfr(10, 256L)^-25
+XMIN <- .Machine$double.xmin
+N_UNDERFLOW <- 0L
+tonum <- function(x) {
+  v <- asNumeric(x)
+  if (is.finite(v) && v != 0 && abs(v) < XMIN) { N_UNDERFLOW <<- N_UNDERFLOW + 1L; return(0) }
+  v
+}
+num <- function(x) if (is.null(x)) NA_real_ else as.numeric(x)
+REG <- new.env()    # case name -> kind, for the .cases file
+register <- function(name, kind) assign(name, kind, envir = REG)
+
+SET_NAMES <- list(clearance = c("cl", "vc", "q2", "vp2", "q3", "vp3"),
+                  micro = c("k10", "k12", "k21", "k13", "k31", "vc"),
+                  macro = c("a", "b", "c", "alpha", "beta", "gamma"))
+
+# ---------------------------------------------------------------- condition of the scalars
+# kappa = sum_j |theta_j dq/dtheta_j| / |q| over the native parameters, from 256-bit central differences
+# (relative step 1e-25). A scalar that is exactly 0 is structural (kappa 0).
+scalar_conditions <- function(model, set, p, D, extra, base) {
+  th <- names(p)
+  acc <- lapply(base, function(v) mp(0))
+  for (n in th) {
+    ph <- p; pl <- p
+    ph[[n]] <- mp(p[[n]]) * (1 + STEP)
+    pl[[n]] <- mp(p[[n]]) * (1 - STEP)
+    sh <- core_scalars(model, derive_q3(set, ph, D, extra))
+    sl <- core_scalars(model, derive_q3(set, pl, D, extra))
+    h <- 2 * STEP * mp(p[[n]])
+    for (k in names(base)) acc[[k]] <- acc[[k]] + abs(mp(p[[n]]) * (sh[[k]] - sl[[k]]) / h)
+  }
+  kap <- sapply(names(base), function(k) if (base[[k]] == 0 || k == "k21_ge_k31") 0 else asNumeric(acc[[k]] / abs(base[[k]])))
+  kap
+}
+
+# ---------------------------------------------------------------- numerical cross-checks (double)
+model_kind <- function(model) {
+  list(zero_order = is_zero_order(model), first_order = is_first_order(model), bolus = model == "pk3.iv_bolus")
+}
+breakpoints <- function(model, nq) {
+  kd <- model_kind(model)
+  if (kd$bolus) return(0)
+  if (kd$zero_order) return(c(nq$tau, nq$tau + nq$dur))
+  nq$tau
+}
+double_params <- function(q) {
+  list(D = num(q$D), V = num(q$V), k10 = num(q$k10), k12 = num(q$k12), k21 = num(q$k21),
+       k13 = num(q$k13), k31 = num(q$k31), ka = num(q$ka), tau = num(q$tau), dur = num(q$dur))
+}
+# State (G, A1, A2, A3, X, Z, 1): X = AUC, Z = integral of X; AUMC = t X - Z.
+expm_solution <- function(model, nq, times) {
+  kd <- model_kind(model)
+  bp <- breakpoints(model, nq)
+  start <- bp[1]
+  rate_in <- if (kd$zero_order) nq$D / nq$dur else 0
+  mat <- function(rate) {
+    M <- matrix(0, 7, 7)
+    if (kd$first_order) { M[1, 1] <- -nq$ka; M[2, 1] <- nq$ka }
+    M[2, 2] <- -(nq$k10 + nq$k12 + nq$k13); M[2, 3] <- nq$k21; M[2, 4] <- nq$k31
+    M[3, 2] <- nq$k12; M[3, 3] <- -nq$k21
+    M[4, 2] <- nq$k13; M[4, 4] <- -nq$k31
+    M[5, 2] <- 1 / nq$V; M[6, 5] <- 1; M[2, 7] <- rate
+    M
+  }
+  y <- c(if (kd$first_order) nq$D else 0, if (kd$bolus) nq$D else 0, 0, 0, 0, 0, 1)
+  edges <- sort(unique(c(start, bp, times[times > start])))
+  states <- list()
+  states[[as.character(start)]] <- y
+  for (i in seq_len(length(edges) - 1L)) {
+    a <- edges[i]; b <- edges[i + 1L]
+    inside <- kd$zero_order && a >= bp[1] && b <= bp[2]
+    y <- as.numeric(expm(mat(if (inside) rate_in else 0) * (b - a)) %*% y)
+    states[[as.character(b)]] <- y
+  }
+  sapply(times, function(t) {
+    if (t < start || (t == start && !kd$bolus)) return(c(0, 0, 0))
+    s <- states[[as.character(t)]]
+    c(s[2] / nq$V, s[5], t * s[5] - s[6])
+  })
+}
+desolve_solution <- function(model, nq, times, t_end, auc_inf, aumc_inf) {
+  kd <- model_kind(model)
+  bp <- breakpoints(model, nq)
+  start <- bp[1]
+  rate_in <- if (kd$zero_order) nq$D / nq$dur else 0
+  rhs <- function(t, y, parms) {
+    dG <- if (kd$first_order) -nq$ka * y[1] else 0
+    dA1 <- (if (kd$first_order) nq$ka * y[1] else 0) - (nq$k10 + nq$k12 + nq$k13) * y[2] +
+      nq$k21 * y[3] + nq$k31 * y[4] + parms
+    list(c(dG, dA1, nq$k12 * y[2] - nq$k21 * y[3], nq$k13 * y[2] - nq$k31 * y[4],
+           y[2] / nq$V, t * y[2] / nq$V))
+  }
+  y <- c(if (kd$first_order) nq$D else 0, if (kd$bolus) nq$D else 0, 0, 0, 0, 0)
+  atol <- 1e-14 * c(nq$D, nq$D, nq$D, nq$D, auc_inf, aumc_inf)
+  grid <- sort(unique(c(start, bp, times[times > start], t_end)))
+  out <- list()
+  out[[as.character(start)]] <- y
+  for (i in seq_len(length(grid) - 1L)) {
+    a <- grid[i]; b <- grid[i + 1L]
+    inside <- kd$zero_order && a >= bp[1] && b <= bp[2]
+    sol <- ode(y = y, times = c(a, b), func = rhs, parms = if (inside) rate_in else 0,
+               method = "lsoda", rtol = 1e-12, atol = atol, maxsteps = 1e6)
+    y <- as.numeric(sol[2, -1])
+    out[[as.character(b)]] <- y
+  }
+  list(at = function(t) {
+         if (t < start || (t == start && !kd$bolus)) return(c(0, 0, 0))
+         s <- out[[as.character(t)]]
+         c(s[2] / nq$V, s[5], s[6])
+       },
+       final = out[[as.character(grid[length(grid)])]])
+}
+rel_ok <- function(a, b, scale, tol = 1e-8) all(abs(a - b) <= tol * pmax(abs(b), 1e-3 * scale))
+
+# ---------------------------------------------------------------- time grids
+make_times <- function(model, q, extra) {
+  ta <- 1 / num(q$l[1]); tb <- 1 / num(q$l[2]); tg <- 1 / num(q$l[3])
+  ts <- c(ta * c(1e-9, 1e-6, 0.01, 0.1, 0.5, 1, 2, 4), tb * c(0.25, 1, 4, 10),
+          tg * c(0.1, 0.5, 1, 2, 4, 8, 16, 40, 100, 300))
+  if (!is.null(extra$ka)) ts <- c(ts, c(0.1, 1, 5) / extra$ka)
+  exact <- c(-1, 0)
+  if (!is.null(extra$tlag)) {
+    tl <- extra$tlag
+    ts <- c(ts, tl + ta * c(1e-6, 0.5, 2), tl + tb * c(1, 4), tl / 2)
+    exact <- c(exact, tl, tl + 1e-3 * ta)
+  }
+  if (!is.null(extra$dur)) {
+    T <- extra$dur; tl <- if (is.null(extra$tlag)) 0 else extra$tlag
+    ts <- c(ts, tl + T / 2, tl + 2 * T)
+    exact <- c(exact, tl + T, tl + T * 1.001)
+  }
+  sort(unique(c(signif(ts, 6), exact, c(1, 3, 4, 10, 12, 24), signif(tg * 800, 6))))
+}
+textbook_flag <- function(q, extra) {
+  l <- num(q$l)
+  ok <- (l[1] - l[2]) / l[1] > 5e-2 && (l[2] - l[3]) / l[2] > 5e-2
+  # the peripheral rates must be apart too (the weights use k21 - k31)
+  ok <- ok && abs(num(q$k21) - num(q$k31)) / num(q$k21) > 5e-2
+  if (!is.null(extra$dur)) ok <- ok && extra$dur * l[1] > 0.05
+  if (!is.null(extra$ka)) for (i in 1:3) ok <- ok && abs(extra$ka - l[i]) > 5e-2 * extra$ka
+  ok
+}
+
+# ---------------------------------------------------------------- one value case
+write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NULL, conditioning = FALSE) {
+  q <- derive_q3(set, p, dose, extra)
+  segs <- segments(model, q)
+  bolus <- model == "pk3.iv_bolus"
+  times <- if (conditioning) numeric(0) else make_times(model, q, extra)
+  conc <- auc <- aumc <- numeric(0)
+  if (length(times) > 0) {
+    tm <- mp(times)
+    conc <- sapply(conc_vec(segs, tm, bolus), tonum)
+    auc <- sapply(area_vec(segs, tm, 0), tonum)
+    aumc <- sapply(area_vec(segs, tm, 1), tonum)
+  }
+  sc <- scalars_of(model, q, segs)
+  kap <- scalar_conditions(model, set, p, dose, extra, core_scalars(model, q))
+  scn <- sapply(sc, tonum)
+  ill <- names(scn)[names(scn) %in% names(kap) & kap[names(scn)] > KAPPA_MAX]
+  ill <- ill[!is.na(ill)]
+
+  if (dose > 0) {
+    nq <- double_params(q)
+    if (length(times) > 0) {
+      scale <- max(abs(conc)); sa <- max(abs(auc)); sm <- max(abs(aumc))
+      ex <- expm_solution(model, nq, times)
+      check(rel_ok(ex[1, ], conc, scale), name, ": expm concentration")
+      check(rel_ok(ex[2, ], auc, sa), name, ": expm AUC")
+      check(rel_ok(ex[3, ], aumc, sm), name, ": expm AUMC")
+      t_end <- (if (is.null(extra$tlag)) 0 else extra$tlag) + (if (is.null(extra$dur)) 0 else extra$dur) +
+        80 / min(nq$k10, nq$k21, nq$k31, num(q$l[3]), if (is.null(extra$ka)) Inf else extra$ka)
+      ds <- desolve_solution(model, nq, times, t_end, scn[["auc_inf"]], scn[["aumc_inf"]])
+      dv <- sapply(times, ds$at)
+      check(rel_ok(dv[1, ], conc, scale), name, ": lsoda concentration")
+      check(rel_ok(dv[2, ], auc, sa), name, ": lsoda AUC")
+      check(rel_ok(dv[3, ], aumc, sm), name, ": lsoda AUMC")
+      fin <- ds$final
+      check(abs(fin[5] - scn[["auc_inf"]]) <= 1e-8 * scn[["auc_inf"]], name, ": lsoda AUC to infinity")
+      check(abs(fin[6] - scn[["aumc_inf"]]) <= 1e-8 * scn[["aumc_inf"]], name, ": lsoda AUMC to infinity")
+      check(abs(fin[6] / fin[5] - scn[["mrt"]]) <= 1e-8 * scn[["mrt"]], name, ": lsoda MRT")
+      if (!is.null(extra$ka)) {
+        f <- function(t) num(conc_vec(segs, mp(t), FALSE))
+        lo <- extra$tlag %||% 0
+        hi <- lo + 3 * (scn[["tmax_pred"]] - lo)
+        tmx <- optimize(f, c(lo, hi), maximum = TRUE, tol = 1e-12)
+        check(abs(tmx$maximum - scn[["tmax_pred"]]) <= 1e-5 * scn[["tmax_pred"]], name, ": Tmax by optimize")
+        check(abs(tmx$objective - scn[["cmax_pred"]]) <= 1e-9 * scn[["cmax_pred"]], name, ": Cmax by optimize")
+      }
+      if (!bolus) check(all(conc <= scn[["cmax_pred"]] * (1 + 1e-12)), name, ": a grid value above Cmax")
+    }
+    # Exponents against the eigenvalues of the 3 x 3 system: alpha and gamma always, beta when the
+    # gaps are wide enough for double precision.
+    M <- matrix(c(-(nq$k10 + nq$k12 + nq$k13), nq$k12, nq$k13, nq$k21, -nq$k21, 0, nq$k31, 0, -nq$k31), 3, 3)
+    ev <- sort(-Re(eigen(M, only.values = TRUE)$values))
+    l <- num(q$l)
+    check(abs(ev[3] - l[1]) <= 1e-9 * l[1] && abs(ev[1] - l[3]) <= 1e-9 * l[3], name, ": eigenvalues alpha, gamma")
+    gap <- min((l[1] - l[2]) / l[1], (l[2] - l[3]) / l[2])
+    if (gap > 1e-3 && abs(nq$k21 - nq$k31) / nq$k21 > 1e-3)
+      check(abs(ev[2] - l[2]) <= 1e-9 * l[2], name, ": eigenvalue beta")
+  }
+
+  groups <- rep("scalar", length(scn))
+  groups[names(scn) %in% ill] <- "scalar_ill"
+  tkeys <- if (length(times)) paste0("t=", num17(times)) else character(0)
+  rows <- data.frame(subject = c(rep(tkeys, 3), groups), parameter = c(rep(c("conc", "auc", "aumc"), each = length(times)), names(scn)),
+                     value = c(conc, auc, aumc, unname(scn)), stringsAsFactors = FALSE)
+  ord <- order(match(rows$subject, c(tkeys, "scalar", "scalar_ill")),
+               match(rows$parameter, c("conc", "auc", "aumc", names(scn))))
+  rows <- rows[ord, ]
+  base <- paste0("model_pk3_", gsub("[^A-Za-z0-9_]", "_", name))
+  write_lines_lf(c("subject,parameter,value", sprintf("%s,%s,%s", rows$subject, rows$parameter, num17(rows$value))),
+                 file.path(exp_dir, paste0(base, ".csv")))
+  if (is.null(textbook_ok)) textbook_ok <- textbook_flag(q, extra)
+  textbook_ok <- textbook_ok && length(ill) == 0L
+  kap_kept <- kap[!(names(kap) %in% ill)]
+  meta <- list(
+    schema = 1L, kind = if (conditioning) "model_conditioning" else "model", case = base,
+    generated_by = "oracle/scripts/models_3c_closed_form.R",
+    model = model, parameterisation = set, dose = dose,
+    parameters = c(p, extra),
+    times = arr(times),
+    units = list(dose = "mg", time = "h", concentration = "mg/L"),
+    note = note,
+    textbook_double_ok = textbook_ok,
+    quantities = list(
+      conc = "concentration in the central compartment (apparent for extravascular input), 0 before the dose and before the lag; the bolus at t = 0 is D / vc",
+      auc = "area under the concentration curve from the dose time to the time",
+      aumc = "area under the first moment curve from the dose time to the time",
+      scalar = "alpha > beta > gamma; k10, k12, k21, k13, k31; cl, vc, q2, vp2, q3, vp3; a, b, c (INTRAVENOUS coefficients D*w/vc for every route); w_alpha, w_beta, w_gamma; half_life = ln2/gamma, half_life_alpha, half_life_beta, half_life_gamma; vss, vz = cl/gamma, v_extrap = vc/w_gamma; auc_inf = D/cl; aumc_inf; mrt_system = vss/cl; mrt = mrt_system + m; c0 (bolus); tmax_pred, cmax_pred (not the bolus; absent for a zero dose with first-order input); k21_ge_k31 (1 when k21 >= k31)",
+      scalar_ill = "the scalars whose condition number (conditions) exceeds 1e3 with respect to the parameters of the case: written, with their condition, but outside the group the engine is held to at MODEL_VALUES; the decision is the orchestrator's"
+    ),
+    conditions = as.list(kap),
+    scalar_ill_names = arr(ill),
+    method = list(
+      closed_form = "independent implementation of the explicit sums of exponentials (MOD-3C-10 to 14), 256-bit arithmetic (Rmpfr); the exponents are the roots of the cubic found by Newton inside the brackets given by the critical points of the cubic, the weights the product-of-differences form (checked against the sum-of-positive-terms form), AUC and AUMC exact integrals of the terms; the confluent limit is used when |ka - lambda| is below 2^-150",
+      cross_checks = list("matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve lsoda, rtol 1e-12) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha and gamma always, beta when the gaps exceed 1e-3)"),
+      cross_check_tolerance = 1e-8,
+      kappa_max = KAPPA_MAX
+    ),
+    versions = versions,
+    n_values = nrow(rows),
+    quantities_per_time = 3L,
+    n_times = length(times)
+  )
+  write_lines_lf(jenc(meta), file.path(exp_dir, paste0(base, ".options.json")))
+  register(base, if (conditioning) "conditioning" else "values")
+  cat(sprintf("%-52s %3d times %4d values %d ill\n", base, length(times), nrow(rows), length(ill)))
+  nrow(rows)
+}
