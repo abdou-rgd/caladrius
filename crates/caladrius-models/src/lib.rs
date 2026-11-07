@@ -20,9 +20,12 @@ mod kernel;
 mod model;
 mod params;
 mod params2;
+mod params3;
 mod regimen;
+mod roots3;
 mod steady;
 mod superpose;
+mod three;
 mod two;
 
 use std::collections::BTreeMap;
@@ -137,8 +140,10 @@ pub fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
     if input.has_regimen() {
         return dosing::run(input);
     }
-    if input.model.compartments() == 2 {
-        return two::run(input);
+    match input.model.compartments() {
+        2 => return two::run(input),
+        3 => return three::run(input),
+        _ => {}
     }
     let p = params::resolve(input.model, &input.params)?;
     let dose = input.dose;

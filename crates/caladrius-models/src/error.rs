@@ -119,6 +119,43 @@ pub enum ModelError {
     DegenerateExponents {
         /// The model id.
         model: String,
+        /// Which quantity and why, for three compartments (MOD-3C-06 items 3 and 5, MOD-3C-08);
+        /// absent for two compartments.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        detail: Option<String>,
+    },
+    /// One peripheral compartment of a three-compartment model is missing: `q`, `vp` or `k1x` is 0
+    /// (MOD-3C-06 item 1). The model is a two-compartment one, or a one-compartment one when both
+    /// peripherals are missing.
+    PeripheralMissing {
+        /// The parameter that is 0.
+        name: String,
+        /// The model id.
+        model: String,
+        /// Both peripheral compartments are missing.
+        both: bool,
+    },
+    /// Macro set of a three-compartment model whose exponents are not in the order alpha > beta >
+    /// gamma (MOD-3C-06 item 2): the engine does not sort.
+    ExponentsNotDecreasing {
+        /// `alpha` given.
+        #[serde(
+            serialize_with = "crate::float::ser",
+            deserialize_with = "crate::float::de"
+        )]
+        alpha: f64,
+        /// `beta` given.
+        #[serde(
+            serialize_with = "crate::float::ser",
+            deserialize_with = "crate::float::de"
+        )]
+        beta: f64,
+        /// `gamma` given.
+        #[serde(
+            serialize_with = "crate::float::ser",
+            deserialize_with = "crate::float::de"
+        )]
+        gamma: f64,
     },
     /// A dosing regimen whose parameters do not form a regimen (MOD-MD-11, 12): a name without
     /// its partner, a schedule mixed with an interval, a gap in the numbering of the doses.
@@ -195,9 +232,16 @@ pub enum ModelError {
 /// The parameter sets of a two-compartment model, for the messages.
 const PK2_SETS: &str = "cl, vc, q, vp (the default), or k10, k12, k21, vc, or a, b, alpha, beta";
 
+/// The parameter sets of a three-compartment model, for the messages.
+const PK3_SETS: &str = "cl, vc, q2, vp2, q3, vp3 (the default), or k10, k12, k21, k13, k31, vc, or a, b, c, alpha, beta, gamma";
+
 impl fmt::Display for ModelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::UnknownParameter { name, model } if model.starts_with("pk3.") => write!(
+                f,
+                "unknown parameter `{name}` for model {model}; use one set of {PK3_SETS}, and the input parameters of the model (ka, dur, tlag)"
+            ),
             Self::UnknownParameter { name, model } if model.starts_with("pk2.") => write!(
                 f,
                 "unknown parameter `{name}` for model {model}; use one set of {PK2_SETS}, and the input parameters of the model (ka, dur, tlag)"
@@ -251,11 +295,13 @@ impl fmt::Display for ModelError {
                 model,
             } => write!(
                 f,
-                "parameters `{first}` and `{second}` belong to different parameter sets of {model}; give exactly one set: {PK2_SETS}"
+                "parameters `{first}` and `{second}` belong to different parameter sets of {model}; give exactly one set: {}",
+                sets_of(model)
             ),
             Self::NoParameterSet { model } => write!(
                 f,
-                "model {model} needs one complete parameter set: {PK2_SETS}"
+                "model {model} needs one complete parameter set: {}",
+                sets_of(model)
             ),
             Self::AlphaNotAboveBeta { alpha, beta } => write!(
                 f,
@@ -263,7 +309,7 @@ impl fmt::Display for ModelError {
             ),
             Self::MacroWithoutDose => write!(
                 f,
-                "the macro set (a, b, alpha, beta) needs a dose > 0, since vc = dose / (a + b); give the dose or use the clearance set"
+                "the macro set (a, b, alpha, beta, and c, gamma for three compartments) needs a dose > 0, since vc = dose / (a + b [+ c]); give the dose or use the clearance set"
             ),
             Self::DerivedOutOfRange { name, from, value } => write!(
                 f,
@@ -299,11 +345,50 @@ impl fmt::Display for ModelError {
                 f,
                 "dosing regimen: {doses} doses at {times} times need more than {limit} evaluations of one dose at one time (the doses that still contribute at each time, summed over the times; a regimen is refused only beyond {limit}, so doses x times at most {limit} always runs); give fewer times or fewer doses, or use the steady state (`tau` alone) for a long regular regimen"
             ),
-            Self::DegenerateExponents { model } => write!(
+            Self::DegenerateExponents {
+                model,
+                detail: None,
+            } => write!(
                 f,
                 "the two exponents of {model} cannot be told apart in double precision (k12 x k21 underflows); the data describe a one-compartment model: use the pk1 model of the same route"
             ),
+            Self::DegenerateExponents {
+                model,
+                detail: Some(detail),
+            } => write!(
+                f,
+                "degenerate exponents of {model}: {detail}; the data describe a model with fewer compartments or an exponent that is not representable in double precision (rescale the parameters, or use the pk2 or pk1 model of the same route)"
+            ),
+            Self::PeripheralMissing {
+                name,
+                model,
+                both: false,
+            } => write!(
+                f,
+                "parameter `{name}` = 0 removes a peripheral compartment, which makes {model} a two-compartment model; use the pk2 model of the same route, or give `{name}` > 0"
+            ),
+            Self::PeripheralMissing {
+                name,
+                model,
+                both: true,
+            } => write!(
+                f,
+                "parameter `{name}` = 0 removes a peripheral compartment, and the other peripheral is missing too, which makes {model} a one-compartment model; use the pk1 model of the same route (or pk2 with one peripheral), or give `{name}` > 0"
+            ),
+            Self::ExponentsNotDecreasing { alpha, beta, gamma } => write!(
+                f,
+                "the exponents must satisfy `alpha` > `beta` > `gamma`: alpha = {alpha}, beta = {beta}, gamma = {gamma}; alpha is the fastest exponent and gamma the slowest, give them in that order (the engine does not sort them, and a, b, c with them)"
+            ),
         }
+    }
+}
+
+/// The sets of the model of this id, for the messages.
+fn sets_of(model: &str) -> &'static str {
+    if model.starts_with("pk3.") {
+        PK3_SETS
+    } else {
+        PK2_SETS
     }
 }
 

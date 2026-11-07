@@ -58,6 +58,7 @@ pub fn jacobian(input: &ModelInput, method: Derivatives) -> Result<Jacobian, Mod
     match method {
         Derivatives::Analytic if input.model == ModelId::IvBolus => Ok(bolus(input, base.conc())),
         Derivatives::Analytic if input.model.compartments() == 2 => crate::two::jacobian(input),
+        Derivatives::Analytic if input.model.compartments() == 3 => crate::three::jacobian(input),
         Derivatives::Analytic => forward(input, base.conc(), DEFAULT_INCREMENT),
         Derivatives::ForwardDifference { increment } => {
             if !(increment.is_finite() && increment > 0.0) {
