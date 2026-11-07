@@ -3,7 +3,7 @@
 resolver = "3"
 # The Tauri shell has its own Cargo.lock and is built apart (apps/caladrius-tauri): the workspace, its CI and
 # its clippy run do not compile Tauri.
-exclude = ["apps/caladrius-tauri"]
+exclude = ["apps/caladrius-tauri", "apps/caladrius-proto-leptos"]
 members = [
     # L0 to L3: compile for wasm32-unknown-unknown (`cargo xtask wasm`).
     "crates/caladrius-nca",

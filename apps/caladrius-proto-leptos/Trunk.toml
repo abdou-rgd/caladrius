@@ -1,0 +1,11 @@
+# The page of the Leptos prototype. Build: `trunk build --release --config apps/caladrius-proto-leptos/Trunk.toml`
+# (from the repository root); the Tauri shell reads `dist/` (see scripts/desktop.mjs and prototypes/leptos/README.md).
+[build]
+target = "index.html"
+dist = "dist"
+# wasm-opt is not installed on this machine; the release profile (opt-level s, lto) does the shrinking.
+[tools]
+[serve]
+address = "127.0.0.1"
+port = 5174
+open = false

@@ -1,0 +1,52 @@
+# The NCA screen in Leptos 0.8 (T-137): Rust compiled to WebAssembly, rendered client side, the engine linked
+# into the same module and called in process through `caladrius_bridge::Bridge`. It is NOT a member of the
+# workspace (`exclude` in the root Cargo.toml), as `apps/caladrius-tauri` is: it has its own Cargo.lock, and the
+# workspace CI, clippy and `cargo xtask` do not compile Leptos. Build and test it from the repository root:
+#
+#   cargo test   --manifest-path apps/caladrius-proto-leptos/Cargo.toml
+#   cargo clippy --manifest-path apps/caladrius-proto-leptos/Cargo.toml --all-targets -- -D warnings
+#   (the page itself: prototypes/leptos/README.md)
+[package]
+name = "caladrius-proto-leptos"
+description = "Prototype of the NCA screen in Leptos 0.8 (client side rendering), the engine in the same WebAssembly module."
+version = "0.3.2"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+caladrius-bridge = { path = "../caladrius-bridge" }
+caladrius-format = { path = "../../crates/caladrius-format" }
+leptos = { version = "0.8", features = ["csr"] }
+serde = { version = "1.0.229", features = ["derive"] }
+# float_roundtrip: a number read back must be the double that was written (as in the bridge).
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+wasm-bindgen = "0.2.129"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "Window", "Document", "Element", "HtmlElement", "HtmlInputElement", "HtmlDetailsElement", "HtmlStyleElement",
+    "HtmlSelectElement", "Node", "NodeList", "Location", "Performance", "DomRect", "CssStyleDeclaration",
+    "MouseEvent", "PointerEvent", "KeyboardEvent", "Event", "EventTarget",
+    "MessageChannel", "MessagePort", "ResizeObserver", "Clipboard", "Navigator", "console",
+]
+
+# Same rules as the workspace (AGENTS.md, golden rule 6).
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unreachable = "deny"
+
+# The page: smaller rather than faster, the download is what a visitor waits for (as `profile.web` of the workspace).
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
