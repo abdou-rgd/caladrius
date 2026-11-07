@@ -1,0 +1,333 @@
+{
+  "schema": 1,
+  "kind": "fit_ml_errors",
+  "generated_by": "oracle/scripts/fit_ml.R",
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "gmp": "0.7.5.1",
+    "nlme": "3.1.168",
+    "jsonlite": "2.0.0",
+    "rng": "Mersenne-Twister/Inversion/Rejection"
+  },
+  "cases": [
+    {
+      "case": "ml6a_exact_fit_additive",
+      "description": "ML6a: y = (100/10) exp(-0.2 t) at the F times, the uniform fit has RSS = 0 within rounding",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.04837418035959, 8.18730753077982, 6.70320046035639, 4.49328964117222, 2.01896517994655],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "additive"
+      },
+      "error": {
+        "code": "exact_fit",
+        "words": ["reproduces the observations exactly", "grows without limit"]
+      }
+    },
+    {
+      "case": "ml6a_exact_fit_proportional",
+      "description": "ML6a: y = (100/10) exp(-0.2 t) at the F times, the uniform fit has RSS = 0 within rounding",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.04837418035959, 8.18730753077982, 6.70320046035639, 4.49328964117222, 2.01896517994655],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "proportional"
+      },
+      "error": {
+        "code": "exact_fit",
+        "words": ["reproduces the observations exactly", "grows without limit"]
+      }
+    },
+    {
+      "case": "ml6a_exact_fit_combined",
+      "description": "ML6a: y = (100/10) exp(-0.2 t) at the F times, the uniform fit has RSS = 0 within rounding",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.04837418035959, 8.18730753077982, 6.70320046035639, 4.49328964117222, 2.01896517994655],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined"
+      },
+      "error": {
+        "code": "exact_fit",
+        "words": ["reproduces the observations exactly", "grows without limit"]
+      }
+    },
+    {
+      "case": "ml6a_exact_fit_combined_sd",
+      "description": "ML6a: y = (100/10) exp(-0.2 t) at the F times, the uniform fit has RSS = 0 within rounding",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.04837418035959, 8.18730753077982, 6.70320046035639, 4.49328964117222, 2.01896517994655],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined_sd"
+      },
+      "error": {
+        "code": "exact_fit",
+        "words": ["reproduces the observations exactly", "grows without limit"]
+      }
+    },
+    {
+      "case": "ml6b_sigma_zero_proportional",
+      "description": "ML6b: Theoph subject 1 with its sample at time 0 (prediction 0), proportional error",
+      "model": "pk1.oral_1",
+      "dose": 319.992,
+      "time": [0, 0.25, 0.57, 1.12, 2.02, 3.82, 5.1, 7.03, 9.05, 12.12, 24.37],
+      "conc": [0.74, 2.84, 6.57, 10.5, 9.66, 8.58, 8.36, 7.47, 6.89, 5.94, 3.28],
+      "initial": {
+        "v": 36.7,
+        "k": 0.043,
+        "ka": 1.24
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "proportional"
+      },
+      "error": {
+        "code": "non_positive_sigma",
+        "words": ["proportional", "standard deviation of 0", "time 0"]
+      }
+    },
+    {
+      "case": "ml6c_too_few_combined",
+      "description": "ML6c: the first four F observations, P + Q = 4 = N",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4],
+      "conc": [9.31, 7.92, 6.85, 4.31],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined"
+      },
+      "error": {
+        "code": "too_few_observations",
+        "words": ["combined", "4 parameters", "from 4 observations"]
+      }
+    },
+    {
+      "case": "ml6c_too_few_combined_sd",
+      "description": "ML6c: the first four F observations, P + Q = 4 = N",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4],
+      "conc": [9.31, 7.92, 6.85, 4.31],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined_sd"
+      },
+      "error": {
+        "code": "too_few_observations",
+        "words": ["combined_sd", "4 parameters", "from 4 observations"]
+      }
+    },
+    {
+      "case": "ml6c_too_few_additive",
+      "description": "ML6c: the first three F observations with the additive model, P + Q = 3 = N",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2],
+      "conc": [9.31, 7.92, 6.85],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "additive"
+      },
+      "error": {
+        "code": "too_few_observations",
+        "words": ["additive", "3 parameters", "from 3 observations"]
+      }
+    },
+    {
+      "case": "ml6d_unknown_error_model",
+      "description": "ML6 (FIT-ML-14c): an error_model that is not offered",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.31, 7.92, 6.85, 4.31, 2.11],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "poisson"
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": ["error_model"]
+      }
+    },
+    {
+      "case": "ml6d_missing_error_model",
+      "description": "ML6 (FIT-ML-14c): objective ml without an error_model",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.31, 7.92, 6.85, 4.31, 2.11],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml"
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": ["error_model"]
+      }
+    },
+    {
+      "case": "ml6d_error_init_zero",
+      "description": "ML6 (FIT-ML-14c): error_init with an entry equal to 0",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.31, 7.92, 6.85, 4.31, 2.11],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined",
+        "error_init": [0.1, 0]
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": ["error_init"]
+      }
+    },
+    {
+      "case": "ml6d_error_init_negative",
+      "description": "ML6 (FIT-ML-14c): error_init with a negative entry",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.31, 7.92, 6.85, 4.31, 2.11],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "additive",
+        "error_init": [-0.5]
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": ["error_init"]
+      }
+    },
+    {
+      "case": "ml6d_error_init_wrong_length",
+      "description": "ML6 (FIT-ML-14c): error_init with three entries for a two-parameter model",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.31, 7.92, 6.85, 4.31, 2.11],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "ml",
+        "error_model": "combined",
+        "error_init": [0.1, 0.1, 0.1]
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": ["error_init"]
+      }
+    },
+    {
+      "case": "ml6d_unknown_objective",
+      "description": "ML6 (FIT-ML-14c): an objective that is neither wls nor ml",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.31, 7.92, 6.85, 4.31, 2.11],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "uniform",
+      "options": {
+        "objective": "reml",
+        "error_model": "additive"
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": ["objective"]
+      }
+    },
+    {
+      "case": "ml6d_weighting_with_ml",
+      "description": "FIT-ML-01: a weighting other than uniform together with objective ml",
+      "model": "pk1.iv_bolus",
+      "dose": 100,
+      "time": [0.5, 1, 2, 4, 8],
+      "conc": [9.31, 7.92, 6.85, 4.31, 2.11],
+      "initial": {
+        "v": 12,
+        "k": 0.15
+      },
+      "weighting": "inv_y",
+      "options": {
+        "objective": "ml",
+        "error_model": "additive"
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": ["weighting", "error model"]
+      }
+    }
+  ]
+}

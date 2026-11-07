@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "kind": "fit_ml",
+  "case": "ml_f_combined_sd",
+  "generated_by": "oracle/scripts/fit_ml.R",
+  "dataset": "f",
+  "data_file": "data/fit/spec.csv",
+  "model": "pk1.iv_bolus",
+  "objective": "ml",
+  "error_model": "combined_sd",
+  "weighting": "uniform",
+  "note": "F data of specs/fit.md section 11: IV bolus, D = 100, N = 5 (examples ML1 to ML3)",
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "observations": {
+    "use": "all"
+  },
+  "initial_estimates": {
+    "1": {
+      "v": 12,
+      "k": 0.15
+    }
+  },
+  "fit_options": {
+    "convergence": 1e-10,
+    "criterion": "decrement",
+    "max_iterations": 500,
+    "confidence_level": 0.95,
+    "information": "expected"
+  },
+  "subjects": ["1"],
+  "no_maximum": [],
+  "status": {
+    "1": "at_bound"
+  },
+  "at_bound": {
+    "1": ["error_a"]
+  },
+  "method": {
+    "reference": "stats::optim L-BFGS-B (analytic gradient) then Nelder-Mead from seeded starts, lowest -2LL kept; Newton polish at 256 bits (Rmpfr) with active set and KKT test",
+    "precision_bits": 256,
+    "hessian_step": "1e-25 times max(|z_j|, scale_j), central differences of the analytic gradient",
+    "expected_information": "sum_i (u_i u_i' + 2 l_i l_i') on the moved variables, inverse over the free block, delta method to user units (FIT-ML-06, FIT-ML-17)",
+    "observed_information": "half the Hessian of -2LL at 256 bits on the moved variables, inverse over the free block, delta method to user units",
+    "flip_flop": "pk1.oral_1: the point with ka > k is reported (V, k, ka) == (V k / ka, ka, k)",
+    "gnls": "nlme::gnls, informational only (OF-14): see <case>.gnls.csv"
+  },
+  "checks": {
+    "1": {
+      "starts": 27,
+      "converged_starts": 27,
+      "starts_within_1e6_of_best": 11,
+      "starts_within_1e3_of_best": 11,
+      "distinct_optima_gap_1e3": 17,
+      "worst_start_minus_best": 27.303996209483,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -2.39848635353462e-14,
+      "rel_gradient_at_polished_point": 2.40228568534921e-76,
+      "rel_gradient_at_written_point": 6.51092467898754e-14,
+      "m2ll_written_minus_polished": 1.65687472311731e-26,
+      "rel_gradient_vs_central_difference": 1.58328689170645e-47
+    }
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "gmp": "0.7.5.1",
+    "nlme": "3.1.168",
+    "jsonlite": "2.0.0",
+    "rng": "Mersenne-Twister/Inversion/Rejection"
+  },
+  "n_values": 44
+}

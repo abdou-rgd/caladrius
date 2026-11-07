@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "kind": "fit_ml",
+  "case": "ml_indometh_combined_sd",
+  "generated_by": "oracle/scripts/fit_ml.R",
+  "dataset": "indometh",
+  "data_file": "data/indometh.csv",
+  "model": "pk1.iv_bolus",
+  "objective": "ml",
+  "error_model": "combined_sd",
+  "weighting": "uniform",
+  "note": "Indometh, six subjects, one-compartment IV bolus, D = 25 (test constant of F5); example ML5",
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "observations": {
+    "use": "all"
+  },
+  "initial_estimates": {
+    "1": {
+      "v": 15.4,
+      "k": 1.085
+    },
+    "2": {
+      "v": 11.4,
+      "k": 1.015
+    },
+    "3": {
+      "v": 8.6,
+      "k": 1.144
+    },
+    "4": {
+      "v": 13.6,
+      "k": 0.791
+    },
+    "5": {
+      "v": 9.5,
+      "k": 1.62
+    },
+    "6": {
+      "v": 10.6,
+      "k": 1.001
+    }
+  },
+  "fit_options": {
+    "convergence": 1e-10,
+    "criterion": "decrement",
+    "max_iterations": 500,
+    "confidence_level": 0.95,
+    "information": "expected"
+  },
+  "subjects": ["1", "2", "3", "4", "5", "6"],
+  "no_maximum": [],
+  "status": {
+    "1": "at_bound",
+    "2": "at_bound",
+    "3": "converged",
+    "4": "at_bound",
+    "5": "at_bound",
+    "6": "converged"
+  },
+  "at_bound": {
+    "1": ["error_b"],
+    "2": ["error_a"],
+    "3": [],
+    "4": ["error_b"],
+    "5": ["error_b"],
+    "6": []
+  },
+  "method": {
+    "reference": "stats::optim L-BFGS-B (analytic gradient) then Nelder-Mead from seeded starts, lowest -2LL kept; Newton polish at 256 bits (Rmpfr) with active set and KKT test",
+    "precision_bits": 256,
+    "hessian_step": "1e-25 times max(|z_j|, scale_j), central differences of the analytic gradient",
+    "expected_information": "sum_i (u_i u_i' + 2 l_i l_i') on the moved variables, inverse over the free block, delta method to user units (FIT-ML-06, FIT-ML-17)",
+    "observed_information": "half the Hessian of -2LL at 256 bits on the moved variables, inverse over the free block, delta method to user units",
+    "flip_flop": "pk1.oral_1: the point with ka > k is reported (V, k, ka) == (V k / ka, ka, k)",
+    "gnls": "nlme::gnls, informational only (OF-14): see <case>.gnls.csv"
+  },
+  "checks": {
+    "1": {
+      "starts": 27,
+      "converged_starts": 27,
+      "starts_within_1e6_of_best": 22,
+      "starts_within_1e3_of_best": 22,
+      "distinct_optima_gap_1e3": 6,
+      "worst_start_minus_best": 27.2036772634866,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.02548397120605e-14,
+      "rel_gradient_at_polished_point": 6.18824149886871e-77,
+      "rel_gradient_at_written_point": 1.00609042364453e-14,
+      "m2ll_written_minus_polished": 7.65401594661232e-28,
+      "rel_gradient_vs_central_difference": 3.6898712174944e-47
+    },
+    "2": {
+      "starts": 27,
+      "converged_starts": 27,
+      "starts_within_1e6_of_best": 21,
+      "starts_within_1e3_of_best": 21,
+      "distinct_optima_gap_1e3": 6,
+      "worst_start_minus_best": 28.2044728635006,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -4.91745819111723e-15,
+      "rel_gradient_at_polished_point": 5.91907176613913e-77,
+      "rel_gradient_at_written_point": 5.62496496024014e-15,
+      "m2ll_written_minus_polished": 1.76994298801617e-28,
+      "rel_gradient_vs_central_difference": 5.86854198624284e-48
+    },
+    "3": {
+      "starts": 27,
+      "converged_starts": 27,
+      "starts_within_1e6_of_best": 26,
+      "starts_within_1e3_of_best": 26,
+      "distinct_optima_gap_1e3": 2,
+      "worst_start_minus_best": 41.3897006239808,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -4.33925462250118e-15,
+      "rel_gradient_at_polished_point": 3.06401099542202e-77,
+      "rel_gradient_at_written_point": 1.91218700314535e-15,
+      "m2ll_written_minus_polished": 1.97178082566925e-29,
+      "rel_gradient_vs_central_difference": 6.33488829700429e-47
+    },
+    "4": {
+      "starts": 27,
+      "converged_starts": 27,
+      "starts_within_1e6_of_best": 22,
+      "starts_within_1e3_of_best": 22,
+      "distinct_optima_gap_1e3": 6,
+      "worst_start_minus_best": 47.3532399268029,
+      "polish_iterations": 3,
+      "m2ll_double_minus_polished": -1.47282695138902e-14,
+      "rel_gradient_at_polished_point": 1.82426603779176e-76,
+      "rel_gradient_at_written_point": 9.8368899446702e-14,
+      "m2ll_written_minus_polished": 3.07190600695591e-26,
+      "rel_gradient_vs_central_difference": 2.83754160745375e-47
+    },
+    "5": {
+      "starts": 27,
+      "converged_starts": 27,
+      "starts_within_1e6_of_best": 25,
+      "starts_within_1e3_of_best": 25,
+      "distinct_optima_gap_1e3": 3,
+      "worst_start_minus_best": 31.528205206492,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -9.25194593831543e-15,
+      "rel_gradient_at_polished_point": 8.64615183910367e-77,
+      "rel_gradient_at_written_point": 1.28837798083853e-14,
+      "m2ll_written_minus_polished": 9.25732948758249e-28,
+      "rel_gradient_vs_central_difference": 2.57505820952931e-47
+    },
+    "6": {
+      "starts": 27,
+      "converged_starts": 27,
+      "starts_within_1e6_of_best": 27,
+      "starts_within_1e3_of_best": 27,
+      "distinct_optima_gap_1e3": 1,
+      "worst_start_minus_best": 1.24344978758018e-14,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -9.23122765480713e-15,
+      "rel_gradient_at_polished_point": 1.07403839170846e-76,
+      "rel_gradient_at_written_point": 3.11765537589491e-14,
+      "m2ll_written_minus_polished": 1.82716948821544e-27,
+      "rel_gradient_vs_central_difference": 1.8238512362622e-47
+    }
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "gmp": "0.7.5.1",
+    "nlme": "3.1.168",
+    "jsonlite": "2.0.0",
+    "rng": "Mersenne-Twister/Inversion/Rejection"
+  },
+  "n_values": 348
+}

@@ -14,6 +14,7 @@
 //! - [`compare`]: tables of values and a comparison that reports every value outside tolerance.
 //! - [`oracle`]: loaders for the versioned public oracle in `oracle/`.
 //! - [`step3`]: loaders for the closed-form model values and the reference fits of step 3.
+//! - [`ml`]: loaders for the maximum-likelihood oracle (`oracle/expected/fit/ml/`, task T-148), the absolute tolerances of its tests and a naive double-precision maximum-likelihood fit.
 //! - [`naive`]: independent, deliberately simple computations (second implementation for cross-checks).
 //! - [`naive2c`]: the same for the two-compartment models (task T-032), in double precision.
 //! - [`pk2`]: loaders for the two-compartment oracle (`oracle/expected/models/pk2/`): values, derivatives, error cases.
@@ -24,6 +25,7 @@
 
 pub mod compare;
 pub mod md;
+pub mod ml;
 pub mod naive;
 pub mod naive2c;
 pub mod oracle;
@@ -38,6 +40,12 @@ pub use compare::{
 pub use md::{
     DoseRecord, MD_ERRORS, MdCase, PrintedForm, Regimen, RegimenKind, dose_parameters,
     list_md_cases, load_md_case, load_md_errors, md_dir,
+};
+pub use ml::{
+    AbsoluteTolerance, FIT_ML_ERRORS, ML_ERROR_MODELS, ML_LS_FORMULA_RELATIVE,
+    ML_STRUCTURAL_ZERO_CUTOFF, MlCase, MlErrorCase, MlExpectedError, MlFitOptions, MlGroup,
+    NaiveMl, fit_ml_dir, list_fit_ml_cases, load_fit_ml_case, load_fit_ml_errors, load_fit_ml_gnls,
+    naive_ml,
 };
 pub use oracle::{OracleCase, OracleError, Profile, list_cases, load_case};
 pub use pk2::{

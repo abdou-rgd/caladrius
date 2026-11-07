@@ -1,0 +1,309 @@
+{
+  "schema": 1,
+  "kind": "fit_ml",
+  "case": "ml_theoph_combined_sd",
+  "generated_by": "oracle/scripts/fit_ml.R",
+  "dataset": "theoph",
+  "data_file": "data/theoph.csv",
+  "model": "pk1.oral_1",
+  "objective": "ml",
+  "error_model": "combined_sd",
+  "weighting": "uniform",
+  "note": "Theoph, twelve subjects, first-order absorption; the proportional and combined models are fitted without the sample at time 0, where the prediction is 0 (ML6b, and a combined model has no maximum when that sample is 0: case ml_theoph_t0_combined)",
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "observations": {
+    "use": "time_greater_than",
+    "time": 0
+  },
+  "initial_estimates": {
+    "1": {
+      "v": 36.7,
+      "k": 0.043,
+      "ka": 1.24
+    },
+    "2": {
+      "v": 39.9,
+      "k": 0.081,
+      "ka": 1.36
+    },
+    "3": {
+      "v": 42.8,
+      "k": 0.065,
+      "ka": 1.72
+    },
+    "4": {
+      "v": 38.9,
+      "k": 0.07,
+      "ka": 0.82
+    },
+    "5": {
+      "v": 33.7,
+      "k": 0.071,
+      "ka": 1.03
+    },
+    "6": {
+      "v": 51.4,
+      "k": 0.08,
+      "ka": 0.81
+    },
+    "7": {
+      "v": 40.7,
+      "k": 0.082,
+      "ka": 0.48
+    },
+    "8": {
+      "v": 44.5,
+      "k": 0.074,
+      "ka": 0.96
+    },
+    "9": {
+      "v": 40.7,
+      "k": 0.069,
+      "ka": 6.21
+    },
+    "10": {
+      "v": 31.9,
+      "k": 0.059,
+      "ka": 0.49
+    },
+    "11": {
+      "v": 47.4,
+      "k": 0.078,
+      "ka": 2.69
+    },
+    "12": {
+      "v": 30.1,
+      "k": 0.084,
+      "ka": 0.58
+    }
+  },
+  "fit_options": {
+    "convergence": 1e-10,
+    "criterion": "decrement",
+    "max_iterations": 500,
+    "confidence_level": 0.95,
+    "information": "expected"
+  },
+  "subjects": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
+  "no_maximum": [],
+  "status": {
+    "1": "converged",
+    "2": "at_bound",
+    "3": "at_bound",
+    "4": "at_bound",
+    "5": "at_bound",
+    "6": "at_bound",
+    "7": "at_bound",
+    "8": "at_bound",
+    "9": "at_bound",
+    "10": "at_bound",
+    "11": "at_bound",
+    "12": "at_bound"
+  },
+  "at_bound": {
+    "1": [],
+    "2": ["error_b"],
+    "3": ["error_b"],
+    "4": ["error_b"],
+    "5": ["error_a"],
+    "6": ["error_a"],
+    "7": ["error_b"],
+    "8": ["error_a"],
+    "9": ["error_a"],
+    "10": ["error_a"],
+    "11": ["error_a"],
+    "12": ["error_b"]
+  },
+  "method": {
+    "reference": "stats::optim L-BFGS-B (analytic gradient) then Nelder-Mead from seeded starts, lowest -2LL kept; Newton polish at 256 bits (Rmpfr) with active set and KKT test",
+    "precision_bits": 256,
+    "hessian_step": "1e-25 times max(|z_j|, scale_j), central differences of the analytic gradient",
+    "expected_information": "sum_i (u_i u_i' + 2 l_i l_i') on the moved variables, inverse over the free block, delta method to user units (FIT-ML-06, FIT-ML-17)",
+    "observed_information": "half the Hessian of -2LL at 256 bits on the moved variables, inverse over the free block, delta method to user units",
+    "flip_flop": "pk1.oral_1: the point with ka > k is reported (V, k, ka) == (V k / ka, ka, k)",
+    "gnls": "nlme::gnls, informational only (OF-14): see <case>.gnls.csv"
+  },
+  "checks": {
+    "1": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 26,
+      "starts_within_1e3_of_best": 26,
+      "distinct_optima_gap_1e3": 5,
+      "worst_start_minus_best": 38.7065802149295,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.56931806841095e-14,
+      "rel_gradient_at_polished_point": 1.80958026354637e-76,
+      "rel_gradient_at_written_point": 3.47260794937657e-14,
+      "m2ll_written_minus_polished": 2.36863369110028e-27,
+      "rel_gradient_vs_central_difference": 9.56540098445321e-48
+    },
+    "2": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 17,
+      "starts_within_1e3_of_best": 17,
+      "distinct_optima_gap_1e3": 4,
+      "worst_start_minus_best": 5.58004828938659,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -6.25107367078493e-15,
+      "rel_gradient_at_polished_point": 1.6312127425437e-76,
+      "rel_gradient_at_written_point": 9.59105072429105e-15,
+      "m2ll_written_minus_polished": 4.33829131223614e-28,
+      "rel_gradient_vs_central_difference": 1.85633384411492e-47
+    },
+    "3": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 22,
+      "starts_within_1e3_of_best": 22,
+      "distinct_optima_gap_1e3": 9,
+      "worst_start_minus_best": 26.0646955574192,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -3.1622439718829e-14,
+      "rel_gradient_at_polished_point": 8.96817833184089e-76,
+      "rel_gradient_at_written_point": 1.12146823071582e-13,
+      "m2ll_written_minus_polished": 1.00452519775835e-26,
+      "rel_gradient_vs_central_difference": 1.94369309896155e-47
+    },
+    "4": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 16,
+      "starts_within_1e3_of_best": 16,
+      "distinct_optima_gap_1e3": 5,
+      "worst_start_minus_best": 14.965664635674,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.07961502272794e-14,
+      "rel_gradient_at_polished_point": 1.51097577949615e-76,
+      "rel_gradient_at_written_point": 1.22690878017291e-14,
+      "m2ll_written_minus_polished": 1.10255475539459e-27,
+      "rel_gradient_vs_central_difference": 1.34113869857472e-47
+    },
+    "5": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 26,
+      "starts_within_1e3_of_best": 26,
+      "distinct_optima_gap_1e3": 5,
+      "worst_start_minus_best": 24.2792539414586,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -7.59033955873752e-15,
+      "rel_gradient_at_polished_point": 1.2591984726604e-76,
+      "rel_gradient_at_written_point": 2.94860502853193e-14,
+      "m2ll_written_minus_polished": 9.2784114759299e-28,
+      "rel_gradient_vs_central_difference": 1.02183579190272e-47
+    },
+    "6": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 23,
+      "starts_within_1e3_of_best": 23,
+      "distinct_optima_gap_1e3": 8,
+      "worst_start_minus_best": 49.4968222068971,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.92988727130109e-14,
+      "rel_gradient_at_polished_point": 6.0597871692301e-77,
+      "rel_gradient_at_written_point": 8.12106521384419e-15,
+      "m2ll_written_minus_polished": 2.06340748620047e-28,
+      "rel_gradient_vs_central_difference": 1.39363582555497e-47
+    },
+    "7": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 26,
+      "starts_within_1e3_of_best": 26,
+      "distinct_optima_gap_1e3": 5,
+      "worst_start_minus_best": 47.2836185316397,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -3.04595462950942e-14,
+      "rel_gradient_at_polished_point": 1.69422169991218e-76,
+      "rel_gradient_at_written_point": 1.03560061506262e-14,
+      "m2ll_written_minus_polished": 5.18354168254313e-28,
+      "rel_gradient_vs_central_difference": 9.77534384169135e-48
+    },
+    "8": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 22,
+      "starts_within_1e3_of_best": 22,
+      "distinct_optima_gap_1e3": 9,
+      "worst_start_minus_best": 45.0241704083018,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.27835588268278e-14,
+      "rel_gradient_at_polished_point": 9.84414760662574e-77,
+      "rel_gradient_at_written_point": 1.52631664033757e-14,
+      "m2ll_written_minus_polished": 1.44967216466894e-27,
+      "rel_gradient_vs_central_difference": 5.42300244481352e-48
+    },
+    "9": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 12,
+      "starts_within_1e3_of_best": 12,
+      "distinct_optima_gap_1e3": 16,
+      "worst_start_minus_best": 54.0149002270005,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -1.43050054265319e-14,
+      "rel_gradient_at_polished_point": 2.85440816160403e-76,
+      "rel_gradient_at_written_point": 5.42054538472892e-14,
+      "m2ll_written_minus_polished": 5.17487689566703e-27,
+      "rel_gradient_vs_central_difference": 7.98607468998463e-48
+    },
+    "10": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 13,
+      "starts_within_1e3_of_best": 13,
+      "distinct_optima_gap_1e3": 18,
+      "worst_start_minus_best": 56.9579736082105,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -3.38773997040295e-14,
+      "rel_gradient_at_polished_point": 5.55252765463885e-76,
+      "rel_gradient_at_written_point": 1.04846664445841e-14,
+      "m2ll_written_minus_polished": 3.69171130505432e-28,
+      "rel_gradient_vs_central_difference": 1.13183914979524e-47
+    },
+    "11": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 12,
+      "starts_within_1e3_of_best": 12,
+      "distinct_optima_gap_1e3": 19,
+      "worst_start_minus_best": 63.8841997398888,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -4.49556585084837e-14,
+      "rel_gradient_at_polished_point": 1.93971570088053e-75,
+      "rel_gradient_at_written_point": 9.19985502447967e-14,
+      "m2ll_written_minus_polished": 1.19558254777629e-26,
+      "rel_gradient_vs_central_difference": 1.08364785376336e-47
+    },
+    "12": {
+      "starts": 30,
+      "converged_starts": 30,
+      "starts_within_1e6_of_best": 25,
+      "starts_within_1e3_of_best": 25,
+      "distinct_optima_gap_1e3": 6,
+      "worst_start_minus_best": 38.5177237289391,
+      "polish_iterations": 4,
+      "m2ll_double_minus_polished": -2.09008343530522e-14,
+      "rel_gradient_at_polished_point": 8.16609034118585e-76,
+      "rel_gradient_at_written_point": 2.00421780680719e-14,
+      "m2ll_written_minus_polished": 1.41777184341362e-27,
+      "rel_gradient_vs_central_difference": 9.79616365155629e-48
+    }
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "gmp": "0.7.5.1",
+    "nlme": "3.1.168",
+    "jsonlite": "2.0.0",
+    "rng": "Mersenne-Twister/Inversion/Rejection"
+  },
+  "n_values": 776
+}
