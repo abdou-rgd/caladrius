@@ -9,7 +9,7 @@
   "objective": "ml",
   "error_model": "combined",
   "weighting": "uniform",
-  "note": "Theoph, twelve subjects, first-order absorption; the proportional and combined models are fitted without the sample at time 0, where the prediction is 0 (ML6b, and a combined model has no maximum when that sample is 0: case ml_theoph_t0_combined)",
+  "note": "Theoph, twelve subjects, first-order absorption; the proportional and combined models are fitted without the sample at time 0, where the prediction is 0 (ML6b; a combined model refuses a subject whose sample at time 0 is 0: cases ml_theoph_t0_combined and ml_theoph_t0_combined_sd, refusals ml6e_*)",
   "units": {
     "dose": "mg",
     "time": "h",
@@ -89,7 +89,6 @@
     "information": "expected"
   },
   "subjects": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
-  "no_maximum": [],
   "status": {
     "1": "converged",
     "2": "at_bound",

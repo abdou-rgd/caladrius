@@ -14,6 +14,8 @@
 //! - the `table` test of the event-layout files (the roles `event`, `cmt`, `mdv`, `cens`, `limit`,
 //!   `rate`, `dur` and `covariate` do not exist yet) and of the cases that declare covariates;
 //! - the `refused` test of every refusal except `time_not_increasing`, which is today's check;
+//! - the `other_subjects_still_load` test of every refusal (OD-02: the subjects a problem does not
+//!   affect are still in the `dataset` of the refused table, with their records);
 //! - the parity of the profile and event layouts of Theoph and Indometh.
 //!
 //! What is green today and must stay green: the guards, the `table` test of every profile-layout
@@ -27,7 +29,10 @@
 //! covariates: { name: value } } ] }`, with rows counted from 1 over the data rows, `status` one of
 //! `observed`, `missing`, `blq`, and `kind` one of `bolus`, `infusion`; `CsvOptions` has a
 //! `covariates` list of column names; a refused table is a reading whose `checks` hold the code and
-//! the sentence (the spec: "checks are readings checks").
+//! the sentence (the spec: "checks are readings checks"); and the `dataset` of a refused table still
+//! holds the subjects that the problem does not affect (DAT-ERR-01: the table is imported and shown,
+//! only the affected subjects are refused), with the same fields. This last point is the plainest
+//! reading of "the other subjects of the same table still analyse" and is a question to the spec.
 
 use caladrius_project::{CsvOptions, readings};
 use serde_json::Value;
@@ -291,6 +296,43 @@ fn refusal_case(case: &str) {
     }
 }
 
+/// OD-02: "the other subjects of the same table still analyse" (DAT-ERR-01: the table is imported and
+/// shown, the check lists the problem, an analysis of an affected subject is refused while the other
+/// subjects run). Assumed here: the default reading of a refused table still has a `dataset` that holds
+/// the subjects the problem does not affect, with the records the reference computes for them
+/// (`unaffected_records` of the expected file, from the same R facts as the load cases); the affected
+/// subjects are not compared (they may be absent, flagged, or present).
+fn unaffected_case(case: &str) {
+    let exp = expected(case);
+    assert_eq!(exp["kind"], "data_refusal", "{case}: expected file kind");
+    let unaffected = strings(&exp["unaffected"]);
+    assert!(
+        !unaffected.is_empty(),
+        "{case}: a refusal case needs a subject that the problem does not affect"
+    );
+    let records = exp["unaffected_records"]
+        .as_object()
+        .unwrap_or_else(|| panic!("{case}: no `unaffected_records` in the expected file"));
+    assert_eq!(
+        records.len(),
+        unaffected.len(),
+        "{case}: records for the unaffected subjects"
+    );
+    let all = read_all(case, &exp);
+    let dataset = dataset_of(case, &all[0]);
+    let got = dataset["subjects"].as_array().expect("dataset.subjects");
+    for id in &unaffected {
+        let found = got.iter().find(|s| s["id"].as_str() == Some(id.as_str()));
+        let Some(subject) = found else {
+            panic!("{case}: subject {id} is not affected by the refusal but is not in the dataset");
+        };
+        let want = records
+            .get(id)
+            .unwrap_or_else(|| panic!("{case}: no expected records for subject {id}"));
+        check_subject(case, subject, want, id);
+    }
+}
+
 macro_rules! refusal_tests {
     ($($name:ident),* $(,)?) => {
         $(
@@ -298,6 +340,10 @@ macro_rules! refusal_tests {
                 #[test]
                 fn refused() {
                     super::refusal_case(stringify!($name));
+                }
+                #[test]
+                fn other_subjects_still_load() {
+                    super::unaffected_case(stringify!($name));
                 }
             }
         )*
@@ -494,5 +540,40 @@ fn every_expected_file_names_its_rules_and_its_origin() {
             software["nlme"].is_string(),
             "{case}: nlme version not recorded"
         );
+    }
+}
+
+/// Green today: a refusal file carries the records of every subject it does not affect, and of no
+/// other (the reference of `other_subjects_still_load`); the subjects split into affected and not.
+#[test]
+fn every_refusal_carries_the_records_of_its_unaffected_subjects() {
+    for case in REFUSAL_CASES {
+        let exp = expected(case);
+        let subjects = strings(&exp["subjects"]);
+        let affected = strings(&exp["affected"]);
+        let unaffected = strings(&exp["unaffected"]);
+        assert!(!unaffected.is_empty(), "{case}: no unaffected subject");
+        let mut both: Vec<&String> = affected.iter().chain(&unaffected).collect();
+        both.sort();
+        let mut all: Vec<&String> = subjects.iter().collect();
+        all.sort();
+        assert_eq!(
+            both, all,
+            "{case}: affected and unaffected do not split the subjects"
+        );
+        let records = exp["unaffected_records"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{case}: no `unaffected_records`"));
+        let mut keys: Vec<&String> = records.keys().collect();
+        keys.sort();
+        let mut want: Vec<&String> = unaffected.iter().collect();
+        want.sort();
+        assert_eq!(keys, want, "{case}: records of the unaffected subjects");
+        for (id, r) in records {
+            assert!(
+                r["n_rows"].as_u64().is_some_and(|n| n > 0),
+                "{case}: subject {id} has no row"
+            );
+        }
     }
 }

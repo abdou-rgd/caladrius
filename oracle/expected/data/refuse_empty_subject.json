@@ -38,6 +38,66 @@
     "1",
     "2"
   ],
+  "unaffected_records": {
+    "1": {
+      "n_rows": 2,
+      "doses": [
+        {
+          "row": 1,
+          "time": 0,
+          "amount": 100,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 2,
+          "time": 0.5,
+          "status": "observed",
+          "value": 3.1
+        }
+      ],
+      "n_obs": 1,
+      "n_observed": 1,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    },
+    "2": {
+      "n_rows": 3,
+      "doses": [
+        {
+          "row": 4,
+          "time": 0,
+          "amount": 120,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 5,
+          "time": 0.5,
+          "status": "observed",
+          "value": 2.7
+        },
+        {
+          "row": 6,
+          "time": 2,
+          "status": "observed",
+          "value": 5.2
+        }
+      ],
+      "n_obs": 2,
+      "n_observed": 2,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    }
+  },
   "n_rows": 6,
   "reference": {
     "software": {

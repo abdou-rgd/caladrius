@@ -628,7 +628,7 @@ dataset_list <- list(
        note = "Indometh, six subjects, one-compartment IV bolus, D = 25 (test constant of F5); example ML5"),
   list(name = "theoph", file = "oracle/data/theoph.csv", model = "pk1.oral_1", ems = ALL_EM,
        init = old_init("fit_theoph_uniform.options.json"),
-       note = "Theoph, twelve subjects, first-order absorption; the proportional and combined models are fitted without the sample at time 0, where the prediction is 0 (ML6b, and a combined model has no maximum when that sample is 0: case ml_theoph_t0_combined)")
+       note = "Theoph, twelve subjects, first-order absorption; the proportional and combined models are fitted without the sample at time 0, where the prediction is 0 (ML6b; a combined model refuses a subject whose sample at time 0 is 0: cases ml_theoph_t0_combined and ml_theoph_t0_combined_sd, refusals ml6e_*)")
 )
 for (nm in names(PROFILES)) {
   pr <- PROFILES[[nm]]
@@ -650,9 +650,13 @@ extra_cases[[length(extra_cases) + 1L]] <- list(
   case = "ml_f_combined_start_at_collapse", base = "f", em = "combined",
   error_init = c(1e-9, 0.0325), init = list("1" = c(v = 10.08, k = 0.196)),
   note = "F data, combined: theta started at the proportional optimum and error_init a = 1e-9, so the start already sits at the collapse of ML3")
-extra_cases[[length(extra_cases) + 1L]] <- list(
-  case = "ml_theoph_t0_combined", base = "theoph", em = "combined", init = NULL,
-  note = "Theoph with the sample at time 0, combined error: for a subject whose sample at time 0 is exactly 0 the likelihood has no maximum (the prediction is 0 there for every theta, so the residual is 0 and the variance is a^2, which tends to 0); those subjects are listed in no_maximum and have no values")
+for (em in c("combined", "combined_sd")) {
+  extra_cases[[length(extra_cases) + 1L]] <- list(
+    case = paste0("ml_theoph_t0_", em), base = "theoph", em = em, init = NULL,
+    note = paste0("Theoph with the sample at time 0, ", em, " error: the subjects whose sample at time 0 is exactly 0 are refused before fitting ",
+                  "(code unbounded_likelihood; the cases ml6e_y0_at_t0_", em, "_theoph<subject> of errors.json) and are not in this case; ",
+                  "the others (a nonzero observation where the prediction is 0) fit as in any other case"))
+}
 
 # ---------------------------------------------------------------- run
 status_of <- function(ref) if (any(ref$active)) "at_bound" else "converged"
@@ -676,24 +680,30 @@ METHOD <- list(
 FIT_OPTIONS <- list(convergence = 1e-10, criterion = "decrement", max_iterations = 500L,
                     confidence_level = 0.95, information = "expected")
 
+# The observation of exactly 0 where the prediction is 0 for every parameter value: the sample at the
+# dose time of an oral dose, under a combined error model.
+is_unbounded <- function(model, em, d) {
+  model == "pk1.oral_1" && em %in% c("combined", "combined_sd") && any(d$time == 0 & d$conc == 0)
+}
+
 run_case <- function(case, ds, em, init, obs_rule, bounds = NULL, error_init = NULL, note = NULL) {
   if (!is.null(only) && !grepl(only, case)) return(invisible(NULL))
   df <- read.csv(file.path(root, ds$file), stringsAsFactors = FALSE)
   subjects <- unique(df$subject)
   lower_theta <- if (is.null(bounds)) NULL else lapply(bounds, function(b) b$lower)
   rows <- character(0); status <- list(); atb <- list(); chk <- list(); gn <- character(0)
-  fitted_subjects <- character(0); no_maximum <- character(0)
+  fitted_subjects <- character(0)
   for (s in subjects) {
     d <- df[df$subject == s, ]
     if (obs_rule$use == "time_greater_than") d <- d[d$time > obs_rule$time, ]
     D <- d$dose[1]
     # An oral model predicts 0 at t = 0 whatever theta is. With a combined error model an observation
     # y = 0 there has residual 0 and sigma = a (or sqrt(A)), so -2LL -> -infinity as a -> 0: the
-    # likelihood has no maximum and there is no reference value (a finding for the spec, FIT-ML-13c).
-    if (ds$model == "pk1.oral_1" && em %in% c("combined", "combined_sd") && any(d$time == 0 & d$conc == 0)) {
-      no_maximum <- c(no_maximum, as.character(s))
-      cat(sprintf("%-32s subject %-3s %-12s no maximum (y = 0 at t = 0)
-", case, as.character(s), em))
+    # likelihood is unbounded. The engine refuses such a subject before fitting (code
+    # unbounded_likelihood, decided by the orchestrator for FIT-ML-13c); it has no reference value here
+    # and its refusal rows are written below (ml6e_*), from the same rule (is_unbounded).
+    if (is_unbounded(ds$model, em, d)) {
+      cat(sprintf("%-32s subject %-3s %-12s refused (unbounded likelihood: y = 0 at t = 0)\n", case, as.character(s), em))
       next
     }
     fitted_subjects <- c(fitted_subjects, as.character(s))
@@ -724,7 +734,7 @@ run_case <- function(case, ds, em, init, obs_rule, bounds = NULL, error_init = N
     observations = if (obs_rule$use == "all") list(use = "all") else list(use = "time_greater_than", time = obs_rule$time),
     initial_estimates = init_list,
     fit_options = FIT_OPTIONS,
-    subjects = I(fitted_subjects), no_maximum = I(no_maximum),
+    subjects = I(fitted_subjects),
     status = status, at_bound = atb,
     method = METHOD, checks = chk,
     versions = versions,
@@ -751,10 +761,12 @@ f_t <- spec_df$time; f_y <- spec_df$conc
 exact_y <- as.numeric(sprintf("%.15g", 100 / 10 * exp(-0.2 * f_t)))
 theoph <- read.csv(file.path(data_dir, "theoph.csv"), stringsAsFactors = FALSE)
 th1 <- theoph[theoph$subject == 1, ]
-mk <- function(case, description, model, dose, time, conc, initial, options, code, words, weighting = "uniform") {
-  list(case = case, description = description, model = model, dose = dose, time = time, conc = conc,
+mk <- function(case, description, model, dose, time, conc, initial, options, code, words, weighting = "uniform", control = NULL) {
+  r <- list(case = case, description = description, model = model, dose = dose, time = time, conc = conc,
        initial = initial, weighting = weighting, options = options,
        error = list(code = code, words = I(words)))
+  if (!is.null(control)) r$control_options <- control
+  r
 }
 f_init <- list(v = 12, k = 0.15)
 errs <- list()
@@ -773,28 +785,46 @@ for (em in c("combined", "combined_sd")) {
   errs[[length(errs) + 1L]] <- mk(paste0("ml6c_too_few_", em),
     "ML6c: the first four F observations, P + Q = 4 = N",
     "pk1.iv_bolus", 100, I(f_t[1:4]), I(f_y[1:4]), f_init, list(objective = "ml", error_model = em),
-    "too_few_observations", c(em, "4 parameters", "from 4 observations"))
+    "too_few_observations", c("4 parameters", "from 4 observations"))
 }
 errs[[length(errs) + 1L]] <- mk("ml6c_too_few_additive",
   "ML6c: the first three F observations with the additive model, P + Q = 3 = N",
   "pk1.iv_bolus", 100, I(f_t[1:3]), I(f_y[1:3]), f_init, list(objective = "ml", error_model = "additive"),
-  "too_few_observations", c("additive", "3 parameters", "from 3 observations"))
+  "too_few_observations", c("3 parameters", "from 3 observations"))
 opts_cases <- list(
   list("unknown_error_model", "an error_model that is not offered", list(objective = "ml", error_model = "poisson"), "error_model"),
   list("missing_error_model", "objective ml without an error_model", list(objective = "ml"), "error_model"),
-  list("error_init_zero", "error_init with an entry equal to 0", list(objective = "ml", error_model = "combined", error_init = c(0.1, 0)), "error_init"),
-  list("error_init_negative", "error_init with a negative entry", list(objective = "ml", error_model = "additive", error_init = I(-0.5)), "error_init"),
-  list("error_init_wrong_length", "error_init with three entries for a two-parameter model", list(objective = "ml", error_model = "combined", error_init = c(0.1, 0.1, 0.1)), "error_init"),
+  list("error_init_zero", "error_init with an entry equal to 0", list(objective = "ml", error_model = "combined", error_init = c(0.1, 0)), "error_init", list(objective = "ml", error_model = "combined", error_init = c(0.1, 0.2))),
+  list("error_init_negative", "error_init with a negative entry", list(objective = "ml", error_model = "additive", error_init = I(-0.5)), "error_init", list(objective = "ml", error_model = "additive", error_init = I(0.5))),
+  list("error_init_wrong_length", "error_init with three entries for a two-parameter model", list(objective = "ml", error_model = "combined", error_init = c(0.1, 0.1, 0.1)), "error_init", list(objective = "ml", error_model = "combined", error_init = c(0.1, 0.1))),
   list("unknown_objective", "an objective that is neither wls nor ml", list(objective = "reml", error_model = "additive"), "objective")
 )
 for (o in opts_cases) {
   errs[[length(errs) + 1L]] <- mk(paste0("ml6d_", o[[1]]), paste0("ML6 (FIT-ML-14c): ", o[[2]]),
-    "pk1.iv_bolus", 100, I(f_t), I(f_y), f_init, o[[3]], "invalid_option", o[[4]])
+    "pk1.iv_bolus", 100, I(f_t), I(f_y), f_init, o[[3]], "invalid_option", o[[4]],
+    control = if (length(o) >= 5L) o[[5]] else NULL)
 }
 errs[[length(errs) + 1L]] <- mk("ml6d_weighting_with_ml",
   "FIT-ML-01: a weighting other than uniform together with objective ml",
   "pk1.iv_bolus", 100, I(f_t), I(f_y), f_init, list(objective = "ml", error_model = "additive"),
   "invalid_option", c("weighting", "error model"), weighting = "inv_y")
+# ML6e (decision on FIT-ML-13c): under a combined error model an observation of exactly 0 where the
+# prediction is 0 for every parameter value (the sample at the dose time of an oral dose) makes the
+# likelihood unbounded. The subject is refused before fitting, with the code unbounded_likelihood; the
+# sentence names the rows (time 0) and says to exclude them or to use the additive model. The control
+# runs the additive model on the same observations: it must be accepted and fitted.
+for (em in c("combined", "combined_sd")) {
+  for (s in sort(unique(theoph$subject))) {
+    d <- theoph[theoph$subject == s, ]
+    if (!is_unbounded("pk1.oral_1", em, d)) next
+    errs[[length(errs) + 1L]] <- mk(sprintf("ml6e_y0_at_t0_%s_theoph%d", em, s),
+      sprintf("ML6e: Theoph subject %d, observation 0 at time 0 where the prediction is 0, %s error: the likelihood is unbounded", s, em),
+      "pk1.oral_1", d$dose[1], I(d$time), I(d$conc), old_init("fit_theoph_uniform.options.json")[[as.character(s)]],
+      list(objective = "ml", error_model = em),
+      "unbounded_likelihood", c("time 0", "exclude", "additive"),
+      control = list(objective = "ml", error_model = "additive"))
+  }
+}
 if (is.null(only)) {
   write_lines_lf(toJSON(list(schema = 1L, kind = "fit_ml_errors", generated_by = "oracle/scripts/fit_ml.R",
                              versions = versions, cases = errs),

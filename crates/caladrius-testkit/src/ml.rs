@@ -168,8 +168,6 @@ struct RawCase {
     initial_estimates: BTreeMap<String, BTreeMap<String, f64>>,
     fit_options: MlFitOptions,
     subjects: Vec<String>,
-    #[serde(default)]
-    no_maximum: Vec<String>,
     // An empty R list is written `[]`, a filled one `{...}`: read as a value, then converted.
     #[serde(default)]
     status: Value,
@@ -202,12 +200,10 @@ pub struct MlCase {
     /// The `error_init` option (initial a, b in user units), when the case gives it.
     pub error_init: Option<Vec<f64>>,
     pub options: MlFitOptions,
-    /// Subjects that have reference results.
+    /// Subjects that have reference results. A subject of the dataset that is not listed is refused
+    /// before fitting (an oral profile with an observation of 0 at time 0 under a combined error
+    /// model: the likelihood is unbounded; the refusal rows `ml6e_*` of `errors.json`).
     pub subjects: Vec<String>,
-    /// Subjects left out because the likelihood has no maximum for them (an oral profile with a zero
-    /// observation at time 0 under a combined error model: the prediction is 0 there for every
-    /// parameter value, so the residual is 0 and the variance tends to 0 with `a`).
-    pub no_maximum: Vec<String>,
     /// `converged` or `at_bound`, by subject.
     pub status: BTreeMap<String, String>,
     /// Names of the error or model parameters held on a bound at the reference optimum, by subject.
@@ -335,7 +331,7 @@ pub fn load_fit_ml_case(name: &str) -> Result<MlCase, OracleError> {
     }
     let status: BTreeMap<String, String> = map_of(&raw.status, &here, "status")?;
     let at_bound: BTreeMap<String, Vec<String>> = map_of(&raw.at_bound, &here, "at_bound")?;
-    for subject in raw.subjects.iter().chain(&raw.no_maximum) {
+    for subject in &raw.subjects {
         if !dataset
             .profiles
             .iter()
@@ -364,13 +360,6 @@ pub fn load_fit_ml_case(name: &str) -> Result<MlCase, OracleError> {
             }
         }
     }
-    for subject in &raw.no_maximum {
-        if expected.iter().any(|(s, _, _)| s == subject) {
-            return Err(inconsistent(format!(
-                "subject {subject} has no maximum and must have no values"
-            )));
-        }
-    }
     let bounds = raw
         .bounds
         .into_iter()
@@ -388,7 +377,6 @@ pub fn load_fit_ml_case(name: &str) -> Result<MlCase, OracleError> {
         error_init: raw.error_init,
         options: raw.fit_options,
         subjects: raw.subjects,
-        no_maximum: raw.no_maximum,
         status,
         at_bound,
         expected,
@@ -432,6 +420,11 @@ pub struct MlErrorCase {
     /// The options to set, by their ids in `specs/fit.md` FIT-ML-21: `objective`, `error_model`,
     /// `error_init`.
     pub options: BTreeMap<String, Value>,
+    /// When present: options that differ from `options` only in what the case refuses (a valid
+    /// `error_init`, the additive model for the unbounded likelihood). The engine must accept and fit
+    /// the same observations with them, so that the refusal cannot come from an option it does not know.
+    #[serde(default)]
+    pub control_options: Option<BTreeMap<String, Value>>,
     pub error: MlExpectedError,
 }
 
@@ -869,6 +862,64 @@ mod tests {
             }
         }
         assert!(compared >= 40, "{compared} fits compared");
+    }
+    #[test]
+    fn the_refusals_carry_their_controls() {
+        let errors = load_fit_ml_errors().expect("errors");
+        // y = 0 at time 0 under a combined model: both forms, several subjects, additive control
+        let unbounded: Vec<&MlErrorCase> = errors
+            .iter()
+            .filter(|c| c.case.starts_with("ml6e_"))
+            .collect();
+        assert!(unbounded.len() >= 4, "{} rows", unbounded.len());
+        for em in ["combined", "combined_sd"] {
+            assert!(
+                unbounded
+                    .iter()
+                    .any(|c| c.options.get("error_model").and_then(Value::as_str) == Some(em)),
+                "no unbounded-likelihood row for {em}"
+            );
+        }
+        for c in &unbounded {
+            assert_eq!(c.error.code, "unbounded_likelihood", "{}", c.case);
+            assert_eq!(c.model, "pk1.oral_1", "{}", c.case);
+            assert!(
+                c.time
+                    .iter()
+                    .zip(&c.conc)
+                    .any(|(&t, &y)| t == 0.0 && y == 0.0),
+                "{}: no observation 0 at time 0",
+                c.case
+            );
+            let control = c.control_options.as_ref().expect("control");
+            assert_eq!(
+                control.get("error_model").and_then(Value::as_str),
+                Some("additive"),
+                "{}",
+                c.case
+            );
+        }
+        // a refusal of `error_init` has a control with a valid `error_init`: same error model
+        let init_rows: Vec<&MlErrorCase> = errors
+            .iter()
+            .filter(|c| c.case.starts_with("ml6d_error_init"))
+            .collect();
+        assert!(init_rows.len() >= 3, "{} rows", init_rows.len());
+        for c in init_rows {
+            let control = c.control_options.as_ref().expect("control");
+            assert_eq!(control.get("error_model"), c.options.get("error_model"));
+            let values = control
+                .get("error_init")
+                .and_then(Value::as_array)
+                .unwrap_or_else(|| panic!("{}: no error_init in the control", c.case));
+            let wanted = if control.get("error_model").and_then(Value::as_str) == Some("combined") {
+                2
+            } else {
+                1
+            };
+            assert_eq!(values.len(), wanted, "{}", c.case);
+            assert!(values.iter().all(|v| v.as_f64().is_some_and(|x| x > 0.0)));
+        }
     }
 
     #[test]

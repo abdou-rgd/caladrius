@@ -32,7 +32,6 @@
     "information": "expected"
   },
   "subjects": ["1"],
-  "no_maximum": [],
   "status": {
     "1": "converged"
   },

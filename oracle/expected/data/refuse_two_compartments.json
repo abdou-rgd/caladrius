@@ -42,6 +42,40 @@
   "unaffected": [
     "2"
   ],
+  "unaffected_records": {
+    "2": {
+      "n_rows": 3,
+      "doses": [
+        {
+          "row": 5,
+          "time": 0,
+          "amount": 120,
+          "rate": null,
+          "duration": null,
+          "kind": "bolus"
+        }
+      ],
+      "observations": [
+        {
+          "row": 6,
+          "time": 0.5,
+          "status": "observed",
+          "value": 2.7
+        },
+        {
+          "row": 7,
+          "time": 2,
+          "status": "observed",
+          "value": 5.2
+        }
+      ],
+      "n_obs": 2,
+      "n_observed": 2,
+      "n_missing": 0,
+      "n_blq": 0,
+      "covariates": {}
+    }
+  },
   "n_rows": 7,
   "reference": {
     "software": {

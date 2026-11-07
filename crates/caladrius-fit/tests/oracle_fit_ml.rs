@@ -37,7 +37,12 @@
 //! (`serde_json::to_value(&result)["observations"]`) has `sigma` and `iwres` in each row, in the
 //! place of `weight` and `weighted_residual`. `FitStatus` has `Converged` and `AtBound` today
 //! (serialised `converged`, `at_bound`). A refusal is a `FitError` whose serialised `code` is
-//! `exact_fit`, `non_positive_sigma`, `too_few_observations` or `invalid_option`.
+//! `exact_fit`, `non_positive_sigma`, `too_few_observations`, `unbounded_likelihood` or
+//! `invalid_option`. `unbounded_likelihood` (decision on FIT-ML-13c, the sentence not yet in the spec):
+//! under `combined` or `combined_sd`, an observation of exactly 0 where the prediction is 0 for every
+//! parameter value (the sample at the dose time of an oral dose) is refused before fitting; the message
+//! names the rows (time 0) and says to exclude them or to use the additive model. The other subjects
+//! of the dataset fit as before (cases `ml_theoph_t0_combined` and `ml_theoph_t0_combined_sd`).
 //!
 //! Tolerances: estimates and statistics `FIT_PARAMETERS` (1e-4 relative; `FIT_PARAMETERS_SMALL_CASE`,
 //! 1e-6, on the five-point F data, as for the least-squares oracle); the residual sum of squares
@@ -46,9 +51,7 @@
 //! value that is zero by structure `FIT_STRUCTURAL_ZERO`. Nothing is loosened.
 //!
 //! Not compared with the engine: `se_obs.*` and `correlation_obs.*` (the observed information, which
-//! `information = expected` does not give: OF-16), the Gauss-Newton statistics, and the subjects
-//! listed as `no_maximum` (an oral profile whose observation at time 0 is 0, under a combined error
-//! model: the likelihood is unbounded, and what the engine must do is a question to the spec).
+//! `information = expected` does not give: OF-16), and the Gauss-Newton statistics.
 
 use std::collections::BTreeMap;
 
@@ -258,16 +261,23 @@ fn check_groups(case_name: &str, groups: &[MlGroup]) {
     let mut checked = 0usize;
     for subject in &case.subjects {
         let result = fit_case(&case, subject);
+        let mut of_subject = 0usize;
         for (s, name, value) in case.expected.iter() {
             if s != subject || !groups.contains(&MlGroup::of(name).unwrap()) {
                 continue;
             }
             // sigma.<i> and iwres.<i> are read from the residual table, the rest by name
             checked += 1;
+            of_subject += 1;
             if let Some(line) = compare_named(&case, &result, name, value) {
                 problems.push(format!("[{subject}] {line}"));
             }
         }
+        // every subject has every group: a subject without an expected value would pass empty
+        assert!(
+            of_subject > 0,
+            "{case_name} subject {subject}: no expected value in {groups:?}"
+        );
     }
     assert!(checked > 0, "{case_name}: no expected value in {groups:?}");
     assert!(
@@ -312,18 +322,23 @@ fn compare_named(
 fn check_status(case_name: &str) {
     let case = load_fit_ml_case(case_name).expect("the ML oracle case loads");
     let mut problems = Vec::new();
+    let mut checked = 0usize;
     for subject in &case.subjects {
         let result = fit_case(&case, subject);
         let want = &case.status[subject];
         let got = status_id(&result);
+        checked += 1;
         if &got != want {
             problems.push(format!("subject {subject}: status {got}, expected {want}"));
         }
         // the components on a bound: their SE and CV% are not available, the others are
+        let mut of_subject = 0usize;
         for par in case.parameter_names() {
             let on_bound = case.at_bound.get(subject).is_some_and(|b| b.contains(&par));
             for stat in ["se", "cv_percent"] {
                 let name = format!("{stat}.{par}");
+                checked += 1;
+                of_subject += 1;
                 if on_bound && result.get(&name).is_some() {
                     problems.push(format!("subject {subject}: {name} must be NC on a bound"));
                 }
@@ -333,7 +348,12 @@ fn check_status(case_name: &str) {
                 }
             }
         }
+        assert!(
+            of_subject > 0,
+            "{case_name} subject {subject}: no parameter checked"
+        );
     }
+    assert!(checked > 0, "{case_name}: nothing checked");
     assert!(problems.is_empty(), "{case_name}: {}", problems.join("; "));
 }
 
@@ -387,6 +407,7 @@ macro_rules! ml_refusal_tests {
 fn check_least_squares_forms(case_name: &str) {
     let case = load_fit_ml_case(case_name).expect("the ML oracle case loads");
     let mut problems = Vec::new();
+    let mut checked = 0usize;
     for subject in &case.subjects {
         let result = fit_case(&case, subject);
         let rss = case.value(subject, "rss_uniform").unwrap();
@@ -395,10 +416,12 @@ fn check_least_squares_forms(case_name: &str) {
             case.value(subject, "p").unwrap(),
         );
         let wrss = need(&result, "wrss");
+        checked += 1;
         if !Tolerance::FIT_WEIGHTED_SS.accepts(wrss, rss) {
             problems.push(format!("[{subject}] wrss: expected {rss:e}, got {wrss:e}"));
         }
         for (name, penalty) in [("aic", 2.0 * p), ("sbc", p * libm::log(n))] {
+            checked += 1;
             let formula = n * libm::log(wrss) + penalty;
             let actual = need(&result, name);
             if (actual - formula).abs() > ML_LS_FORMULA_RELATIVE * formula.abs().max(1.0) {
@@ -408,6 +431,7 @@ fn check_least_squares_forms(case_name: &str) {
             }
         }
     }
+    assert!(checked > 0, "{case_name}: nothing checked");
     assert!(problems.is_empty(), "{case_name}: {}", problems.join("; "));
 }
 
@@ -432,6 +456,25 @@ fn check_refusal(name: &str) {
     );
     parse_input(&control)
         .unwrap_or_else(|e| panic!("{name}: valid maximum-likelihood options are refused: {e}"));
+    // A control that differs from the refused input only in what is refused (a valid `error_init`,
+    // the additive model for the unbounded likelihood) is accepted and fitted. Without it an engine
+    // that does not know the option could pass the refusal through "unknown field".
+    if let Some(control_options) = &case.control_options {
+        let control = input_value(
+            &case.model,
+            case.dose,
+            &case.time,
+            &case.conc,
+            &case.weighting,
+            &case.initial,
+            Value::Object(control_options.clone().into_iter().collect()),
+        );
+        let input = parse_input(&control)
+            .unwrap_or_else(|e| panic!("{name}: the control input is refused: {e}"));
+        if let Err(e) = run(&input) {
+            panic!("{name}: the control input {control_options:?} is refused: {e}");
+        }
+    }
     let options = Value::Object(case.options.clone().into_iter().collect());
     let value = input_value(
         &case.model,
@@ -572,15 +615,16 @@ fn additive_information_criteria_differ_by_a_constant() {
 /// of a scale parameter, so it holds for the combined models too (also at their collapse).
 #[test]
 fn the_squared_iwres_sum_to_n() {
+    let mut checked = 0usize;
     for em in caladrius_testkit::ML_ERROR_MODELS {
         for &(prefix, subject) in HAND_PROFILES {
             let name = format!("ml_{prefix}_{em}");
-            let Ok(case) = load_fit_ml_case(&name) else {
-                continue;
-            };
-            if !case.subjects.iter().any(|s| s == subject) {
-                continue; // no maximum for this subject
-            }
+            let case = hand_case(prefix, em);
+            assert!(
+                case.subjects.iter().any(|s| s == subject),
+                "{name}: no reference for subject {subject}"
+            );
+            checked += 1;
             let r = fit_case(&case, subject);
             let (_, s2, n) = sum_z2(&r);
             assert!(
@@ -594,6 +638,46 @@ fn the_squared_iwres_sum_to_n() {
             );
         }
     }
+    assert_eq!(
+        checked,
+        caladrius_testkit::ML_ERROR_MODELS.len() * HAND_PROFILES.len(),
+        "fits checked"
+    );
+}
+
+/// The standard deviation of the IWRES (divisor N − 1) is sqrt(N / (N − 1)) for the proportional
+/// model: V is a scale of the prediction, so the mean is 0 and the sum of z^2 is N (OF-15, FIT-ML-13,
+/// FIT-ML-18). It is checked on the residual table and on the engine's own `iwres_sd`, with the
+/// tolerance of the sum of z^2 = N (`FIT_PARAMETERS`): the standard deviation follows from it.
+#[test]
+fn the_proportional_iwres_have_standard_deviation_sqrt_n_over_n_minus_1() {
+    let mut checked = 0usize;
+    for &(prefix, subject) in HAND_PROFILES {
+        let case = hand_case(prefix, "proportional");
+        let r = fit_case(&case, subject);
+        let (_, s2, n) = sum_z2(&r);
+        assert!(n >= 2, "{prefix} subject {subject}: {n} observations");
+        let want = (n as f64 / (n as f64 - 1.0)).sqrt();
+        let table = residual_table(&r);
+        let mean = table.iter().map(|&(_, z)| z).sum::<f64>() / n as f64;
+        let variance = table
+            .iter()
+            .map(|&(_, z)| (z - mean) * (z - mean))
+            .sum::<f64>()
+            / (n as f64 - 1.0);
+        assert!(
+            Tolerance::FIT_PARAMETERS.accepts(variance.sqrt(), want),
+            "{prefix} subject {subject}: SD of the residual table {} against {want} (sum of z^2 = {s2})",
+            variance.sqrt()
+        );
+        assert!(
+            Tolerance::FIT_PARAMETERS.accepts(need(&r, "iwres_sd"), want),
+            "{prefix} subject {subject}: iwres_sd {} against sqrt(N/(N-1)) = {want}",
+            need(&r, "iwres_sd")
+        );
+        checked += 1;
+    }
+    assert_eq!(checked, HAND_PROFILES.len(), "fits checked");
 }
 
 /// The proportional profile: b^2 = mean((r / yhat)^2) at the estimate of theta, and, because V is
@@ -673,6 +757,10 @@ fn a_collapsed_combined_model_equals_the_one_parameter_model() {
             .strip_prefix("ml_")
             .and_then(|n| n.strip_suffix(&format!("_{}", case.error_model)));
         let Some(prefix) = prefix else { continue };
+        // the `_t0` cases keep the sample at time 0 (all rows): the one-parameter fit to compare with
+        // is the additive case of the same data (a proportional fit refuses the row at time 0)
+        let with_t0 = prefix.ends_with("_t0");
+        let prefix = prefix.strip_suffix("_t0").unwrap_or(prefix);
         for subject in &case.subjects {
             let Some(bound) = case.at_bound.get(subject).filter(|b| !b.is_empty()) else {
                 continue;
@@ -683,6 +771,10 @@ fn a_collapsed_combined_model_equals_the_one_parameter_model() {
                 ("additive", "error_a")
             };
             assert_eq!(bound.len(), 1, "{name} subject {subject}");
+            assert!(
+                !with_t0 || alone == "additive",
+                "{name} subject {subject}: a fit with the row at time 0 cannot collapse onto {alone}"
+            );
             let simple = hand_case(prefix, alone);
             let combined = fit_case(&case, subject);
             let one = fit_case(&simple, subject);
@@ -727,20 +819,22 @@ fn a_collapsed_combined_model_equals_the_one_parameter_model() {
 #[test]
 fn scaling_y_and_dose_shifts_m2ll_by_two_n_ln_c() {
     let c = 7.5_f64;
+    let profiles = [
+        ("f", "1"),
+        ("iv_s1", "1"),
+        ("oral_s1", "1"),
+        ("indometh", "1"),
+    ];
+    let mut checked = 0usize;
     for em in caladrius_testkit::ML_ERROR_MODELS {
-        for &(prefix, subject) in &[
-            ("f", "1"),
-            ("iv_s1", "1"),
-            ("oral_s1", "1"),
-            ("indometh", "1"),
-        ] {
+        for &(prefix, subject) in &profiles {
             let name = format!("ml_{prefix}_{em}");
-            let Ok(case) = load_fit_ml_case(&name) else {
-                continue;
-            };
-            if !case.subjects.iter().any(|s| s == subject) {
-                continue;
-            }
+            let case = hand_case(prefix, em);
+            assert!(
+                case.subjects.iter().any(|s| s == subject),
+                "{name}: no reference for subject {subject}"
+            );
+            checked += 1;
             let base = fit_case(&case, subject);
             let mut value = case_input(&case, subject);
             let scale = |key: &str, value: &mut Value| {
@@ -787,6 +881,11 @@ fn scaling_y_and_dose_shifts_m2ll_by_two_n_ln_c() {
             }
         }
     }
+    assert_eq!(
+        checked,
+        caladrius_testkit::ML_ERROR_MODELS.len() * profiles.len(),
+        "scaled fits checked"
+    );
 }
 
 // ---------------------------------------------------------------- the generated list of cases
@@ -851,4 +950,45 @@ fn the_reference_is_complete_for_the_tests() {
             );
         }
     }
+}
+
+/// Green today: a subject of a dataset that a case does not fit is one that the engine must refuse
+/// before fitting (observation 0 at time 0 under a combined error model: `unbounded_likelihood`), and
+/// every such refusal row names a subject that a case leaves out and whose profile has that
+/// observation. No subject is dropped without a refusal, and no refusal row stands alone.
+#[test]
+fn every_subject_left_out_of_a_case_has_its_refusal() {
+    let rows: Vec<_> = load_fit_ml_errors()
+        .unwrap()
+        .into_iter()
+        .filter(|c| c.case.starts_with("ml6e_"))
+        .collect();
+    let mut left_out = 0usize;
+    for name in ML_CASES {
+        let case = load_fit_ml_case(name).unwrap();
+        let dataset = name.split('_').nth(1).unwrap_or("");
+        for profile in &case.dataset.profiles {
+            let subject = profile.subject.to_string();
+            if case.subjects.contains(&subject) {
+                continue;
+            }
+            left_out += 1;
+            let row = format!("ml6e_y0_at_t0_{}_{dataset}{subject}", case.error_model);
+            let found = rows.iter().find(|c| c.case == row);
+            let found = found.unwrap_or_else(|| {
+                panic!("{name}: subject {subject} is neither fitted nor refused ({row})")
+            });
+            assert_eq!(found.error.code, "unbounded_likelihood", "{row}");
+            assert!(
+                profile
+                    .time
+                    .iter()
+                    .zip(&profile.conc)
+                    .any(|(&t, &y)| t == 0.0 && y == 0.0),
+                "{row}: the profile has no observation 0 at time 0"
+            );
+        }
+    }
+    assert_eq!(left_out, rows.len(), "refusal rows without a case");
+    assert!(left_out > 0, "no subject is refused");
 }

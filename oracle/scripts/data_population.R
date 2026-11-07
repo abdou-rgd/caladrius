@@ -204,9 +204,10 @@ strip_unit <- function(h) sub("\\s*[\\(\\[].*$", "", h, perl = TRUE)
 subjects_of <- function(a) { s <- a$label; unique(s[s != ""]) }
 
 # the facts of every subject (the expected `records`)
-facts_of <- function(a) {
+# `only`: the subjects to describe (a refused table: the subjects it does not affect); all by default
+facts_of <- function(a, only = NULL) {
   recs <- a$rec
-  subs <- subjects_of(a)
+  subs <- if (is.null(only)) subjects_of(a) else only
   out <- list()
   dose_col <- col_of(a$cols, "amt")
   for (s in subs) {
@@ -494,6 +495,7 @@ for (def in defs$refusals) {
               error = list(code = def$code, row = def$row, subject = def$subject, column = def$column,
                            words = as_array(def$words)),
               subjects = as_array(subs), affected = as_array(affected), unaffected = as_array(unaffected),
+              unaffected_records = facts_of(a, only = unaffected),
               n_rows = nrow(a$df),
               reference = list(software = meta, problem_found_in_r = found[c("row", "subject")]))
   write_lines_lf(toJSON(out, auto_unbox = TRUE, pretty = TRUE, digits = NA, null = "null", na = "null"),

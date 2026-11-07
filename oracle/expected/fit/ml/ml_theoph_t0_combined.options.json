@@ -9,7 +9,7 @@
   "objective": "ml",
   "error_model": "combined",
   "weighting": "uniform",
-  "note": "Theoph with the sample at time 0, combined error: for a subject whose sample at time 0 is exactly 0 the likelihood has no maximum (the prediction is 0 there for every theta, so the residual is 0 and the variance is a^2, which tends to 0); those subjects are listed in no_maximum and have no values",
+  "note": "Theoph with the sample at time 0, combined error: the subjects whose sample at time 0 is exactly 0 are refused before fitting (code unbounded_likelihood; the cases ml6e_y0_at_t0_combined_theoph<subject> of errors.json) and are not in this case; the others (a nonzero observation where the prediction is 0) fit as in any other case",
   "units": {
     "dose": "mg",
     "time": "h",
@@ -88,7 +88,6 @@
     "information": "expected"
   },
   "subjects": ["1", "7", "10"],
-  "no_maximum": ["2", "3", "4", "5", "6", "8", "9", "11", "12"],
   "status": {
     "1": "converged",
     "7": "at_bound",
