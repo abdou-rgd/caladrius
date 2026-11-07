@@ -49,4 +49,6 @@ pub use worksheet::{
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_dataset;
+#[cfg(test)]
 mod tests_plot;

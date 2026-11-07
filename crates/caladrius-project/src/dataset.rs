@@ -301,8 +301,7 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
             .columns
             .iter()
             .filter(|c| {
-                c.role == ColumnRole::Other
-                    && matches!(key(&c.name).as_str(), "ii" | "addl" | "ss")
+                c.role == ColumnRole::Other && matches!(key(&c.name).as_str(), "ii" | "addl" | "ss")
             })
             .collect(),
     };
@@ -466,7 +465,8 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
         .into_iter()
         .zip(accs)
         .map(|(id, acc)| {
-            let count = |s: ObservationStatus| acc.observations.iter().filter(|o| o.status == s).count();
+            let count =
+                |s: ObservationStatus| acc.observations.iter().filter(|o| o.status == s).count();
             SubjectRecords {
                 n_obs: acc.observations.len(),
                 n_observed: count(ObservationStatus::Observed),
@@ -810,8 +810,8 @@ fn observation_row(
     let value = number_at(cols.conc, row);
     let censored = match number_at(cols.cens, row) {
         None => false,
-        Some(c) if c == 0.0 => false,
-        Some(c) if c == 1.0 => {
+        Some(0.0) => false,
+        Some(1.0) => {
             if value.is_none() && !skipped {
                 fail(
                     "unsupported_censoring",

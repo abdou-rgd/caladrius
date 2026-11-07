@@ -52,7 +52,10 @@ pub fn render(file: &str, bytes: &[u8]) -> String {
     let mut by_options = Map::new();
     for (label, options) in variants() {
         let mut entry = Map::new();
-        entry.insert("from_csv".to_owned(), outcome(ImportedTable::from_csv(bytes, &options)));
+        entry.insert(
+            "from_csv".to_owned(),
+            outcome(ImportedTable::from_csv(bytes, &options)),
+        );
         let found = readings(bytes, &options).map(|list| {
             list.iter()
                 .map(|r| {
@@ -74,7 +77,10 @@ pub fn render(file: &str, bytes: &[u8]) -> String {
             if let Ok(ws) = project.worksheet(id) {
                 let subjects = ws.subjects();
                 let mut profiles = Map::new();
-                profiles.insert("(none)".to_owned(), json!(format!("{:?}", ws.profile(None))));
+                profiles.insert(
+                    "(none)".to_owned(),
+                    json!(format!("{:?}", ws.profile(None))),
+                );
                 for s in &subjects {
                     profiles.insert(s.clone(), json!(format!("{:?}", ws.profile(Some(s)))));
                 }

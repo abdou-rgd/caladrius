@@ -330,9 +330,7 @@ impl Worksheet {
                     ));
                 }
             }
-            if !c.role.can_repeat()
-                && self.columns.iter().skip(i + 1).any(|d| d.role == c.role)
-            {
+            if !c.role.can_repeat() && self.columns.iter().skip(i + 1).any(|d| d.role == c.role) {
                 return Err(ProjectError::new(
                     "duplicate_role",
                     format!(

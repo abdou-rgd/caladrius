@@ -472,9 +472,15 @@ fn event_layout_notes(columns: &[Column], notes: &mut Vec<String>) {
             continue;
         }
         let what = match key(&column.name).as_str() {
-            "addl" => "holds additional doses; additional doses are not used yet, so each dose row is one dose",
-            "ii" => "holds interdose intervals; interdose intervals are not used yet, so each dose row is one dose",
-            "ss" => "holds steady-state flags; steady state is not used yet, so each dose row is one dose",
+            "addl" => {
+                "holds additional doses; additional doses are not used yet, so each dose row is one dose"
+            }
+            "ii" => {
+                "holds interdose intervals; interdose intervals are not used yet, so each dose row is one dose"
+            }
+            "ss" => {
+                "holds steady-state flags; steady state is not used yet, so each dose row is one dose"
+            }
             "occ" | "occasion" => "holds occasions; occasions are not used yet",
             "ytype" | "dvid" => "holds response types; response types are not used yet",
             _ => continue,
@@ -610,7 +616,8 @@ pub(crate) fn check_table(table: &ImportedTable) -> Vec<ReadingCheck> {
 /// observation can share a time (DAT-ORD-01). Times going back are checked over every row.
 fn check_times(table: &ImportedTable, observations: Option<&[bool]>) -> Vec<ReadingCheck> {
     let mut out = Vec::new();
-    let is_observation = |row: usize| observations.is_none_or(|o| o.get(row).copied().unwrap_or(true));
+    let is_observation =
+        |row: usize| observations.is_none_or(|o| o.get(row).copied().unwrap_or(true));
     let Some(time) = table
         .columns
         .iter()
@@ -656,8 +663,10 @@ fn check_times(table: &ImportedTable, observations: Option<&[bool]>) -> Vec<Read
                 }
             }
         }
-        let observed: Vec<&(usize, f64)> =
-            rows.iter().filter(|(row, _)| is_observation(*row)).collect();
+        let observed: Vec<&(usize, f64)> = rows
+            .iter()
+            .filter(|(row, _)| is_observation(*row))
+            .collect();
         for pair in observed.windows(2) {
             if let [(_, a), (row, b)] = pair {
                 if b == a && repeated.is_none() {
