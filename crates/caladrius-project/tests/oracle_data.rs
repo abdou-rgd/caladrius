@@ -275,14 +275,12 @@ fn refusal_case(case: &str) {
             "{case}: reading {i} has no check; a refused table must not load"
         );
     }
-    let hit = all[0]["checks"]
-        .as_array()
-        .expect("checks")
-        .iter()
-        .find(|c| c["code"] == code);
-    let Some(check) = hit else {
+    let checks = all[0]["checks"].as_array().expect("checks");
+    // T-150 item 2: the refusal is the first check of the reading
+    let first = checks.first();
+    let Some(check) = first.filter(|c| c["code"] == code) else {
         panic!(
-            "{case}: expected the check `{code}`, found {:?}",
+            "{case}: expected `{code}` as the first check, found {:?}",
             codes_of(&all[0])
         );
     };
