@@ -61,6 +61,8 @@ pub(crate) struct Problem<M: FitModel> {
     /// Bounds of the fitted parameters (−∞, +∞ when absent).
     pub lower: Vec<f64>,
     pub upper: Vec<f64>,
+    /// The maximum-likelihood objective with its error model; `None` for least squares.
+    pub ml: Option<crate::ml::Spec>,
 }
 
 fn invalid_option(option: &str, reason: &str) -> FitError {
@@ -74,6 +76,7 @@ impl<M: FitModel> Problem<M> {
     /// Checks the input (FIT-ERR-01, WGT-02) and the initial estimates.
     pub fn new(model: M, input: &FitInput) -> Result<Self, FitError> {
         let o = &input.options;
+        let ml = crate::ml::spec(o, input.weighting)?;
         if !(o.increment > 0.0 && o.increment <= MAX_INCREMENT) {
             return Err(invalid_option(
                 "increment",
@@ -149,8 +152,25 @@ impl<M: FitModel> Problem<M> {
             return Err(FitError::NoParameters);
         }
         let (n, p) = (input.time.len(), names.len());
-        if n < p {
-            return Err(FitError::TooFewObservations { n, p });
+        match &ml {
+            // FIT-ML-14a: the error is estimated too, so N must exceed P + Q.
+            Some(spec) if n <= p + spec.error_model.q() => {
+                return Err(FitError::TooFewObservations {
+                    n,
+                    p,
+                    q: Some(spec.error_model.q()),
+                    error_model: Some(spec.error_model.id().to_string()),
+                });
+            }
+            None if n < p => {
+                return Err(FitError::TooFewObservations {
+                    n,
+                    p,
+                    q: None,
+                    error_model: None,
+                });
+            }
+            _ => {}
         }
         for (index, (&t, &c)) in input.time.iter().zip(&input.conc).enumerate() {
             if !t.is_finite() {
@@ -248,6 +268,7 @@ impl<M: FitModel> Problem<M> {
             fixed: fixed.clone(),
             lower,
             upper,
+            ml,
             options: o.clone(),
         };
         let pred = problem
@@ -478,7 +499,7 @@ impl<M: FitModel> Problem<M> {
 
 /// Damped direction: least squares of [A; √λ·I]·δ ≈ [r; 0] on the scaled columns, which is
 /// Marquardt's (JᵀJ + λ·diag(JᵀJ))·δ = Jᵀr in the original scale (FIT-ALG-02, ALG-04).
-fn damped(a: &Mat, r: &[f64], lambda: f64) -> Option<Vec<f64>> {
+pub(crate) fn damped(a: &Mat, r: &[f64], lambda: f64) -> Option<Vec<f64>> {
     let (m, n) = (a.rows(), a.cols());
     let mut aug = Mat::zeros(m + n, n);
     for i in 0..m {

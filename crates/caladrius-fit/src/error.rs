@@ -23,8 +23,14 @@ pub enum FitError {
     TooFewObservations {
         /// Observations.
         n: usize,
-        /// Fitted parameters.
+        /// Fitted model parameters.
         p: usize,
+        /// Error parameters of the maximum-likelihood fit (FIT-ML-14a); absent for least squares.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        q: Option<usize>,
+        /// The error model, in the same case.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        error_model: Option<String>,
     },
     /// A time or a concentration is NaN or infinite.
     NonFiniteObservation {
@@ -128,6 +134,39 @@ pub enum FitError {
         /// The model id.
         model: String,
     },
+    /// The model reproduces the observations exactly, so the likelihood has no maximum (FIT-ML-15).
+    ExactFit,
+    /// A proportional error model gives a standard deviation that is 0 or not finite at the
+    /// starting point (FIT-ML-14b).
+    NonPositiveSigma {
+        /// The error model.
+        error_model: String,
+        /// Position of the first such observation.
+        index: usize,
+        /// Its time.
+        #[serde(
+            serialize_with = "crate::float::ser",
+            deserialize_with = "crate::float::de"
+        )]
+        time: f64,
+        /// The prediction there.
+        #[serde(
+            serialize_with = "crate::float::ser",
+            deserialize_with = "crate::float::de"
+        )]
+        predicted: f64,
+    },
+    /// A combined error model with an observation of exactly 0 where the model predicts exactly 0
+    /// whatever the parameters: the standard deviation can shrink to 0 there at no cost, so the
+    /// likelihood is unbounded (FIT-ML-13c, decision of T-148).
+    UnboundedLikelihood {
+        /// The error model.
+        error_model: String,
+        /// Positions of the observations.
+        indices: Vec<usize>,
+        /// Their times.
+        times: Vec<f64>,
+    },
     /// An option outside its domain.
     InvalidOption {
         /// Option name.
@@ -148,7 +187,18 @@ impl fmt::Display for FitError {
                 f,
                 "no parameter to fit; give an initial estimate for each parameter of the model"
             ),
-            Self::TooFewObservations { n, p } => write!(
+            Self::TooFewObservations {
+                n,
+                p,
+                q: Some(q),
+                error_model,
+            } => write!(
+                f,
+                "The maximum-likelihood fit with the {} error model estimates {} parameters ({p} of the model and {q} of the error) from {n} observations. It needs more observations than parameters. Fix a model parameter, choose an error model with fewer parameters, or add observations.",
+                error_model.as_deref().unwrap_or("chosen"),
+                p + q
+            ),
+            Self::TooFewObservations { n, p, .. } => write!(
                 f,
                 "{n} observations for {p} parameters; a fit needs at least as many observations as parameters (fix some parameters or add data)"
             ),
@@ -207,6 +257,40 @@ impl fmt::Display for FitError {
                 f,
                 "closed-form derivatives of {model} are unavailable for a dosing regimen (`tau`, `n_doses` or a schedule among the parameters); use forward differences or `auto`"
             ),
+            Self::ExactFit => write!(
+                f,
+                "The model reproduces the observations exactly (the residual sum of squares is 0 within rounding). The maximum-likelihood estimate of the error does not exist: the likelihood grows without limit as the error standard deviation tends to 0. This usually means that the model has as many parameters as there are observations, or that the data are simulated without noise. Add observations, remove a parameter, or add noise to simulated data."
+            ),
+            Self::NonPositiveSigma {
+                error_model,
+                index,
+                time,
+                predicted,
+            } => write!(
+                f,
+                "The {error_model} error model gives a standard deviation of 0 at observation {} at time {time} (the model predicts {predicted} there). A proportional error cannot describe an observation where the prediction is 0. Leave that observation out, or use the additive or the combined error model.",
+                index + 1
+            ),
+            Self::UnboundedLikelihood {
+                error_model,
+                indices,
+                times,
+            } => {
+                let rows = indices
+                    .iter()
+                    .map(|i| (i + 1).to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let at = times
+                    .iter()
+                    .map(|t| format!("time {t}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(
+                    f,
+                    "The {error_model} error model has no maximum likelihood here: observation(s) {rows} ({at}) are exactly 0 where the model predicts exactly 0 for every parameter value, so the standard deviation can shrink to 0 there without cost. Exclude those observations, or use the additive error model."
+                )
+            }
             Self::InvalidOption { option, reason } => write!(f, "option `{option}`: {reason}"),
         }
     }

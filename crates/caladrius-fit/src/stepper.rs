@@ -11,6 +11,7 @@
 
 use crate::arith::sq;
 use crate::engine::{EXACT_FIT, LAMBDA_FACTOR, LAMBDA_MAX, LAMBDA_START, MIN_STEP, Problem};
+use crate::ml::MlRun;
 use crate::model::FitModel;
 use crate::result::{self, FitResult, TraceRow};
 use crate::{Criterion, Derivatives, FitError, FitInput, FitStatus};
@@ -30,8 +31,8 @@ pub enum Control {
 pub struct Progress<'a> {
     /// Iteration number: 0 for the initial estimates, then 1, 2, ...
     pub iteration: u32,
-    /// The weighted sum of squares at the iterate, as in the trace row (`"wrss"` for an individual
-    /// fit).
+    /// The objective at the iterate, as in the trace row: the weighted sum of squares (`"wrss"` for an
+    /// individual fit), or -2LL for `objective = ml`.
     pub objective: f64,
     /// Names of the fitted parameters, in the order of `values`.
     pub names: &'a [String],
@@ -89,7 +90,7 @@ enum Phase {
     Done,
 }
 
-enum Advance {
+pub(crate) enum Advance {
     Committed { converged: bool },
     Stopped(FitStatus),
 }
@@ -117,6 +118,8 @@ pub struct FitRun<M: FitModel> {
     /// The next iteration to try.
     next_iteration: usize,
     phase: Phase,
+    /// The state of the maximum-likelihood iteration (`objective = ml`); `None` for least squares.
+    ml: Option<MlRun>,
 }
 
 impl<M: FitModel> FitRun<M> {
@@ -124,6 +127,9 @@ impl<M: FitModel> FitRun<M> {
     /// `input.initial` must name the fitted parameters.
     pub fn new(model: M, input: &FitInput) -> Result<Self, FitError> {
         let problem = Problem::new(model, input)?;
+        if let Some(spec) = problem.ml.clone() {
+            return Self::new_ml(problem, &spec, input);
+        }
         let theta = problem.theta0.clone();
         // Checked in `new`: the initial prediction exists and its weights are defined.
         let pred = problem.predict(&theta).unwrap_or_default();
@@ -143,6 +149,8 @@ impl<M: FitModel> FitRun<M> {
             lambda: 0.0,
             halvings: 0,
             relative_decrease: None,
+            m2ll: None,
+            decrement: None,
         }];
         // FIT-CNV-01 (a): below this predicted relative gain a point from which no step decreases
         // the WRSS is the minimum. With forward differences of increment h the Jacobian is only
@@ -168,11 +176,54 @@ impl<M: FitModel> FitRun<M> {
             gain_floor,
             next_iteration: 1,
             phase: Phase::Running,
+            ml: None,
         })
     }
 
-    /// The state after the last committed iteration (iteration 0 before the first step).
+    /// The start of an `objective = ml` run (FIT-ML-10); the iterate at iteration 0 may already
+    /// meet the criterion (FIT-ML-08: the additive model needs no iteration).
+    fn new_ml(
+        problem: Problem<M>,
+        spec: &crate::ml::Spec,
+        input: &FitInput,
+    ) -> Result<Self, FitError> {
+        let (run, row) = MlRun::start(&problem, spec, input)?;
+        let (status, phase) = if run.converged() {
+            (FitStatus::Converged, Phase::Converged)
+        } else {
+            (FitStatus::MaxIterations, Phase::Running)
+        };
+        Ok(Self {
+            theta: problem.theta0.clone(),
+            pred: run.point.ev.pred.clone(),
+            problem,
+            trace: vec![row],
+            lambda: 0.0,
+            previous_decrease: None,
+            status,
+            ss_weighted_start: 0.0,
+            gain_floor: 0.0,
+            next_iteration: 1,
+            phase,
+            ml: Some(run),
+        })
+    }
+
+    /// The state after the last committed iteration (iteration 0 before the first step). After
+    /// `Finished` with the 1/ŷ rollback of least squares, `values` is the best iterate while
+    /// `iteration` is the last row.
     pub fn progress(&self) -> Progress<'_> {
+        if let Some(ml) = &self.ml {
+            let (iteration, objective) = self.trace.last().map_or((0, f64::NAN), |row| {
+                (row.iteration, row.m2ll.unwrap_or(f64::NAN))
+            });
+            return Progress {
+                iteration: u32::try_from(iteration).unwrap_or(u32::MAX),
+                objective,
+                names: &ml.names,
+                values: &ml.values,
+            };
+        }
         let (iteration, objective) = self
             .trace
             .last()
@@ -255,6 +306,9 @@ impl<M: FitModel> FitRun<M> {
 
     /// One pass of the body of the loop (FIT-ALG-02 to 04, CNV-01 to 03, BND-01).
     fn iterate(&mut self, iteration: usize) -> Advance {
+        if let Some(ml) = self.ml.as_mut() {
+            return ml.iterate(&self.problem, iteration, &mut self.trace);
+        }
         let problem = &self.problem;
         let eps = problem.options.convergence;
         let p = self.theta.len();
@@ -396,6 +450,8 @@ impl<M: FitModel> FitRun<M> {
             lambda: lam,
             halvings,
             relative_decrease: Some(decrease / s_new).filter(|x| x.is_finite()),
+            m2ll: None,
+            decrement: None,
         });
         let relative = decrease / s_new;
         let met = if self.problem.weighting.uses_predictions() {
@@ -421,6 +477,9 @@ impl<M: FitModel> FitRun<M> {
     /// rollback leaves the best iterate, which the second pass keeps.
     fn finish(&mut self) -> FitResult {
         self.phase = Phase::Done;
+        if let Some(ml) = &self.ml {
+            return crate::ml_result::build(&self.problem, ml, self.trace.clone(), self.status);
+        }
         // With predicted-value weights each step lowers the WRSS of its own (frozen) weights, which
         // does not guarantee that the WRSS with the weights of the new estimates falls: from a far
         // start it can explode. A fit worse than its start is not converged: return the best

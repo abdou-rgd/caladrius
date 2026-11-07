@@ -106,6 +106,12 @@ pub enum FitFlag {
         /// Threshold.
         threshold: usize,
     },
+    /// A maximum-likelihood fit used more than 50 iterations (FIT-ML-20); informational, the fit
+    /// is not "not converged".
+    SlowConvergence {
+        /// Iterations used.
+        iterations: usize,
+    },
 }
 
 impl fmt::Display for FitFlag {
@@ -148,6 +154,10 @@ impl fmt::Display for FitFlag {
             Self::FewDegreesOfFreedom { value, threshold } => write!(
                 f,
                 "{value} degree(s) of freedom (< {threshold}); the precision of the estimates is barely or not determined"
+            ),
+            Self::SlowConvergence { iterations } => write!(
+                f,
+                "{iterations} iterations were needed (more than 50): the likelihood is flat or the error model describes the data badly; the fit is converged, but another error model or better initial estimates may be worth a try"
             ),
         }
     }

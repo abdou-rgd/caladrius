@@ -18,7 +18,10 @@ mod flags;
 mod float;
 mod initial;
 mod linalg;
+mod ml;
+mod ml_result;
 mod model;
+mod objective;
 mod result;
 mod stats;
 mod stepper;
@@ -32,6 +35,7 @@ pub use error::FitError;
 pub use flags::FitFlag;
 pub use initial::initial_estimates;
 pub use model::{FitModel, Secondary};
+pub use objective::{ErrorModel, Information, Objective};
 pub use result::{CurvePoint, FitResult, ObservationRow, TraceRow};
 pub use stepper::{Control, FitRun, Observer, Outcome, Progress, Step};
 
@@ -134,8 +138,23 @@ pub enum Criterion {
 /// `preset` chooses the starting values of the five iteration settings and any of them given
 /// explicitly replaces the preset's value; the options are then stored as plain values.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(from = "OptionsInput")]
+#[serde(try_from = "OptionsInput")]
 pub struct FitOptions {
+    /// What is minimised: `wls` (the default) or `ml` (FIT-ML-01). The four options below it are
+    /// not written while they hold their defaults, so a least-squares option set serialises as it
+    /// always did.
+    #[serde(skip_serializing_if = "is_wls")]
+    pub objective: Objective,
+    /// The residual error model of `ml` (FIT-ML-02); required with `ml`, refused with `wls`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_model: Option<ErrorModel>,
+    /// Initial error parameters a, b in the user's units, replacing the starting values of
+    /// FIT-ML-10 (`ml` only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_init: Option<Vec<f64>>,
+    /// Where the covariance of `ml` comes from (FIT-ML-17).
+    #[serde(skip_serializing_if = "is_expected")]
+    pub information: Information,
     /// Partial derivatives (`auto`).
     pub derivatives: Derivatives,
     /// Relative increment of the forward differences (1e-5), > 0 and <= 0.1.
@@ -210,6 +229,10 @@ impl FitOptions {
             FitPreset::ReferenceConventions => (Derivatives::ForwardDifference, 0.001, 0.0001),
         };
         Self {
+            objective: Objective::Wls,
+            error_model: None,
+            error_init: None,
+            information: Information::Expected,
             derivatives,
             increment,
             criterion: Criterion::RelativeDecrease,
@@ -227,6 +250,27 @@ impl FitOptions {
     pub fn reference_conventions() -> Self {
         Self::preset(FitPreset::ReferenceConventions)
     }
+
+    /// The defaults of `objective = ml` with `error_model`: the iteration limit is 500 (FIT-ML-08).
+    pub fn maximum_likelihood(error_model: ErrorModel) -> Self {
+        Self {
+            objective: Objective::Ml,
+            error_model: Some(error_model),
+            max_iterations: ML_MAX_ITERATIONS,
+            ..Self::default()
+        }
+    }
+}
+
+/// Default iteration limit of `objective = ml` (FIT-ML-08).
+const ML_MAX_ITERATIONS: usize = 500;
+
+fn is_wls(objective: &Objective) -> bool {
+    *objective == Objective::Wls
+}
+
+fn is_expected(information: &Information) -> bool {
+    *information == Information::Expected
 }
 
 /// [`FitOptions`] as read from JSON: a preset, then the values given explicitly.
@@ -234,6 +278,11 @@ impl FitOptions {
 #[serde(default, deny_unknown_fields)]
 struct OptionsInput {
     preset: FitPreset,
+    // Read as text, so that a wrong word is refused with a message that names the option.
+    objective: Option<String>,
+    error_model: Option<String>,
+    error_init: Option<Vec<f64>>,
+    information: Option<String>,
     derivatives: Option<Derivatives>,
     increment: Option<f64>,
     criterion: Option<Criterion>,
@@ -246,21 +295,57 @@ struct OptionsInput {
     flags: FlagThresholds,
 }
 
-impl From<OptionsInput> for FitOptions {
-    fn from(input: OptionsInput) -> Self {
+impl TryFrom<OptionsInput> for FitOptions {
+    type Error = String;
+
+    fn try_from(input: OptionsInput) -> Result<Self, String> {
         let base = FitOptions::preset(input.preset);
-        Self {
+        let objective = match input.objective.as_deref() {
+            None => Objective::Wls,
+            Some(id) => Objective::from_id(id).ok_or_else(|| {
+                format!(
+                    "option `objective`: unknown objective `{id}`; use `wls` (least squares, the default) or `ml` (maximum likelihood)"
+                )
+            })?,
+        };
+        let error_model = match input.error_model.as_deref() {
+            None => None,
+            Some(id) => Some(ErrorModel::from_id(id).ok_or_else(|| {
+                format!(
+                    "option `error_model`: unknown error model `{id}`; use `additive`, `proportional`, `combined` or `combined_sd`"
+                )
+            })?),
+        };
+        let information = match input.information.as_deref() {
+            None => Information::Expected,
+            Some(id) => Information::from_id(id).ok_or_else(|| {
+                format!(
+                    "option `information`: unknown information `{id}`; only `expected` is available"
+                )
+            })?,
+        };
+        // FIT-ML-08: the limit of a maximum-likelihood fit is 500 unless one is given.
+        let default_limit = if objective == Objective::Ml {
+            ML_MAX_ITERATIONS
+        } else {
+            base.max_iterations
+        };
+        Ok(Self {
+            objective,
+            error_model,
+            error_init: input.error_init,
+            information,
             derivatives: input.derivatives.unwrap_or(base.derivatives),
             increment: input.increment.unwrap_or(base.increment),
             criterion: input.criterion.unwrap_or(base.criterion),
             convergence: input.convergence.unwrap_or(base.convergence),
-            max_iterations: input.max_iterations.unwrap_or(base.max_iterations),
+            max_iterations: input.max_iterations.unwrap_or(default_limit),
             confidence_level: input.confidence_level.unwrap_or(base.confidence_level),
             n_curve: input.n_curve.unwrap_or(base.n_curve),
             fixed: input.fixed,
             bounds: input.bounds,
             flags: input.flags,
-        }
+        })
     }
 }
 

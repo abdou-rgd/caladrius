@@ -40,6 +40,14 @@ pub struct TraceRow {
     /// Relative decrease of the weighted sum of squares in this iteration (None when not finite,
     /// e.g. an exact fit).
     pub relative_decrease: Option<f64>,
+    /// −2LL at the estimates (`objective = ml` only, FIT-ML-20); `wrss` then holds the
+    /// uniform residual sum of squares.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub m2ll: Option<f64>,
+    /// Newton decrement Δ at the estimates (`objective = ml` only, FIT-ML-08); `None` when the
+    /// system is singular there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decrement: Option<f64>,
 }
 
 /// One observation with its prediction (FIT-OUT-09).
@@ -55,8 +63,14 @@ pub struct ObservationRow {
     pub residual: f64,
     /// √w · residual.
     pub weighted_residual: f64,
-    /// Weight at the solution.
+    /// Weight at the solution (`1/σ²` for `objective = ml`).
     pub weight: f64,
+    /// Standard deviation of the observation at the estimates (`objective = ml`, FIT-ML-18).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sigma: Option<f64>,
+    /// Individual weighted residual (y − ŷ)/σ (`objective = ml`, FIT-ML-18).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iwres: Option<f64>,
 }
 
 /// One point of the smooth predicted curve (FIT-OUT-10).
@@ -71,18 +85,24 @@ pub struct CurvePoint {
 /// Result of [`crate::run`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FitResult {
-    status: FitStatus,
-    parameters: Vec<String>,
-    values: BTreeMap<String, f64>,
-    observations: Vec<ObservationRow>,
-    curve: Vec<CurvePoint>,
-    trace: Vec<TraceRow>,
-    partials: Vec<Vec<f64>>,
+    pub(crate) status: FitStatus,
+    pub(crate) parameters: Vec<String>,
+    pub(crate) values: BTreeMap<String, f64>,
+    pub(crate) observations: Vec<ObservationRow>,
+    pub(crate) curve: Vec<CurvePoint>,
+    pub(crate) trace: Vec<TraceRow>,
+    pub(crate) partials: Vec<Vec<f64>>,
     #[serde(default)]
-    flags: Vec<FitFlag>,
+    pub(crate) flags: Vec<FitFlag>,
+    /// The objective, written for `ml` only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) objective: Option<crate::Objective>,
+    /// The error model of an `ml` fit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) error_model: Option<crate::ErrorModel>,
     /// How the partial derivatives were formed (`auto` resolved; FIT-JAC-01, JAC-02).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    derivatives: Option<Derivatives>,
+    pub(crate) derivatives: Option<Derivatives>,
 }
 
 impl FitResult {
@@ -164,10 +184,10 @@ impl FitResult {
 }
 
 /// Collects named values, keeping finite ones only.
-struct Values(BTreeMap<String, f64>);
+pub(crate) struct Values(pub(crate) BTreeMap<String, f64>);
 
 impl Values {
-    fn put(&mut self, name: impl Into<String>, value: f64) {
+    pub(crate) fn put(&mut self, name: impl Into<String>, value: f64) {
         if value.is_finite() {
             self.0.insert(name.into(), value);
         }
@@ -322,6 +342,8 @@ pub(crate) fn build<M: FitModel>(
                 residual: observed - predicted,
                 weighted_residual: weight.sqrt() * (observed - predicted),
                 weight,
+                sigma: None,
+                iwres: None,
             },
         )
         .collect();
@@ -347,11 +369,13 @@ pub(crate) fn build<M: FitModel>(
         trace,
         partials,
         flags,
+        objective: None,
+        error_model: None,
         derivatives: Some(problem.options.derivatives),
     }
 }
 
-fn r_transpose_r(r: &Mat) -> Mat {
+pub(crate) fn r_transpose_r(r: &Mat) -> Mat {
     let n = r.cols();
     let mut g = Mat::zeros(n, n);
     for a in 0..n {
@@ -429,17 +453,17 @@ fn statistics<M: FitModel>(
             v.put("condition_number", max / min);
         }
     }
-    secondary(problem, names, theta_full, &cov, t, v);
+    secondary(problem, names, theta_full, &cov, Some(t), v);
 }
 
 /// FIT-OUT-06: the secondary parameters the model defines ([`crate::FitModel::secondary`]), with
 /// standard errors by the delta method.
-fn secondary<M: FitModel>(
+pub(crate) fn secondary<M: FitModel>(
     problem: &Problem<M>,
     names: &[String],
     theta: &[f64],
     cov: &Mat,
-    t: f64,
+    t: Option<f64>,
     v: &mut Values,
 ) {
     for quantity in problem
@@ -463,13 +487,15 @@ fn secondary<M: FitModel>(
         if value != 0.0 {
             v.put(format!("cv_percent.{name}"), 100.0 * se / value.abs());
         }
-        v.put(format!("ci_lo.{name}"), value - t * se);
-        v.put(format!("ci_hi.{name}"), value + t * se);
+        if let Some(t) = t {
+            v.put(format!("ci_lo.{name}"), value - t * se);
+            v.put(format!("ci_hi.{name}"), value + t * se);
+        }
     }
 }
 
 /// FIT-OUT-10: `n_curve` equally spaced times from the first to the last observation time.
-fn curve<M: FitModel>(problem: &Problem<M>, theta: &[f64]) -> Vec<CurvePoint> {
+pub(crate) fn curve<M: FitModel>(problem: &Problem<M>, theta: &[f64]) -> Vec<CurvePoint> {
     let n = problem.options.n_curve;
     let lo = problem.time.iter().copied().fold(f64::INFINITY, f64::min);
     let hi = problem
