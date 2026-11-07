@@ -365,6 +365,8 @@ mod tests;
 #[cfg(test)]
 mod tests_outputs;
 #[cfg(test)]
+mod tests_pinned;
+#[cfg(test)]
 mod tests_presets;
 #[cfg(test)]
 mod tests_progress;
