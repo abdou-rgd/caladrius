@@ -151,7 +151,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-139 | Iteration 3: the missing PK bricks of the engine | orchestrator | in progress | Q-020 |
 | T-140 | specs/models.md, three-compartment models | reader | done | Q-020 |
 | T-141 | docs/long-running-commands.md, the protocol of a long computation over the bridge | interface | done | T-134 |
-| T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | to review | T-140 |
+| T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | done | T-140 |
 | T-143 | Progress and cancel in caladrius-fit, one stepper under solve | engine | done | T-141 |
 | T-144 | caladrius-models three-compartment models (pk3.*), root solver, derivatives, multiple dosing | engine | in progress | T-142 |
 | T-145 | pk3 reachable from the engine, the CLI, the MCP server and the conformance report | interface | todo | T-144 |
@@ -161,6 +161,8 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-149 | caladrius-fit maximum likelihood with an estimated error model (objective = ml), IWRES | engine | done | T-148 |
 | T-150 | caladrius-project population dataset, the event table (DAT-*) | interface | done | T-148 |
 | T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | done | T-149, T-150 |
-| T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | in progress | T-162 |
+| T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | to review | T-162 |
 | T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | done | T-151 |
 | T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | todo | T-150, T-149, T-151 |
+| T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | in progress | T-142 |
+| T-165 | pk3 oracle round 5: the F1 case, flags measured, pole claims asserted, round 4 nits | oracle | todo | T-164 |
