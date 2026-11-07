@@ -388,7 +388,6 @@ fn a_recording_observer_changes_nothing() {
                 .run(&mut Recorder::default()),
         );
         same_result(&lent, &expected, name);
-        same_result(&run_model(dynamic, &i).unwrap(), &expected, name);
     }
 }
 

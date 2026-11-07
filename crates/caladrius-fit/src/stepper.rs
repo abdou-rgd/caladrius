@@ -211,14 +211,14 @@ impl<M: FitModel> FitRun<M> {
     /// Runs to the end, offering the initial estimates and each committed iteration to `obs`.
     pub fn run(mut self, obs: &mut dyn Observer) -> Outcome {
         if obs.before_first_iteration(&self.progress()) == Control::Cancel {
-            return self.cancelled();
+            return self.cancel();
         }
         loop {
             match self.step() {
                 Step::Finished(result) => return Outcome::Done(result),
                 Step::Progress(progress) => {
                     if obs.after_iteration(&progress) == Control::Cancel {
-                        return self.cancelled();
+                        return self.cancel();
                     }
                 }
             }
@@ -234,7 +234,18 @@ impl<M: FitModel> FitRun<M> {
         }
     }
 
-    fn cancelled(self) -> Outcome {
+    /// The rows of the minimisation trace so far (FIT-OUT-11): iteration 0 alone before the first
+    /// step, then one row more per committed iteration. After `Finished` it is the trace the
+    /// result carries (the rollback of the end removes no row).
+    pub fn trace(&self) -> &[TraceRow] {
+        &self.trace
+    }
+
+    /// Gives up between two iterations: `Outcome::Cancelled` with the rows 0 to the last committed
+    /// iteration, one row (iteration 0) before the first step. After `Finished` it still returns
+    /// the whole trace, as a cancellation and not as the result: keep the `FitResult` that
+    /// `Finished` carried.
+    pub fn cancel(self) -> Outcome {
         let after_iteration = self.progress().iteration;
         Outcome::Cancelled {
             after_iteration,

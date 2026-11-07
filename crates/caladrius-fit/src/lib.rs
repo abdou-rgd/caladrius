@@ -326,10 +326,10 @@ pub struct FitInput {
     pub options: FitOptions,
 }
 
-/// Fits `input.model` to the observations (Gauss-Newton with the Levenberg and Hartley
-/// modification, FIT-ALG-01). Invalid input is an error; a fit that starts always returns a
-/// result with a status, its best iterate and its trace.
-pub fn run(input: &FitInput) -> Result<FitResult, FitError> {
+/// Starts the fit of `input.model`: the checks of [`run`], and the initial estimates of FIT-INI-01
+/// when `input.initial` is empty, then a [`FitRun`] at iteration 0 that owns its model. Drive it
+/// with [`FitRun::step`] or [`FitRun::run`]; [`run`] is this and nobody watching.
+pub fn start(input: &FitInput) -> Result<FitRun<ModelId>, FitError> {
     if input.initial.is_empty() {
         // FIT-INI-01: no initial estimates given, generate them from the data.
         let initial = initial_estimates(
@@ -343,9 +343,16 @@ pub fn run(input: &FitInput) -> Result<FitResult, FitError> {
             initial,
             ..input.clone()
         };
-        return run_model(&generated.model, &generated);
+        return FitRun::new(generated.model, &generated);
     }
-    run_model(&input.model, input)
+    FitRun::new(input.model, input)
+}
+
+/// Fits `input.model` to the observations (Gauss-Newton with the Levenberg and Hartley
+/// modification, FIT-ALG-01). Invalid input is an error; a fit that starts always returns a
+/// result with a status, its best iterate and its trace.
+pub fn run(input: &FitInput) -> Result<FitResult, FitError> {
+    Ok(start(input)?.solve())
 }
 
 /// As [`run`], with any [`FitModel`] in place of `input.model`.
