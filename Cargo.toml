@@ -22,6 +22,7 @@ members = [
     "apps/caladrius-mcp",
     "apps/caladrius-web",
     "apps/caladrius-bridge",
+    "apps/caladrius-proto-egui",
     # Developer tasks.
     "xtask",
 ]

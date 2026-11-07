@@ -1,0 +1,30 @@
+[package]
+name = "caladrius-proto-egui"
+description = "App layer, prototype (T-135): the NCA screen of the wave 3 brief in egui 0.37, with egui_tiles and a hand-painted plot."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+caladrius-bridge = { path = "../caladrius-bridge" }
+caladrius-format = { path = "../../crates/caladrius-format" }
+caladrius-engine = { path = "../../crates/caladrius-engine" }
+eframe = { version = "0.37.0", default-features = false, features = ["wgpu_no_default_features", "default_fonts", "accesskit", "x11", "wayland"] }
+egui = { version = "0.37.0", default-features = false }
+egui_tiles = "0.18.0"
+# Vulkan only: Direct3D 12 does not build on Windows with wgpu-hal 30 (windows 0.62 against gpu-allocator 0.28).
+# This is also why egui_kittest is used without its `wgpu` feature and the PNGs are drawn by `examples/snapshot.rs`.
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "wgsl", "vulkan"] }
+egui-wgpu = { version = "0.37.0", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+
+[dev-dependencies]
+egui_kittest = { version = "0.37.0", features = ["snapshot"] }
+pollster = "0.4.0"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[lints]
+workspace = true

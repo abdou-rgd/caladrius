@@ -83,6 +83,7 @@ pub const LAYER_TABLE: &[(&str, Layer)] = &[
     ("caladrius-mcp", Layer::App),
     ("caladrius-web", Layer::App),
     ("caladrius-bridge", Layer::App),
+    ("caladrius-proto-egui", Layer::App),
     ("xtask", Layer::Tool),
 ];
 
