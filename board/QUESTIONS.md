@@ -224,3 +224,33 @@ Section 5 has no rule for this case. Two options:
 - **(b)** Add one line to section 5 and turn the 47 into real tests: "Scalars whose condition number κ, written by the oracle, exceeds 1e3: relative error within κ·2⁻⁵²." No other tolerance moves.
 
 The orchestrator recommends (b). It tests the engine where the conditioning limit lies, and the measure shows a margin of about 17. Nothing is applied without a yes here.
+
+## Q-025 (2026-11-07, orchestrator): the open choices of the population fit (`specs/population.md`, OP-01 to OP-14)
+
+T-162 wrote `specs/population.md` on branch `iter3/pop` (95d620d), and a Fable review read it. Section 11 of the spec lists 14 open items.
+- **For OP-01 to OP-10 and OP-14 you choose.**
+- **OP-11 to OP-13 are numbers:** the oracle (T-152) measures them and proposes values, which come back here before they become rules.
+- **OP-02 is settled by measurement**, once the reference tool runs (Q-021).
+
+Where the review proposed something else, both proposals are given. Every line is a proposal, and nothing is applied without your answer. Two of them are needed before T-153 starts: OP-01 and OP-14.
+
+| item | the spec proposes | the review proposes | the orchestrator recommends |
+|---|---|---|---|
+| **OP-01** Ω in v1 (before T-153) | diagonal by default, plus one full block as an option | the same | the spec's proposal |
+| **OP-03** the OFV constant | `full` (2π kept) by default, the convention named in every answer | the same | the spec's proposal |
+| **OP-04** the default covariance | `sandwich` (R⁻¹SR⁻¹) | `sandwich` printed, and all three returned | the review's: R and S are computed anyway, and with few subjects the spread is the useful number |
+| **OP-05** the n of BIC | the number of observations, as in the individual fit | the same | the spec's proposal, with n written in the answer |
+| **OP-06** the form of CWRES | diagonal (independent of the order of the observations) | decorrelated by the Cholesky factor, in time order (DAT-ORD-01), with the diagonal form as a second column | the review's: its sum of squares equals the distance term of the OFV, an exact check, and the order is fixed by DAT-ORD-01 |
+| **OP-07** BLQ | exclusion (M1) in v1; the censored likelihood (M3) later | the same | the spec's proposal; whether M3 is the next card after T-155 is yours |
+| **OP-08** η on `tlag` or `dur` | refused in v1 | the same | the spec's proposal |
+| **OP-09** several doses per subject | refused in v1 | the same | the spec's proposal |
+| **OP-10** the shrinkage divisor | m − 1 | the same | the spec's proposal |
+| **OP-14** plain FOCE, without interaction (before T-153) | `later` | in v1: a one-line switch, the default of the reference's `posthoc` method, and with the identity of POP-OBJ-04 an exact check that separates a wrong formula from a wrong interaction | the review's |
+
+Also open, with no choice needed from you now:
+- **OP-02:** which objective formula the reference computes. The OFV at fixed parameters against nlmixr2 decides it, so it waits on Q-021.
+- **OP-11:** the algorithm constants.
+- **OP-12:** the method tolerances.
+- **OP-13:** the design of the sealed simulate-then-fit tests.
+
+T-152 proposes each value in its report, and each comes back here as its own question.

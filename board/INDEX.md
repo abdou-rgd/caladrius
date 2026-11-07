@@ -161,5 +161,6 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-149 | caladrius-fit maximum likelihood with an estimated error model (objective = ml), IWRES | engine | done | T-148 |
 | T-150 | caladrius-project population dataset, the event table (DAT-*) | interface | done | T-148 |
 | T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | done | T-149, T-150 |
-| T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | in progress | T-151 |
+| T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | todo | T-162 |
+| T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | done | T-151 |
 | T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | todo | T-150, T-149, T-151 |
