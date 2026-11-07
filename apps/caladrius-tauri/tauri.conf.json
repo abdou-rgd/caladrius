@@ -4,7 +4,7 @@
   "version": "0.3.2",
   "identifier": "org.caladrius.shell",
   "build": {
-    "frontendDist": "./dist"
+    "frontendDist": "../caladrius-proto-react/dist"
   },
   "app": {
     "withGlobalTauri": true,
@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

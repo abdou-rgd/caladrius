@@ -31,6 +31,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 caladrius-bridge = { path = "../caladrius-bridge" }
 tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 # The mock runtime: the command handler is called through the IPC, without a window on the screen.

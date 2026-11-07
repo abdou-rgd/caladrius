@@ -294,6 +294,7 @@ name = "caladrius-tauri"
 version = "0.3.2"
 dependencies = [
  "caladrius-bridge",
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",
