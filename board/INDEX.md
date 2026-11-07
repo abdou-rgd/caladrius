@@ -151,8 +151,9 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-139 | Iteration 3: the missing PK bricks of the engine | orchestrator | in progress | Q-020 |
 | T-140 | specs/models.md, three-compartment models | reader | done | Q-020 |
 | T-141 | docs/long-running-commands.md, the protocol of a long computation over the bridge | interface | done | T-134 |
-| T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | in progress | T-140 |
+| T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | to review | T-140 |
 | T-143 | Progress and cancel in caladrius-fit, one stepper under solve | engine | done | T-141 |
+| T-144 | caladrius-models three-compartment models (pk3.*), root solver, derivatives, multiple dosing | engine | todo | T-142 |
 | T-146 | Progress and cancel in the engine and the CLI (Engine::begin and finish, one running job) | interface | done | T-143 |
 | T-147 | Specs for brick 2: maximum-likelihood fit with an estimated error model, IWRES, the population dataset | reader | done | T-139 |
 | T-148 | Oracle for brick 2: maximum-likelihood fits, IWRES, population dataset files, failing tests | oracle | in progress | T-147 |
