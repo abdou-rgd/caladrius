@@ -13,7 +13,7 @@ Status: spec, nothing implemented (T-141; the engine side is T-143). Today the b
 
 The job then emits ordered events, each tagged with `job`:
 - `progress`: `{kind, job, iteration, objective_name ("wrss" individual, "ofv" population), objective, params}`. One per iteration, `iteration` strictly increasing. Not sealed, not in the history, free to drop on the host side.
-- exactly one terminal event, then silence: `done` carries the standard bridge answer of `fit.run` (`ok` true or false, with its seal); or `cancelled`: `{kind, job, after_iteration:n, message:"fit cancelled after iteration n"}` plus `last`, a copy of the last `progress`. `last` is a convenience, not an answer: it has no seal and no trace.
+- exactly one terminal event, then silence: `done` carries the standard bridge answer of `fit.run` (`ok` true or false, with its seal); or `cancelled`: `{kind, job, after_iteration:n, message:"fit cancelled after iteration n"}` plus `last`, a copy of the last `progress`, and `trace`, the rows of the minimization trace (`specs/fit.md` FIT-OUT-11) from iteration 0 to n. Neither is an answer: no seal, not in the history.
 
 A `done` answer is the answer `fit.run` would have given with the same parameters and project, byte for byte, and the history gets one `fit.run` entry when the job ends, so `project.replay` re-runs it against the same seal. A cancelled job records nothing.
 
@@ -28,7 +28,7 @@ impl FitRun { pub fn new(model: Box<dyn FitModel>, input: &FitInput) -> Result<S
               pub fn step(&mut self) -> Step; }            // exactly one iteration of the loop of `solve`
 pub struct Progress<'a> { pub iteration: u32, pub objective: f64, pub params: &'a [(String, f64)] }
 pub trait Observer { fn after_iteration(&mut self, p: &Progress) -> Control; }  // Control::{Continue, Cancel}
-pub enum Outcome { Done(FitResult), Cancelled { after_iteration: u32 } }
+pub enum Outcome { Done(FitResult), Cancelled { after_iteration: u32, trace: Vec<TraceRow> } }
 impl FitRun { pub fn run(self, obs: &mut dyn Observer) -> Outcome; }   // `solve()` = run with an observer that never cancels
 ```
 
@@ -54,5 +54,5 @@ Reasons: `terminate()` "immediately stops the worker" and gives it no chance to 
 
 - **Several jobs at once: out.** One running job per bridge; a second `fit.start` is refused with a sentence naming the running job. Reasons: one history with a defined order, one wasm memory, one worker. The `job` field is in every event so lifting this later breaks no client.
 - **Resuming after a crash: out.** A job that did not end has no entry in the history and no seal; it is lost, and the user starts it again. `project.replay` only re-runs finished fits. Because `FitRun` is a value, saving it is possible later, but a format would have to be sealed and versioned first: not specified here.
-- **Partial answers: out as answers.** A cancelled or failed job returns no sealed result. `last` in `cancelled` is a convenience for the screen only. Whether `cancelled` should also carry the minimization trace (FIT-OUT-11 says the trace is never discarded) is open: a card for the orchestrator.
+- **Partial answers: out as answers.** A cancelled or failed job returns no sealed result. `last` and `trace` in `cancelled` are records for the screen only, never estimates: the trace is carried because FIT-OUT-11 says it is never discarded (orchestrator, 2026-11-07), so `Outcome::Cancelled` holds the trace as well as `after_iteration`.
 - **Progress throttling:** the host may drop `progress` events but never the terminal one; the engine does not throttle (it has no clock).
