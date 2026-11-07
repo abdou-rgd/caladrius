@@ -1,6 +1,6 @@
 # The population dataset (event table): behaviour specification
 
-Card T-147 (brick 2 of iteration 3, T-139), written by the `reader` agent on 2026-11-07, in its own words, before any oracle or code. It specifies the table that holds several subjects, each with its doses, observations, BLQ flags and covariates, and how today's single-subject worksheet maps into it. The maximum-likelihood fit that reads one profile of such a table is in `specs/fit.md` section 13; the NCA is in `specs/nca.md`. Sources are cited by the keys of `specs/sources.md` (section 13 holds the keys S-37 to S-45 added for this file); `D` is a design argument shown here. **Nothing in this file is implemented or tested.**
+Card T-147 (brick 2 of iteration 3, T-139), written by the `reader` agent on 2026-11-07, in its own words, before any oracle or code. It specifies the table that holds several subjects, each with its doses, observations, BLQ flags and covariates, and how today's single-subject worksheet maps into it. The maximum-likelihood fit that reads one profile of such a table is in `specs/fit.md` section 13; the NCA is in `specs/nca.md`. Sources are cited by the keys of `specs/sources.md` (section 13 holds the keys S-39 to S-47 added for this file); `D` is a design argument shown here. **Nothing in this file is implemented or tested.**
 
 ## 0. How to read this file
 
@@ -32,14 +32,14 @@ Card T-147 (brick 2 of iteration 3, T-139), written by the `reader` agent on 202
 | occasion | none in the table | `name.occ` | a second nesting level | none |
 | units | none in the table | `units` (for x, y and covariates) | `units` and `labels` attributes of the grouped data | in the header, `Name (unit)` |
 
-Sources: S-39 (event types, event table, covariates, fetched summaries), S-40 (`theo_sd`: columns `ID`, `TIME`, `DV`, `AMT`, `EVID`, `CMT`, `WT`; summary), S-41 (`CENS` and `LIMIT`, summary), S-42 (arguments of `saemixData`, summaries), S-37 (`groupedData`, `nlsList`: read in full), S-38 (`Theoph`: `Subject`, `Wt` in kg, `Dose` in mg/kg, `Time` in hr, `conc` in mg/L; read in full). Whether `rxode2` reads the column names case-insensitively was not confirmed from a page that was read.
+Sources: S-41 (event types, event table, covariates, fetched summaries), S-42 (`theo_sd`: columns `ID`, `TIME`, `DV`, `AMT`, `EVID`, `CMT`, `WT`; summary), S-43 (`CENS` and `LIMIT`, summary), S-44 (arguments of `saemixData`, summaries), S-39 (`groupedData`, `nlsList`: read in full), S-40 (`Theoph`: `Subject`, `Wt` in kg, `Dose` in mg/kg, `Time` in hr, `conc` in mg/L; read in full). Whether `rxode2` reads the column names case-insensitively was not confirmed from a page that was read.
 
 ## 2. Layouts and columns
 
 ### DAT-LAY-01 Two layouts, one table
 A dataset is a table of records, one per row, with a subject column. There are two layouts. The **profile layout** is today's: no event column; every row is an observation; an optional dose column holds the dose of the subject. The **event layout** has an event column (DAT-REC-01); each row is an observation or a dose (DAT-TYP-01). The layout is decided by the presence of that column and by nothing else, so a file that loads today never changes layout. A profile-layout table is read as the event table of DAT-LEG-01 by the analyses that need doses.
 - Status: `assumed`
-- Sources: design choice; S-39 (the event table as the shared format of `rxode2` and `nlmixr2`, summary).
+- Sources: design choice; S-41 (the event table as the shared format of `rxode2` and `nlmixr2`, summary).
 
 ### DAT-COL-01 The columns
 The roles of a column, with the layouts that use them:
@@ -61,7 +61,7 @@ The roles of a column, with the layouts that use them:
 
 At most one column has each role (as today: the first keeps it, the others become `other` with a note). The time, concentration and dose columns must be numeric, or the role is refused with the note that today's importer gives.
 - Status: `assumed`
-- Sources: S-39, S-40, S-41, S-42 (the column set, summaries); the repo's importer (today's roles and the "at most one" rule); design choice for the table.
+- Sources: S-41, S-42, S-43, S-44 (the column set, summaries); the repo's importer (today's roles and the "at most one" rule); design choice for the table.
 
 ### DAT-REC-01 Recognition: which names are accepted
 A column is recognised by its **key**, the lower-case letters and digits of its name with spaces, underscores, dots and a trailing unit removed (as today). Upper and lower case make no difference, so `ID`, `TIME`, `DV`, `AMT`, `EVID`, `CMT`, `RATE`, `DUR`, `MDV`, `CENS`, `LIMIT` of an `nlmixr2` file are read. The keys accepted for each role are those of today (subject, time, conc, dose and route, listed in section 0) and these added ones:
@@ -78,12 +78,12 @@ A column is recognised by its **key**, the lower-case letters and digits of its 
 
 A column whose name matches nothing keeps the role `other`. A column that matches a role but whose content does not fit it (text in `time`, numbers in `route`, a `mdv` that is not 0 or 1) is left `other` with a note, as today. The role of a column can always be set by the user, and the interface shows the guess with the reason. No guess is silent: the notes list every column that was given a role and every one that was not.
 - Status: `assumed`
-- Sources: the repo's importer (the key rule and today's names); S-39, S-40, S-41, S-42 (the names used by the open tools, summaries); design choice for the added aliases.
+- Sources: the repo's importer (the key rule and today's names); S-41, S-42, S-43, S-44 (the names used by the open tools, summaries); design choice for the added aliases.
 
 ### DAT-REC-02 Names that do not map: occasions, additional doses, steady state
 A column recognised as `occ`/`occasion`, `ii`, `addl`, `ss` or `ytype`/`dvid` (the names `saemix` and `rxode2` give to occasions, interdose intervals, additional doses, steady-state flags and response types) is not given a role in this version: it is left `other`, with a note that says the information is not used ("column `addl` holds additional doses; additional doses are not used yet, so each dose row is one dose"). **If such a column contains a non-empty, non-zero value on a dose row, the table is refused** for that subject with the sentence of DAT-ERR-06, because ignoring it would change the dose history silently.
 - Status: `assumed`
-- Sources: S-39 (`II`, `ADDL`, `SS`, summary), S-42 (`name.occ`, `name.ytype`, summary); design choice (refuse rather than ignore).
+- Sources: S-41 (`II`, `ADDL`, `SS`, summary), S-44 (`name.occ`, `name.ytype`, summary); design choice (refuse rather than ignore).
 
 ## 3. Records
 
@@ -99,29 +99,29 @@ In the event layout the `event` column holds, for each row, one of:
 
 Text values are compared in lower case. A missing event cell is an error (`unknown_event`), never a default of 0 or 1.
 - Status: `documented, untested`
-- Sources: S-39 (the five event codes and their meaning, from the fetched event-types page summary; codes 2 to 4 only as listed there); design choice for the text spellings and for refusing 2 to 4.
+- Sources: S-41 (the five event codes and their meaning, from the fetched event-types page summary; codes 2 to 4 only as listed there); design choice for the text spellings and for refusing 2 to 4.
 
 ### DAT-TYP-02 Dose records
 A dose row has an amount > 0 (an amount ≤ 0 is `non_positive_amount`, DAT-ERR-06; a missing one is `dose_without_amount`, DAT-ERR-02), a time, and optionally `rate` or `dur`, `cmt`, `route`. The input is a **bolus** (instantaneous) when neither rate nor duration is given, or when both are 0 or empty. It is an **infusion** when one of them is > 0: duration = amount / rate, or rate = amount / duration, so giving either is enough. If both are given and |rate·dur − amount| exceeds 1e-6 of the amount, the row is refused (`rate_duration_mismatch`, DAT-ERR-06). Negative rate or duration (the `rxode2` codes for "modelled rate" and "modelled duration") are refused as `unsupported_event`. A subject may have several dose rows in the table (the table can hold them); the analyses decide what to do with more than one (DAT-USE-01, DAT-USE-02).
 - Status: `documented, untested` for the relation duration = amount/rate and the bolus/infusion distinction; `assumed` for the mismatch tolerance
-- Sources: S-39 (rate, duration and the special negative values, summary); `specs/models.md` MOD-IVI-01 (the infusion model, rate R0 = D/T); design choice for the tolerance.
+- Sources: S-41 (rate, duration and the special negative values, summary); `specs/models.md` MOD-IVI-01 (the infusion model, rate R0 = D/T); design choice for the tolerance.
 
 ### DAT-TYP-03 Observation records
 An observation row has a time and a value in `conc` (or a missing value, BLQ or censoring mark, DAT-CEN-*), and **no amount**: the `amt` cell must be empty on an observation row of the event layout. `rate`, `dur` and `route` cells on an observation row are ignored with a note. Covariates are read from the row but are one value per subject (DAT-COV-01). (In the profile layout there is no event column and the dose column, repeated on observation rows, is the dose of the subject: DAT-LEG-01.)
 - Status: `assumed`
-- Sources: S-39 (observation rows leave the amount missing, summary); design choice.
+- Sources: S-41 (observation rows leave the amount missing, summary); design choice.
 
 ### DAT-CMT-01 Compartment
 The `cmt` column is recognised and kept. In this version the model decides where a dose goes (the depot for first-order absorption, the central compartment otherwise, from the model id and `route`) and where the observation is made (the central compartment), so the values of `cmt` are not interpreted. Rule: the cells must be empty or hold a single value across all the observation rows of the table, or hold the same value as on the dose rows; a table whose observation rows carry **two or more different** `cmt` values (several endpoints, for example a drug and a metabolite) is refused with `several_endpoints`: "the observation rows of subject {S} are in several compartments ({v1} and {v2}); one observed compartment is analysed at a time. Split the table by compartment, or give a table with one." A numbered compartment is not checked against the model.
 - Status: `assumed`
-- Sources: S-39 (`CMT`, summary), S-42 (`name.ytype`, response types, summary); design choice (one endpoint now, several later: DAT-LAT-01).
+- Sources: S-41 (`CMT`, summary), S-44 (`name.ytype`, response types, summary); design choice (one endpoint now, several later: DAT-LAT-01).
 
 ## 4. Units, order, errors
 
 ### DAT-UNI-01 Units in the header
 As today. A header may end in a unit, in round or square brackets: `Time (h)`, `Conc [ng/mL]`, `Amount (mg)`. The unit text is kept as written, attached to the column, and shown with it; it applies to every cell of the column. It is accepted on `time`, `conc`, `amt`, `rate`, `dur`, `limit` and on covariates. The unit of `rate` should be amount per time and the unit of `dur` a time unit; the table is not refused if they are not (units are text), but the results quote them. No unit conversion happens in the table. An event table whose `amt` column has no unit is accepted with a note ("the unit of the amount is not given"). A unit that differs between two columns that should agree (the time unit of `time` and of `dur`) gives a note, not an error.
 - Status: `assumed`
-- Sources: the repo's importer (the header rule); S-42 (`units` of `saemixData`, summary), S-37 (`groupedData` `units` attribute, read in full: units are metadata attached to the columns); design choice.
+- Sources: the repo's importer (the header rule); S-44 (`units` of `saemixData`, summary), S-39 (`groupedData` `units` attribute, read in full: units are metadata attached to the columns); design choice.
 
 ### DAT-ORD-01 Order and sorting
 Within one subject, the rows must be in non-decreasing time. Rows of different subjects may be interleaved (the check groups the rows by subject label, as today). A dose and an observation at the same time are allowed, in either order of the rows (the dose is taken as occurring first). Two observations at the same time for one subject are the error `duplicate_times` of today. **The table is never re-sorted silently**: a table whose rows are not in time order is reported with `time_not_increasing` (DAT-ERR-01) and the interface offers the sorted reading as an explicit choice that the user accepts, recorded in the history. Missing times: a row with a missing time is refused (`missing_time`).
@@ -135,49 +135,49 @@ Each error is a **check on a reading** (the same mechanism as `time_not_increasi
 ### DAT-ERR-01 Time going backwards within a subject
 Code `time_not_increasing` (exists today). Sentence, as today: "time goes back at row {r} of subject {S} ({t2} after {t1}); a profile is listed in time order". The interface adds: "sort the rows by subject and time, or ask for the sorted reading".
 - Status: `documented, untested` (today's text is in the importer; it is not under a test in this card's scope)
-- Sources: the repo's importer; S-37 (grouped data are ordered within the group, summary level); design choice.
+- Sources: the repo's importer; S-39 (grouped data are ordered within the group, summary level); design choice.
 
 ### DAT-ERR-02 A dose without an amount
 Code `dose_without_amount`. A dose row (event 1, or in the profile layout never) whose amount cell is empty or not a number. Sentence: "row {r} of subject {S} is a dose but has no amount; give the amount in column `{amt}`, or change the event type if it is an observation".
 - Status: `assumed`
-- Sources: S-39 (a dose row needs `AMT`, summary); design choice (sentence).
+- Sources: S-41 (a dose row needs `AMT`, summary); design choice (sentence).
 
 ### DAT-ERR-03 An observation with an amount
 Code `amount_on_observation`. An observation row (event 0) of the event layout whose amount cell holds a number. Sentence: "row {r} of subject {S} is an observation but has an amount ({x}); an amount belongs on a dose row. Remove the amount, or change the event type to dose". Value 0 counts as an amount; an empty cell and the markers for a missing value do not.
 - Status: `assumed`
-- Sources: S-39 (observation rows leave the amount missing, summary); design choice.
+- Sources: S-41 (observation rows leave the amount missing, summary); design choice.
 
 ### DAT-ERR-04 A subject with no observation
 Code `subject_without_observation`. A subject that appears in the table (it has at least one row) and has no observation row in the event layout; or, in the profile layout, whose rows all have a missing time or value. Sentence: "subject {S} has no observation (only {n} dose rows), so there is nothing to analyse or fit for it; add its observations or remove its rows". A subject whose observations are all missing or all BLQ has observation rows, so this check passes; the analysis then says "no usable observation" with the counts, as today.
 - Status: `assumed`
-- Sources: design choice; S-39 (a subject is the set of rows with one ID, summary).
+- Sources: design choice; S-41 (a subject is the set of rows with one ID, summary).
 
 ### DAT-ERR-05 A covariate that changes within a subject
 Code `covariate_varies`. For each **declared** covariate (DAT-COV-01) the non-missing values of a subject must all be equal (numbers equal as numbers, text as written). Sentence: "covariate `{name}` takes several values for subject {S} ({v1} at row {r1} and {v2} at row {r2}); in this version a covariate has one value per subject. Give one value per subject, or declare the column as not a covariate" (time-varying covariates are not available yet: DAT-COV-02). A column that is not declared as a covariate is never checked. Missing cells are ignored in the check; a subject whose covariate cells are all missing has that covariate missing (NC), not an error.
 - Status: `assumed`
-- Sources: S-37 (`groupedData`: an outer covariate is constant within the group, an inner one can change, read in full); S-39 (constant covariates through `iCov`, summary); design choice (the check and the sentence).
+- Sources: S-39 (`groupedData`: an outer covariate is constant within the group, an inner one can change, read in full); S-41 (constant covariates through `iCov`, summary); design choice (the check and the sentence).
 
 ### DAT-ERR-06 The other refusals
 The same mechanism, with these codes and the sentences' content: `unknown_event` (the event cell is empty or not one of DAT-TYP-01), `unsupported_event` (event 2, 3 or 4, or a negative rate or duration: "row {r} of subject {S} has event type {v} (`{meaning}`), which is not supported in this version; supported types are 0 (observation) and 1 (dose)"), `non_positive_amount` (amount ≤ 0), `rate_duration_mismatch` (DAT-TYP-02), `missing_time`, `empty_subject` (a blank subject cell when the table has several subjects: "row {r} has no subject; every row of a table with several subjects needs one"), `unsupported_history` (a non-empty, non-zero value in a column named `ii`, `addl` or `ss` on a dose row: "row {r} of subject {S} asks for additional doses or a steady state (`{column}`), which are not supported in this version; give each dose on its own row"), `several_endpoints` (DAT-CMT-01), `unsupported_censoring` (DAT-CEN-02) and `different_doses` (the existing sentence of the profile layout, DAT-LEG-01).
 - Status: `assumed`
-- Sources: design choice; S-39 (the values that are not supported are those the sources define: event types 2 to 4, negative rate and duration, `II`, `ADDL`, `SS`, summaries).
+- Sources: design choice; S-41 (the values that are not supported are those the sources define: event types 2 to 4, negative rate and duration, `II`, `ADDL`, `SS`, summaries).
 
 ## 5. Covariates, missing values, BLQ and censoring
 
 ### DAT-COV-01 Covariates: declared, constant per subject
 A covariate is a column that the user **declares** (role `covariate`, a list in the import dialog or the command); no column becomes a covariate by its name alone (the interface may suggest `wt`, `weight`, `age`, `sex`, `bsa`, `crcl`, `height` as candidates). A declared covariate is numeric or categorical (text); it has one value per subject (DAT-ERR-05); the value of a subject is its non-missing value. The covariates are shown in a subject table (one row per subject) next to the profiles, and carried unchanged into every per-subject result. Neither NCA nor the individual fit uses them now (DAT-USE-03); they are the input of the population brick.
 - Status: `assumed`
-- Sources: S-42 (`name.covariates` is a declared list, summary); S-37 (outer covariates, read in full); S-38 (`Theoph`: `Wt` and `Dose` are per-subject values repeated on every row); design choice.
+- Sources: S-44 (`name.covariates` is a declared list, summary); S-39 (outer covariates, read in full); S-40 (`Theoph`: `Wt` and `Dose` are per-subject values repeated on every row); design choice.
 
 ### DAT-COV-02 Time-varying covariates: later
 Covariates that change within a subject (a weight measured at each visit, a creatinine clearance) are **not accepted now**: the table is refused with `covariate_varies` if the column is declared, and an undeclared varying column is carried as `other`. The interpolation conventions of `rxode2` (carry the last value forward, the default; carry the next value backward; linear interpolation) are recorded for the card that adds them.
 - Status: `later`
-- Sources: S-39 (covariate interpolation methods, summary); S-37 (inner covariates).
+- Sources: S-41 (covariate interpolation methods, summary); S-39 (inner covariates).
 
 ### DAT-CEN-01 Missing values
 A missing observation is an empty cell, or a marker the importer already treats as missing, or a row with `mdv` = 1. An observation row with a missing value (or `mdv` = 1) stays in the table with the reason `missing`, is counted as `n_missing` and is not used by any analysis (FIT-DAT-01). A dose row is not affected by `mdv`. A `mdv` value other than 0, 1 or empty is refused (`unknown_mdv`).
 - Status: `documented, untested` for the meaning of the flag; `assumed` for the refusal of other values
-- Sources: S-39 (`MDV`, summary); S-42 (`name.mdv`, summary); `specs/fit.md` FIT-DAT-01 (`n_missing`).
+- Sources: S-41 (`MDV`, summary); S-44 (`name.mdv`, summary); `specs/fit.md` FIT-DAT-01 (`n_missing`).
 
 ### DAT-CEN-02 BLQ and censoring columns
 Two ways to mark a value below the limit of quantification are accepted, and they mean the same:
@@ -185,7 +185,7 @@ Two ways to mark a value below the limit of quantification are accepted, and the
 (b) **a `cens` column** with 1 (left-censored: the true value is below the limit): the value cell then holds the **limit** (the convention of `rxode2`, where DV carries the limit on a censored row), and the row is read as BLQ with that limit; the `limit` column, when present, is the other (lower) bound of the censoring interval, kept and unused now. `cens` = 0 or empty is an ordinary observation. `cens` = −1 (right-censored), or any other value, is refused (`unsupported_censoring`: "row {r} of subject {S} is marked right-censored (or has an unknown censoring code {v}); only left-censored values (1) are supported"). A censored row with `cens` = 1 and a missing limit is refused (`unsupported_censoring`, "the limit is missing").
 In this version every BLQ row is **left out** of the analyses and counted (`n_blq`), by NCA according to its BLQ rules (`specs/nca.md` NCA-DAT-05) and by the fit as in FIT-DAT-01 and FIT-ML-19. The censored-likelihood method that would use the limit is brick 3 (`specs/fit.md` OF-21). The columns are specified now so that a table does not change when it arrives.
 - Status: `documented, untested` for the `cens` and `limit` semantics; `assumed` for the mapping onto the BLQ flag
-- Sources: S-41 (`CENS` and `LIMIT`, the old `nlmixr` censoring vignette and the `rxode2` page, summaries); S-42 (`name.cens`, summary); S-44 (BLQ methods, abstract summary); `specs/nca.md` NCA-DAT-05c.
+- Sources: S-43 (`CENS` and `LIMIT`, the old `nlmixr` censoring vignette and the `rxode2` page, summaries); S-44 (`name.cens`, summary); S-46 (BLQ methods, abstract summary); `specs/nca.md` NCA-DAT-05c.
 
 ## 6. Today's file in the new table
 
@@ -226,9 +226,9 @@ Roles (`subject`, `time`, `conc`, `amt`, `event`, `rate`, `dur`, `cmt`, `mdv`, `
 ## 9. Later
 
 ### DAT-LAT-01 Described by the sources, outside the scope now
-Listed with their sources; no rule, no test. (1) Event types 2, 3 and 4; additional doses and steady state (`II`, `ADDL`, `SS`); modelled rate and duration (negative codes): S-39. (2) Time-varying covariates and their interpolation: S-39, S-37. (3) Occasions (several occasions per subject): S-42 (`name.occ`). (4) Several observation endpoints and response types: S-42 (`name.ytype`), S-39 (`CMT`). (5) Right and interval censoring and the censored likelihood (M3, M4): S-41, S-44. (6) Unit conversion between the amount and the concentration units. (7) A sorting option applied at import.
+Listed with their sources; no rule, no test. (1) Event types 2, 3 and 4; additional doses and steady state (`II`, `ADDL`, `SS`); modelled rate and duration (negative codes): S-41. (2) Time-varying covariates and their interpolation: S-41, S-39. (3) Occasions (several occasions per subject): S-44 (`name.occ`). (4) Several observation endpoints and response types: S-44 (`name.ytype`), S-41 (`CMT`). (5) Right and interval censoring and the censored likelihood (M3, M4): S-43, S-46. (6) Unit conversion between the amount and the concentration units. (7) A sorting option applied at import.
 - Status: `later`
-- Sources: S-37, S-39, S-41, S-42, S-44 (summaries, as said in each).
+- Sources: S-39, S-41, S-43, S-44, S-46 (summaries, as said in each).
 
 ## 10. Worked example
 
