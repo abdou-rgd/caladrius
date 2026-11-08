@@ -154,7 +154,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | done | T-140 |
 | T-143 | Progress and cancel in caladrius-fit, one stepper under solve | engine | done | T-141 |
 | T-144 | caladrius-models three-compartment models (pk3.*), root solver, derivatives, multiple dosing | engine | done | T-142 |
-| T-145 | pk3 reachable from the engine, the CLI, the MCP server and the conformance report | interface | in progress | T-144 |
+| T-145 | pk3 reachable from the engine, the CLI, the MCP server and the conformance report | interface | done | T-144 |
 | T-146 | Progress and cancel in the engine and the CLI (Engine::begin and finish, one running job) | interface | done | T-143 |
 | T-147 | Specs for brick 2: maximum-likelihood fit with an estimated error model, IWRES, the population dataset | reader | done | T-139 |
 | T-148 | Oracle for brick 2: maximum-likelihood fits, IWRES, population dataset files, failing tests | oracle | done | T-147 |
@@ -162,9 +162,9 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-150 | caladrius-project population dataset, the event table (DAT-*) | interface | done | T-148 |
 | T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | done | T-149, T-150 |
 | T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | to review | T-162 |
-| T-157 | specs/simulation.md, population simulation (brick 4) | reader | to review | T-162 |
+| T-157 | specs/simulation.md, population simulation (brick 4) | reader | in progress | T-162 |
 | T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | done | T-151 |
-| T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | to review | T-150, T-149, T-151 |
+| T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | done | T-150, T-149, T-151 |
 | T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | done | T-142 |
 | T-165 | pk3 oracle round 5: the F1 case, flags measured, pole claims asserted, round 4 nits | oracle | in progress | T-164 |
 | T-166 | Spec sync for the population fit: the Q-025 decisions and the questions of T-152 into specs/population.md | reader | in progress | T-152 |

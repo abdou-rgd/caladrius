@@ -125,3 +125,19 @@
   - **Agreement:** no existing oracle row contradicts the text. The engine at 27cf294 falls inside the band and follows N1 only after T-167.
   - Three decisions taken meanwhile, reversible by Abdou.
   - Specs only. Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-163 (interface, Sonnet high; review on Sonnet, two fix rounds, a re-check): DAT-USE routing on branch `iter3/ml` (1e7b365, 19c70c6, 8aa1d1d).
+  - `nca.run` and `fit.run` route both layouts. `subject = all` fits each subject alone.
+  - A refused subject is refused alone, with the check's sentence, and a request-level error refuses the whole batch.
+  - The changes are named rather than silent:
+    - `n_before_dose`;
+    - `data.describe.refused`;
+    - a note when a subject is labelled `all`;
+    - a refused contradictory route.
+  - Legacy outputs are byte-identical, and the digest is eca8dab5… unchanged.
+  - Three decisions taken meanwhile, reversible by Abdou.
+  - Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-145 (interface, Sonnet high; review on Sonnet): `pk3.*` is reachable from the engine commands, the CLI and the MCP server, on branch `iter3/pk3-iface` (386f21a, 010730d).
+  - The schema names the three parameter sets of MOD-3C-02 to 05, and model refusals pass through with their sentence.
+  - `xtask conformance` reads the pk3 oracle: models go from 34711 to 79186 of 79186. The 47 Q-024 cases (98 values) are held, shown and kept in the floors.
+  - The digest is unchanged.
+  - Not merged into `main` before 2026-11-18.
