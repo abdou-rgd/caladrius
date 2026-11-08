@@ -204,7 +204,7 @@ Same rules as before. The documentation of commercial programs was not used. A j
 
 ## 15. Sources added for `specs/simulation.md` (card T-157, 2026-11-08)
 
-Same rules as before. The documentation of commercial programs was not used. The generator, the stream layout and the order of the simulation are specified in `specs/simulation.md` from published algorithms and from derivations (D); every number of its worked examples comes from the throwaway R 4.5.2 scripts of H36 to H41.
+Same rules as before. The documentation of commercial programs was not used. The generator, the stream layout and the order of the simulation are specified in `specs/simulation.md` from published algorithms and from derivations (D); every number of its worked examples comes from the throwaway R 4.5.2 scripts of H39 to H44.
 
 | key | source | location | terms and how used |
 |---|---|---|---|
@@ -222,12 +222,12 @@ Same rules as before. The documentation of commercial programs was not used. The
 
 | key | what | where |
 |---|---|---|
-| H36 | Philox4x32-10 in R (16-bit limbs, checked against `gmp` products) and in Python (native integers): the three known-answer vectors of S-60 and every stream word of SX1 agree | `specs/simulation.md` SIM-RNG-01, SX1 |
-| H37 | Keys of labels (SHA-256), stream blocks, words, uniforms, AS 241 against `qnorm` (identical on 10^5 points) and against a 256-bit inverse (318 points, maximum relative error 4.7e-16); the extremes at u = 2^-53; the birthday bounds 2.71e-8 and 2.71e-10 | `specs/simulation.md` SIM-RNG-03 to -05, SX1 |
-| H38 | One-compartment IV bolus, three subjects, correlated Omega: Cholesky factor, eta, individual parameters, IPRED and observations (proportional and additive) in double precision against 256 bits (largest relative difference 2.4e-16) | `specs/simulation.md` SIM-RNG-07, SIM-ORA-03, SX2 |
-| H39 | 10^6 words of one stream and 10^5 subjects: uniform and normal moments, chi-squared of 100 bins, binomial counts at stated quantiles, correlations between streams, sample covariance of the correlated eta against its Wishart standard deviation | `specs/simulation.md` SIM-ORA-04, SX3 |
-| H40 | Negative values under `keep` and `zero`, BLQ against an LLOQ, the combined error, invariance of a subject across designs, three replicates | `specs/simulation.md` SIM-ORD-03 to -06, SX4 |
-| H41 | Type 7 quantile over 19 replicates against R's `quantile` (identical to the bit with the expression of R, one ulp apart with the other form) and types 6 and 8 for comparison | `specs/simulation.md` SIM-SUM-01, SX5 |
+| H39 | Philox4x32-10 in R (16-bit limbs, checked against `gmp` products) and in Python (native integers): the three known-answer vectors of S-60 and every stream word of SX1 agree | `specs/simulation.md` SIM-RNG-01, SX1 |
+| H40 | Keys of labels (SHA-256), stream blocks, words, uniforms, AS 241 against `qnorm` (identical on 10^5 points) and against a 256-bit inverse (318 points, maximum relative error 4.7e-16); the extremes at u = 2^-53; the birthday bounds 2.71e-8 and 2.71e-10 | `specs/simulation.md` SIM-RNG-03 to -05, SX1 |
+| H41 | One-compartment IV bolus, three subjects, correlated Omega: Cholesky factor, eta, individual parameters, IPRED and observations (proportional and additive) in double precision against 256 bits (largest relative difference 2.4e-16) | `specs/simulation.md` SIM-RNG-07, SIM-ORA-03, SX2 |
+| H42 | 10^6 words of one stream and 10^5 subjects: uniform and normal moments, chi-squared of 100 bins, binomial counts at stated quantiles, correlations between streams, sample covariance of the correlated eta against its Wishart standard deviation | `specs/simulation.md` SIM-ORA-04, SX3 |
+| H43 | Negative values under `keep` and `zero`, BLQ against an LLOQ, the combined error, invariance of a subject across designs, three replicates | `specs/simulation.md` SIM-ORD-03 to -06, SX4 |
+| H44 | Type 7 quantile over 19 replicates against R's `quantile` (identical to the bit with the expression of R, one ulp apart with the other form) and types 6 and 8 for comparison | `specs/simulation.md` SIM-SUM-01, SX5 |
 
 **Not read.** The papers behind S-59, S-61, S-63 and S-67; the documentation of `nlmixr2` or `saemix` on the visual predictive check (the VPC section is marked `later`).
 
