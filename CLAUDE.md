@@ -1,11 +1,12 @@
 # Caladrius: notes for Claude Code
 
-Read `AGENTS.md` in full before any code change. It is this repository's contract (scope, golden rules,
-tolerances, layers, board) and wins over any task that conflicts with it.
+`AGENTS.md`, imported at the end of this file, is this repository's contract (scope, golden rules,
+tolerances, layers, roles, board). It wins over any task that conflicts with it. The import puts it in
+the context of the main session and of every subagent, so nobody needs to read it again.
 
 **Motto: we should be more ambitious.** Ambitious in what we build and test, never in what we claim.
 One session is one iteration (`AGENTS.md` section 9): its card holds the brief, the outcome, the bolder
-next step (proposed to Abdou, never started on its own) and the link to the learning page.
+next step (proposed to Abdou, never started on its own) and the learning page line (a link, or `none`).
 
 - **One agent.** In a cloud session you are the only agent: the roles of `AGENTS.md` section 8 and
   `.claude/agents/*.md` say how work is split, they are not subagents to start. Keep the separations
@@ -33,3 +34,5 @@ cargo xtask conformance && git diff --exit-code docs/conformance.md   # generate
 ```
 
 The binary Apothicaire starts: `cargo build --release -p caladrius-mcp --target-dir target/agent-apothicaire`.
+
+@AGENTS.md

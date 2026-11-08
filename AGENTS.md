@@ -6,9 +6,9 @@ Caladrius is an open-source pharmacokinetic analysis application written in **Ru
 
 Caladrius is also the verified calculation layer of **Apothicaire**, a local DMPK agent developed in the parent folder: every Caladrius command must be callable by a machine (CLI and MCP server) with the same semantics as from the UI.
 
-**Everything in the repository is written in English**: code, identifiers, comments, docs, commit messages, the board, UI text, and `board/QUESTIONS.md`. The human may write to you in French; answer in English.
+**Everything in the repository is written in English**: code, identifiers, comments, docs, commit messages, the board, UI text, and `board/QUESTIONS.md`. The conversation with the human is in whatever language the human writes.
 
-Read this whole file before doing anything. If a task conflicts with this file, this file wins.
+`CLAUDE.md` imports this file, so every session and every subagent starts with it in context: do not read it again. If a task conflicts with this file, this file wins.
 
 **Motto: we should be more ambitious.** Ambitious in what we build and test, never in what we claim. Each role says what this means for it in `.claude/agents/`, and every report ends with one bolder next step, which the human decides on (section 10, rule 7).
 
@@ -106,7 +106,7 @@ One project, a worksheet, an analysis read from top to bottom, and plots: few cl
 
 ## 8. Agent organization
 
-The main session is the **orchestrator**: it plans the iteration (section 9), writes the cards, delegates, integrates, runs the verification itself and talks to the human in French. Every other role is a file `.claude/agents/<role>.md`, with its model and effort in the front matter; `cargo xtask lint` checks that they agree with this table.
+The main session is the **orchestrator**: it plans the iteration (section 9), writes the cards, delegates, integrates, runs the verification itself, commits, and talks to the human. Every other role is a file `.claude/agents/<role>.md`, with its model and effort in the front matter; `cargo xtask lint` checks that they agree with this table.
 
 | Role | Model, effort | Does | Does not | Why this model |
 |---|---|---|---|---|
@@ -117,12 +117,12 @@ The main session is the **orchestrator**: it plans the iteration (section 9), wr
 | `interface` | Sonnet, high | the workspace, `xtask`, `caladrius-project`, `caladrius-engine` commands, `caladrius-ui`, `caladrius-cli`, `caladrius-mcp`, `caladrius-web` | numerical code | routine coding against a clear card |
 | `reviewer` | Fable, high | reviews a diff it did not see being written; the iteration audit | modify the reviewed code | it reasons hardest and wrote none of the code |
 | `janitor` | Haiku, low | formatting, renames, file moves, board housekeeping asked by the orchestrator | any decision | mechanical work |
-| `onizuka` | Opus, high | explains a part of Officina to the human, in French; the learning page of each iteration | edit a repository | teaching from the real code |
 
 Rules:
 
-- A subagent receives **one** card, with its allowed files and its completion criterion. It returns a report of at most ten lines (an audit: one line per finding): what was done, the numbers, what is still open, and one bolder next step.
-- A subagent's report is a claim, not a proof: the orchestrator runs the card's completion command itself before marking it done.
+- A subagent already has its role (its file) and this contract (imported by `CLAUDE.md`). Its brief is the task alone: **one** card, its allowed files, its completion criterion, its `CARGO_TARGET_DIR`, and what is already ruled out. It returns a report of at most ten lines (an audit: one line per finding): what was done, the numbers, what is still open, and one bolder next step.
+- Subagents do not commit, push, switch branches or write `LOG.md`. They leave their changes in the tree and note them in their card's thread.
+- A subagent's report is a claim, not a proof: the orchestrator runs the card's completion command itself, gets the review the card needs, then commits (the message starts with the task id) and writes `INDEX.md` and `LOG.md`.
 - Whoever writes an oracle test does not write the code under test.
 - Every change in `caladrius-nca`, `caladrius-models` or `caladrius-fit` goes through `reviewer` before being marked done. `reviewer` gets a diff and its card, never a whole crate; a card outside these three crates may be reviewed with `model: sonnet`.
 - Parallel work: two agents never touch the same crate. Each uses `CARGO_TARGET_DIR=target/agent-<role>`. A new module per feature instead of growing a shared file. If someone else's work breaks the build, wait and retry; do not fix their files.
@@ -149,7 +149,7 @@ One file per task and per message: this is what stops two agents from editing th
 3. **Verify**: the orchestrator integrates, then runs section 11 on the whole tree itself.
 4. **Audit**: `reviewer` reads the iteration's whole diff; every finding is fixed or logged on its card.
 5. **Outcome**, a `## Outcome` section: the results with their denominators, the lessons, and `**Bolder next step.**`, proposed to the human and not started.
-6. **Teach**: `onizuka` writes the iteration's learning page in French; the orchestrator checks it, publishes it as an Artifact and links it as `**Learning page.**`; when the human waives it for an iteration, the line says `none` and why.
+6. **Learning page**, optional: when the human asks for one, the orchestrator writes it, publishes it as an Artifact and links it as `**Learning page.**`; otherwise the line says `none` and why.
 
 ## 10. Budget: subscription constraints
 
@@ -176,6 +176,6 @@ cargo xtask conformance   # if a number changed; commit docs/conformance.md
 cargo xtask digest        # if the arithmetic of a result changed: the digest is the same on every platform (CI compares them)
 ```
 
-Then: task card updated, entry in `LOG.md`, commit whose message starts with the task id.
+Then, by the orchestrator: task card updated, entry in `LOG.md`, commit whose message starts with the task id.
 
 Forbidden without written agreement in `QUESTIONS.md`: `git push`, changing the repository's visibility, deleting files outside the repository, installing software outside package managers (cargo, rustup, R), touching `private/` other than reading it.

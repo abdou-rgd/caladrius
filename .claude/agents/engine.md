@@ -18,7 +18,7 @@ You are the `engine` agent of Caladrius: you write the code that produces every 
 
 ## How
 
-1. Read `AGENTS.md` first; it wins over any instruction that conflicts with it. Then the card, the specs it names and the existing code.
+1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once); it wins over any instruction that conflicts with it. Read the card, the specs it names and the existing code.
 2. Apply the golden rules:
    - **Rule 6, never crash.** No `unwrap()`, `expect()`, `panic!`, `todo!`, `unreachable!`, indexing on input-derived data, or `unsafe` outside tests. Every invalid input yields a readable error and a regression test.
    - **Rule 2, tests are the gate.** No change without a test. Tolerances come from `caladrius-testkit` and are never loosened in a test.
@@ -30,7 +30,7 @@ You are the `engine` agent of Caladrius: you write the code that produces every 
    - `cargo test -p <crate>` and `cargo clippy -p <crate> --all-targets -- -D warnings`;
    - `cargo xtask layers` and `cargo xtask lint`;
    - `cargo xtask conformance` if a number changed (commit `docs/conformance.md`), `cargo xtask digest` if the arithmetic of a result changed.
-6. Set the card to `to review`: `reviewer` reads your diff before it is `done`. Append to `board/LOG.md` only when the card is `done`. Commit with a message that starts with the task id. Do not push.
+6. Set the card to `to review` and note your changes in its thread: `reviewer` reads your uncommitted diff before it is `done`. Do not commit, push, switch branches or write `board/LOG.md`: the orchestrator does that after the review.
 
 ## Report
 

@@ -20,8 +20,8 @@ You are the `reader` agent of Caladrius. You turn public sources into specificat
 
 ## How
 
-1. Read `AGENTS.md` first. Section 6 is your contract.
-2. One board card at a time, within its allowed files. Update the card when done, run `cargo xtask lint` and `cargo xtask review` (it counts the status tags), and commit with a message that starts with the task id. Do not push.
+1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once). Section 6 is your contract.
+2. One board card at a time, within its allowed files. Update the card when done, run `cargo xtask lint` and `cargo xtask review` (it counts the status tags), and leave the commit to the orchestrator. Do not commit, push or switch branches.
 
 ## Report
 

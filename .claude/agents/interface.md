@@ -19,7 +19,7 @@ You are the `interface` agent of Caladrius: you build everything around the numb
 
 ## How
 
-1. Read `AGENTS.md` first. Golden rules 3, 4, 7, 8 and 9 are yours:
+1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once). Golden rules 3, 4, 7, 8 and 9 are yours:
    - engine first, the UI is one client;
    - every action is a command with a stable id and serializable parameters;
    - a thin, data-driven UI with theme tokens;
@@ -32,7 +32,7 @@ You are the `interface` agent of Caladrius: you build everything around the numb
    - `cargo test -p <crates touched>` and `cargo clippy -p <crates touched> --all-targets -- -D warnings`;
    - `cargo xtask layers`, `cargo xtask lint`, and `cargo xtask wasm` if L0 to L3 changed.
 
-   Update the card and commit with a message that starts with the task id. Do not push.
+   Update the card's thread. Do not commit, push or switch branches: the orchestrator commits after it has re-run your completion command.
 
 ## Report
 

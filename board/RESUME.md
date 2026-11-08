@@ -2,10 +2,10 @@
 
 **The project is paused.** The usage budget for the iterations is spent, and Abdou is changing how the project is run. The steps below describe the setup as it was on 2026-11-08. If the new setup replaces them, follow the new one; the state further down still holds.
 
-1. Open Claude Code in `C:\Users\abdou\apothicaire\caladrius`: the agent files of `.claude/agents/` load only when a session starts here. Say: "Reprends le rôle d'orchestrateur : lis AGENTS.md, board/RESUME.md, board/INDEX.md et la carte d'itération ouverte, puis continue."
+1. Open Claude Code in `C:\Users\abdou\officina\caladrius`: the agent files of `.claude/agents/` load only when a session starts here, and `CLAUDE.md` imports `AGENTS.md`. Say: "Reprends le rôle d'orchestrateur : lis board/RESUME.md, board/INDEX.md et la carte d'itération ouverte, puis continue."
 2. One session = one iteration (`AGENTS.md` section 9). The open iteration card holds the brief, the plan and the state of each card.
-3. Subagents do not survive a session. Start one per card, with its role file, its allowed files, and an absolute `CARGO_TARGET_DIR` under `target/agent-<role>`. At most two at a time, one of them on Fable.
-4. A subagent's report is a claim: re-run the card's completion command before marking it done.
+3. Subagents do not survive a session. Start one per card with its role; the brief gives the card, its allowed files, and an absolute `CARGO_TARGET_DIR` under `target/agent-<role>`. At most two at a time, one of them on Fable.
+4. A subagent's report is a claim: re-run the card's completion command before marking it done. Subagents do not commit; the orchestrator does (T-177).
 5. No worktree exists any more. To work on a branch, create one again with `git worktree add C:\Users\abdou\caladrius-iter3\<name> iter3/<branch>`.
 
 ## State
