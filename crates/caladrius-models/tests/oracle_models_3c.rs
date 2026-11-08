@@ -63,6 +63,7 @@ fn expected_of(case: &ModelCase, quantity: &str) -> Table {
         let wanted = match quantity {
             "scalar" => group == "scalar",
             "scalar_ill" => group == "scalar_ill",
+            "scalar_abs" => group == "scalar_abs",
             _ => group.starts_with("t=") && name == quantity,
         };
         if wanted {
@@ -114,6 +115,72 @@ fn check(case_name: &str, kind: Pk3Kind, quantity: &str) {
     let output = run(&input)
         .unwrap_or_else(|e| panic!("{case_name}: the engine refuses a valid model: {e}"));
     compare(case_name, case, &output, quantity);
+}
+
+/// The weight w_beta at adjacent poles (MOD-3C-22, group `scalar_abs`): ABSOLUTE error at most
+/// `Tolerance::MODEL_WEIGHT_ADJACENT_ABS`, whatever the condition number.
+fn check_abs(case_name: &str) {
+    let loaded = load_pk3_case(case_name).expect("the three-compartment oracle case loads");
+    assert_eq!(loaded.kind, Pk3Kind::Values, "{case_name}");
+    let case = &loaded.case;
+    let expected = expected_of(case, "scalar_abs");
+    assert!(!expected.is_empty(), "{case_name}: no scalar_abs row");
+    let output = run(&input_of(case))
+        .unwrap_or_else(|e| panic!("{case_name}: the engine refuses a valid model: {e}"));
+    for (_, name, want) in expected.iter() {
+        let want = want.expect("an exact weight is written");
+        let got = output
+            .get(name)
+            .unwrap_or_else(|| panic!("{case_name}: no {name} in the output"));
+        assert!(
+            got.is_finite() && (got - want).abs() <= Tolerance::MODEL_WEIGHT_ADJACENT_ABS,
+            "{case_name} {name}: engine {got:e}, oracle {want:e}, absolute tolerance {:e}",
+            Tolerance::MODEL_WEIGHT_ADJACENT_ABS
+        );
+    }
+}
+
+/// A free-zone case (MOD-3C-08 zones (0) and (iii)): either outcome is allowed. A refusal must be
+/// `DegenerateExponents`; an acceptance owes every quantity that follows from the macro input alone
+/// at 1e-12, and the micro set it reports must itself be accepted as a micro input.
+fn check_free(case_name: &str) {
+    let loaded = load_pk3_case(case_name).expect("the three-compartment oracle case loads");
+    assert_eq!(loaded.kind, Pk3Kind::Free, "{case_name}");
+    let case = &loaded.case;
+    let input = input_of(case);
+    let output = match run(&input) {
+        Err(e) => {
+            assert!(
+                format!("{e:?}").starts_with("DegenerateExponents"),
+                "{case_name}: refused with {e:?}, a free-zone refusal is DegenerateExponents"
+            );
+            return;
+        }
+        Ok(o) => o,
+    };
+    for quantity in ["conc", "auc", "aumc", "scalar"] {
+        compare(case_name, case, &output, quantity);
+    }
+    let micro: BTreeMap<String, f64> = ["k10", "k12", "k21", "k13", "k31", "vc"]
+        .iter()
+        .map(|n| {
+            let v = output
+                .get(n)
+                .unwrap_or_else(|| panic!("{case_name}: the accepted model reports no {n}"));
+            (n.to_string(), v)
+        })
+        .collect();
+    let again = run(&ModelInput {
+        model: input.model,
+        dose: case.dose,
+        params: micro,
+        times: case.times.clone(),
+    });
+    assert!(
+        again.is_ok(),
+        "{case_name}: the micro set reported by the accepted model is refused as input: {:?}",
+        again.err()
+    );
 }
 
 fn check_derivatives(case_name: &str) {
@@ -274,6 +341,30 @@ macro_rules! ill_tests {
     };
 }
 
+/// The cases with a `scalar_abs` row (adjacent poles, the generated list `ABS_VALUE_CASES`).
+macro_rules! abs_tests {
+    ($($case:ident),* $(,)?) => {
+        mod adjacent_poles_abs {
+            $(
+                #[test]
+                fn $case() { super::check_abs(concat!("model_pk3_", stringify!($case))); }
+            )*
+        }
+    };
+}
+
+/// The macro inputs of the free zones (MOD-3C-08 zones (0) and (iii)).
+macro_rules! free_tests {
+    ($($case:ident),* $(,)?) => {
+        mod free_zones {
+            $(
+                #[test]
+                fn $case() { super::check_free(concat!("model_pk3_", stringify!($case))); }
+            )*
+        }
+    };
+}
+
 macro_rules! derivative_tests {
     ($($case:ident),* $(,)?) => {
         mod derivatives {
@@ -366,6 +457,7 @@ fn every_pk3_case_has_tests() {
         .chain(CONDITIONING_CASES)
         .chain(CONVERSION_CASES)
         .chain(DERIVATIVE_CASES)
+        .chain(FREE_CASES)
         .map(|c| format!("model_pk3_{c}"))
         .collect();
     listed.sort();
@@ -396,6 +488,28 @@ fn every_pk3_case_has_tests() {
     assert_eq!(
         with_rows, ill_listed,
         "the cases with scalar_ill rows and the cases with an ignored test differ"
+    );
+    // the absolute tests exist exactly for the cases that have scalar_abs rows
+    let mut with_abs: Vec<String> = on_disk
+        .iter()
+        .filter(|n| {
+            let c = load_pk3_case(n).unwrap();
+            c.case
+                .expected
+                .iter()
+                .any(|(group, _, _)| group == "scalar_abs")
+        })
+        .cloned()
+        .collect();
+    with_abs.sort();
+    let mut abs_listed: Vec<String> = ABS_VALUE_CASES
+        .iter()
+        .map(|c| format!("model_pk3_{c}"))
+        .collect();
+    abs_listed.sort();
+    assert_eq!(
+        with_abs, abs_listed,
+        "the cases with scalar_abs rows and the cases with an absolute test differ"
     );
     let md_on_disk = list_pk3_md_cases().unwrap();
     let mut md_listed: Vec<String> = MD_CASES.iter().map(|c| format!("model_pk3_{c}")).collect();
@@ -467,6 +581,32 @@ fn errors_one_compartment() {
 fn errors_macro() {
     refused("macro");
 }
+/// T-164 N1: a macro input whose conversion to the micro constants loses a sign in double precision is
+/// refused as DegenerateExponents, the message naming the pole and the coupling and saying that no valid
+/// three-compartment model exists; never the wording of an overflow, an underflow or a rescaling.
+#[test]
+fn errors_macro_n1() {
+    refused("macro_n1");
+    for c in load_pk3_errors()
+        .unwrap()
+        .into_iter()
+        .filter(|c| c.group == "macro_n1")
+    {
+        let model = ModelId::from_id(&c.model).unwrap();
+        if let Err(e) = run(&ModelInput {
+            model,
+            dose: c.dose,
+            params: c.parameters.clone(),
+            times: c.times.clone(),
+        }) {
+            let m = e.to_string().to_lowercase();
+            for w in ["overflow", "underflow", "rescal"] {
+                assert!(!m.contains(w), "{}: the message says {w:?}: {m}", c.id);
+            }
+        }
+    }
+}
+
 #[test]
 fn errors_sets_and_names() {
     refused("sets");

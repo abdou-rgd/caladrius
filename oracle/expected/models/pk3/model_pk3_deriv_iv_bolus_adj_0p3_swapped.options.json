@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "kind": "model_derivatives",
+  "case": "model_pk3_deriv_iv_bolus_adj_0p3_swapped",
+  "generated_by": "oracle/scripts/models_3c_closed_form.R",
+  "model": "pk3.iv_bolus",
+  "parameterisation": "micro",
+  "dose": 100,
+  "parameters": {
+    "k10": 0.375,
+    "k12": 1.1875,
+    "k21": 0.30000000000000004,
+    "k13": 0.7875,
+    "k31": 0.3,
+    "vc": 8
+  },
+  "times": [-1, 0, 0.000383606, 0.0383606, 0.383606, 1, 1.66667, 6.66667, 11.586, 12, 46.3439, 185.376, 926.878, 18537.6],
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "note": "derivatives, adjacent poles point adj_0p3_swapped set micro",
+  "textbook_double_ok": false,
+  "quantities": {
+    "derivative": "d_<name> at a time is the partial derivative of the concentration with respect to the parameter <name> of this case (the dose fixed; for the macro set vc = D / (a + b + c) moves with a, b and c); 0 before the dose and before the lag; d_tlag is not written at the kinks t = tlag and t = tlag + dur, d_dur not at t = tlag + dur (the derivative has a jump there)",
+    "omitted": "an entry whose condition number (sum of the absolute terms of the chain rule through V, the three exponents and two weights, divided by the absolute sum; for ka, tlag, dur a derivative below 1e-12 of the concentration per unit of the parameter) exceeds 1e3 is not written: no closed form in double precision can be asked for 1e-12 relative accuracy there"
+  },
+  "method": {
+    "derivatives": "central differences in 256-bit arithmetic (Rmpfr), relative step 1e-25, of the independent explicit form of the concentration, the roots of every perturbed parameter set re-solved; chain rule through psi = (V, alpha, beta, gamma, w_alpha, w_beta); rounded once to double",
+    "kappa_max": 1000,
+    "n_omitted_ill_conditioned": 2,
+    "n_structural_zero_written_as_zero": 6,
+    "n_recomputed_at_2048_bits": 5
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "expm": "1.0.1",
+    "deSolve": "1.42",
+    "gmp": "0.7.5.1"
+  },
+  "n_values": 82,
+  "n_times": 14
+}

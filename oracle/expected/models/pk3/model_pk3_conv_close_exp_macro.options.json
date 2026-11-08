@@ -22,12 +22,15 @@
   },
   "note": "conversion of point close_exp given in the macro set: the other two sets are the expected scalars; k21_ge_k31 is the labelling flag",
   "textbook_double_ok": false,
+  "textbook_basis": "declared",
+  "textbook_worst_ratio": null,
   "quantities": {
     "conc": "concentration in the central compartment (apparent for extravascular input), 0 before the dose and before the lag; the bolus at t = 0 is D / vc",
     "auc": "area under the concentration curve from the dose time to the time",
     "aumc": "area under the first moment curve from the dose time to the time",
     "scalar": "alpha > beta > gamma; k10, k12, k21, k13, k31; cl, vc, q2, vp2, q3, vp3; a, b, c (INTRAVENOUS coefficients D*w/vc for every route); w_alpha, w_beta, w_gamma; half_life = ln2/gamma, half_life_alpha, half_life_beta, half_life_gamma; vss, vz = cl/gamma, v_extrap = vc/w_gamma; auc_inf = D/cl; aumc_inf; mrt_system = vss/cl; mrt = mrt_system + m; c0 (bolus); tmax_pred, cmax_pred (not the bolus; absent for a zero dose with first-order input); k21_ge_k31 (1 when k21 >= k31)",
-    "scalar_ill": "the scalars whose condition number (conditions) exceeds 1e3 with respect to the parameters of the case: written, with their condition, but outside the group the engine is held to at MODEL_VALUES; the decision is the orchestrator's"
+    "scalar_ill": "the scalars whose condition number (conditions) exceeds 1e3 with respect to the parameters of the case: written, with their condition, but outside the group the engine is held to at MODEL_VALUES; the decision is the orchestrator's",
+    "scalar_abs": "only for adjacent poles (k21, k31 adjacent doubles, MOD-3C-22): w_beta, held to 1e-12 ABSOLUTE (0 is allowed where the exact weight is below 1e-12), whatever its condition number"
   },
   "conditions": {
     "alpha": 1,
@@ -67,8 +70,9 @@
   "method": {
     "closed_form": "independent implementation of the explicit sums of exponentials (MOD-3C-10 to 14), 256-bit arithmetic (Rmpfr); the exponents are the roots of the cubic found by Newton inside the brackets given by the critical points of the cubic, the weights the product-of-differences form (checked against the sum-of-positive-terms form), AUC and AUMC exact integrals of the terms; the confluent limit is used when |ka - lambda| is below 2^-150",
     "cross_checks": ["matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha always; beta and gamma where the solver's absolute error, eig_abs_tol, is below the tolerance), and for beta and gamma, when they are apart, the stable identities alpha beta gamma = k10 k21 k31 and the sum of products of pairs (no subtraction of like numbers); a 256-bit scaling-and-squaring matrix exponential for the times that neither double precision check covers"],
-    "cross_check_tolerance": 1e-08,
+    "cross_check_tolerance_finite_times": 1e-08,
     "cross_check_floor": "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case. The search order is: all times first, then (if that fails) only the times with ||A|| t <= 1e8; for each of the two the floors in increasing order (expm: 1e-9, 1e-8, 1e-7, 1e-6; ODE: 1e-9 up to 1e-3); the first that holds is used and written in cross_check_results (floor, number of times checked, limit). ODE to infinity (AUC, AUMC, MRT): 1e-8, or 1e-7 when times were dropped (ode_inf_tol, with the measured ode_inf_gap). Times covered by neither: expm256_times_checked, held to 1e-20",
+    "eigenvalue_note": "beta and gamma are pinned by the Vieta identities (the product of the exponents = k10 k21 k31 and the sum of their products in pairs = k10 k21 + k10 k31 + k21 k31 + k12 k31 + k13 k21, both sums of positive terms, with alpha from the eigenvalue solver) wherever eig_abs_tol (1e-14 of the largest matrix entry, the absolute error of a backward-stable eigenvalue solver) is larger than 1e-9 of the value of the exponent, because the eigenvalue solver cannot resolve it there; where the gaps of the exponents allow it the identities are applied to every case, and eig_checks lists the checks that ran",
     "cross_check_tolerance_to_infinity": "see ode_inf_tol of cross_check_results",
     "kappa_max": 1000
   },

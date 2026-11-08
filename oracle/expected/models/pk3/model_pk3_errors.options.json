@@ -4,7 +4,7 @@
   "case": "model_pk3_errors",
   "generated_by": "oracle/scripts/models_3c_closed_form.R",
   "note": "inputs the three-compartment engine must refuse (MOD-3C-06, MOD-3C-26); the expected table has one not-available row (empty value) per case, the reason is in `reason`, the rule in `spec`, and the readable message must contain, for each inner list of `message_contains`, at least one of its words (lower case)",
-  "groups": ["domain", "one_compartment", "macro", "sets", "numeric", "times"],
+  "groups": ["domain", "one_compartment", "macro", "macro_n1", "sets", "numeric", "times"],
   "cases": [{
       "id": "clearance_cl_zero",
       "group": "domain",
@@ -3862,7 +3862,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-17: the micro constants of the macro set put a root on a pole (relative offset 2.2e-17 < 2^-55)"
+      "reason": "weight `a` = 1e-17: the micro constants of the macro set put a root on a pole (relative offset 2.2e-17 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e18",
       "group": "macro",
@@ -3879,7 +3879,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-18: the micro constants of the macro set put a root on a pole (relative offset 2.2e-18 < 2^-55)"
+      "reason": "weight `a` = 1e-18: the micro constants of the macro set put a root on a pole (relative offset 2.2e-18 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e19",
       "group": "macro",
@@ -3896,7 +3896,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-19: the micro constants of the macro set put a root on a pole (relative offset 2.2e-19 < 2^-55)"
+      "reason": "weight `a` = 1e-19: the micro constants of the macro set put a root on a pole (relative offset 2.2e-19 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e20",
       "group": "macro",
@@ -3913,7 +3913,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-20: the micro constants of the macro set put a root on a pole (relative offset 2.2e-20 < 2^-55)"
+      "reason": "weight `a` = 1e-20: the micro constants of the macro set put a root on a pole (relative offset 2.2e-20 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e21",
       "group": "macro",
@@ -3930,7 +3930,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-21: the micro constants of the macro set put a root on a pole (relative offset 2.2e-21 < 2^-55)"
+      "reason": "weight `a` = 1e-21: the micro constants of the macro set put a root on a pole (relative offset 2.2e-21 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e22",
       "group": "macro",
@@ -3947,7 +3947,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-22: the micro constants of the macro set put a root on a pole (relative offset 2.2e-22 < 2^-55)"
+      "reason": "weight `a` = 1e-22: the micro constants of the macro set put a root on a pole (relative offset 2.2e-22 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e23",
       "group": "macro",
@@ -3964,7 +3964,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-23: the micro constants of the macro set put a root on a pole (relative offset 2.2e-23 < 2^-55)"
+      "reason": "weight `a` = 1e-23: the micro constants of the macro set put a root on a pole (relative offset 2.2e-23 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e24",
       "group": "macro",
@@ -3981,7 +3981,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-24: the micro constants of the macro set put a root on a pole (relative offset 2.2e-24 < 2^-55)"
+      "reason": "weight `a` = 1e-24: the micro constants of the macro set put a root on a pole (relative offset 2.2e-24 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e25",
       "group": "macro",
@@ -3998,7 +3998,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-25: the micro constants of the macro set put a root on a pole (relative offset 2.2e-25 < 2^-55)"
+      "reason": "weight `a` = 1e-25: the micro constants of the macro set put a root on a pole (relative offset 2.2e-25 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e26",
       "group": "macro",
@@ -4015,7 +4015,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-26: the micro constants of the macro set put a root on a pole (relative offset 2.2e-26 < 2^-55)"
+      "reason": "weight `a` = 1e-26: the micro constants of the macro set put a root on a pole (relative offset 2.2e-26 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e27",
       "group": "macro",
@@ -4032,7 +4032,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-27: the micro constants of the macro set put a root on a pole (relative offset 2.2e-27 < 2^-55)"
+      "reason": "weight `a` = 1e-27: the micro constants of the macro set put a root on a pole (relative offset 2.2e-27 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e28",
       "group": "macro",
@@ -4049,7 +4049,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-28: the micro constants of the macro set put a root on a pole (relative offset 2.2e-28 < 2^-55)"
+      "reason": "weight `a` = 1e-28: the micro constants of the macro set put a root on a pole (relative offset 2.2e-28 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e29",
       "group": "macro",
@@ -4066,7 +4066,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-29: the micro constants of the macro set put a root on a pole (relative offset 2.2e-29 < 2^-55)"
+      "reason": "weight `a` = 1e-29: the micro constants of the macro set put a root on a pole (relative offset 2.2e-29 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_a_1e30",
       "group": "macro",
@@ -4083,7 +4083,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `a` = 1e-30: the micro constants of the macro set put a root on a pole (relative offset 2.2e-30 < 2^-55)"
+      "reason": "weight `a` = 1e-30: the micro constants of the macro set put a root on a pole (relative offset 2.2e-30 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e18",
       "group": "macro",
@@ -4100,7 +4100,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-18: the micro constants of the macro set put a root on a pole (relative offset 2.2e-17 < 2^-55)"
+      "reason": "weight `c` = 1e-18: the micro constants of the macro set put a root on a pole (relative offset 2.2e-17 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e19",
       "group": "macro",
@@ -4117,7 +4117,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-19: the micro constants of the macro set put a root on a pole (relative offset 2.2e-18 < 2^-55)"
+      "reason": "weight `c` = 1e-19: the micro constants of the macro set put a root on a pole (relative offset 2.2e-18 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e20",
       "group": "macro",
@@ -4134,7 +4134,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-20: the micro constants of the macro set put a root on a pole (relative offset 2.2e-19 < 2^-55)"
+      "reason": "weight `c` = 1e-20: the micro constants of the macro set put a root on a pole (relative offset 2.2e-19 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e21",
       "group": "macro",
@@ -4151,7 +4151,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-21: the micro constants of the macro set put a root on a pole (relative offset 2.2e-20 < 2^-55)"
+      "reason": "weight `c` = 1e-21: the micro constants of the macro set put a root on a pole (relative offset 2.2e-20 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e22",
       "group": "macro",
@@ -4168,7 +4168,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-22: the micro constants of the macro set put a root on a pole (relative offset 2.2e-21 < 2^-55)"
+      "reason": "weight `c` = 1e-22: the micro constants of the macro set put a root on a pole (relative offset 2.2e-21 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e23",
       "group": "macro",
@@ -4185,7 +4185,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-23: the micro constants of the macro set put a root on a pole (relative offset 2.2e-22 < 2^-55)"
+      "reason": "weight `c` = 1e-23: the micro constants of the macro set put a root on a pole (relative offset 2.2e-22 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e24",
       "group": "macro",
@@ -4202,7 +4202,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-24: the micro constants of the macro set put a root on a pole (relative offset 2.2e-23 < 2^-55)"
+      "reason": "weight `c` = 1e-24: the micro constants of the macro set put a root on a pole (relative offset 2.2e-23 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e25",
       "group": "macro",
@@ -4219,7 +4219,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-25: the micro constants of the macro set put a root on a pole (relative offset 2.2e-24 < 2^-55)"
+      "reason": "weight `c` = 1e-25: the micro constants of the macro set put a root on a pole (relative offset 2.2e-24 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e26",
       "group": "macro",
@@ -4236,7 +4236,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-26: the micro constants of the macro set put a root on a pole (relative offset 2.2e-25 < 2^-55)"
+      "reason": "weight `c` = 1e-26: the micro constants of the macro set put a root on a pole (relative offset 2.2e-25 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e27",
       "group": "macro",
@@ -4253,7 +4253,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-27: the micro constants of the macro set put a root on a pole (relative offset 2.2e-26 < 2^-55)"
+      "reason": "weight `c` = 1e-27: the micro constants of the macro set put a root on a pole (relative offset 2.2e-26 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e28",
       "group": "macro",
@@ -4270,7 +4270,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-28: the micro constants of the macro set put a root on a pole (relative offset 2.2e-27 < 2^-55)"
+      "reason": "weight `c` = 1e-28: the micro constants of the macro set put a root on a pole (relative offset 2.2e-27 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e29",
       "group": "macro",
@@ -4287,7 +4287,7 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-29: the micro constants of the macro set put a root on a pole (relative offset 2.2e-28 < 2^-55)"
+      "reason": "weight `c` = 1e-29: the micro constants of the macro set put a root on a pole (relative offset 2.2e-28 < 2^-55; zone (i), DegenerateExponents)"
     }, {
       "id": "macro_weight_c_1e30",
       "group": "macro",
@@ -4304,7 +4304,619 @@
       },
       "times": [1],
       "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
-      "reason": "weight `c` = 1e-30: the micro constants of the macro set put a root on a pole (relative offset 2.2e-29 < 2^-55)"
+      "reason": "weight `c` = 1e-30: the micro constants of the macro set put a root on a pole (relative offset 2.2e-29 < 2^-55; zone (i), DegenerateExponents)"
+    }, {
+      "id": "macro_edge_a_rho_0p9",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.1533e-17,
+        "b": 0.3,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "family a, rho = 0.9 * 2^-55, just below the floor of zone (i) (zone (i): log2 rho -55.15 < -55, limited by alpha; DegenerateExponents)"
+    }, {
+      "id": "macro_edge_c_rho_0p9",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 0.3,
+        "c": 1.129e-18,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "family c, rho = 0.9 * 2^-55, just below the floor of zone (i) (zone (i): log2 rho -55.15 < -55, limited by gamma; DegenerateExponents)"
+    }, {
+      "id": "macro_edge_b_rho_0p9",
+      "group": "macro",
+      "spec": "MOD-3C-06 item 3 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.7,
+        "b": 7.216400000000001e-19,
+        "c": 0.1,
+        "alpha": 3,
+        "beta": 0.5,
+        "gamma": 0.05
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "macro", "valid"], ["a", "b", "c", "offset", "exponent"]],
+      "reason": "family b, rho = 0.9 * 2^-55, just below the floor of zone (i) (zone (i): log2 rho -55.15 < -55, limited by beta; DegenerateExponents)"
+    }, {
+      "id": "macro_n1_a_1e19_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-19,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-19 (zone (i), rho 2.2e-19): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e19_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-19,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-19 (zone (i), rho 7.5e-20): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e20_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-20,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-20 (zone (i), rho 2.2e-20): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e20_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-20,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-20 (zone (i), rho 7.5e-21): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e21_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-21,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-21 (zone (i), rho 2.2e-21): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e21_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-21,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-21 (zone (i), rho 7.5e-22): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e22_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-22,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-22 (zone (i), rho 2.2e-22): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e22_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-22,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-22 (zone (i), rho 7.5e-23): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e23_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-23,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-23 (zone (i), rho 2.2e-23): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e23_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-23,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-23 (zone (i), rho 7.5e-24): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e24_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-24,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-24 (zone (i), rho 2.2e-24): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e24_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-24,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-24 (zone (i), rho 7.5e-25): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e25_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-25,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-25 (zone (i), rho 2.2e-25): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e25_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-25,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-25 (zone (i), rho 7.5e-26): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e26_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-26,
+        "b": 0.25,
+        "c": 0.15,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-26 (zone (i), rho 2.2e-26): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_a_1e26_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1e-26,
+        "b": 0.75,
+        "c": 0.44999999999999996,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `a` = 1e-26 (zone (i), rho 7.5e-27): the plain double evaluation of MOD-3C-04 fails on k12; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e19_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-19,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-19 (zone (i), rho 8.5e-19): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e19_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-19,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-19 (zone (i), rho 2.8e-19): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e20_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-20,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-20 (zone (i), rho 8.5e-20): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e20_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-20,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-20 (zone (i), rho 2.8e-20): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e21_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-21,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-21 (zone (i), rho 8.5e-21): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e21_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-21,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-21 (zone (i), rho 2.8e-21): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e22_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-22,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-22 (zone (i), rho 8.5e-22): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e22_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-22,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-22 (zone (i), rho 2.8e-22): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e23_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-23,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-23 (zone (i), rho 8.5e-23): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e23_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-23,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-23 (zone (i), rho 2.8e-23): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e24_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-24,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-24 (zone (i), rho 8.5e-24): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e24_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-24,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-24 (zone (i), rho 2.8e-24): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e25_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-25,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-25 (zone (i), rho 8.5e-25): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e25_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-25,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-25 (zone (i), rho 2.8e-25): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e26_v1",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 0.55,
+        "b": 1e-26,
+        "c": 0.2,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-26 (zone (i), rho 8.5e-26): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "macro_n1_b_1e26_v3",
+      "group": "macro_n1",
+      "spec": "MOD-3C-06 item 3 N1",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "a": 1.6500000000000001,
+        "b": 1e-26,
+        "c": 0.6000000000000001,
+        "alpha": 4,
+        "beta": 0.6,
+        "gamma": 0.04
+      },
+      "times": [1],
+      "message_contains": [["k21", "k31"], ["k12", "k13"], ["valid"]],
+      "reason": "weight `b` = 1e-26 (zone (i), rho 2.8e-26): the plain double evaluation of MOD-3C-04 fails on k13; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model"
+    }, {
+      "id": "numeric_tie_two_spacings_k13_0p3",
+      "group": "numeric",
+      "spec": "MOD-3C-06 item 5 MOD-3C-08",
+      "model": "pk3.iv_bolus",
+      "dose": 100,
+      "parameters": {
+        "k10": 0.375,
+        "k12": 1.1875,
+        "k21": 1,
+        "k13": 0.3,
+        "k31": 0.9999999999999998,
+        "vc": 8
+      },
+      "times": [1],
+      "message_contains": [["degenerate", "exponent", "offset"], ["k13", "k31"]],
+      "reason": "k21 = 1 and k31 = 1 - 2^-52, two spacings apart; beta lies 0.40 of a spacing from k31 and rounds onto it: beta rounds onto a pole (DegenerateExponents)"
     }, {
       "id": "times_nan",
       "group": "times",
@@ -4364,5 +4976,5 @@
     "deSolve": "1.42",
     "gmp": "0.7.5.1"
   },
-  "n_values": 254
+  "n_values": 290
 }

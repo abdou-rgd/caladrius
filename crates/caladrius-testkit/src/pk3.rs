@@ -9,6 +9,7 @@
 //!   the engine is held to; the group `scalar_ill` holds the scalars whose condition number with
 //!   respect to the parameters of the case exceeds 1e3 (written with their conditions in the
 //!   options; whether the engine owes them is the orchestrator's decision). [`Pk3Kind::Values`].
+//! - `model_pk3_<name>` of kind `model_macro_free`: macro inputs in the free zones of MOD-3C-08, [`Pk3Kind::Free`].
 //! - `model_pk3_cond_*` (kind `model_conditioning`): scalars only, for the ill-conditioned
 //!   parameter points of OM-22. [`Pk3Kind::Conditioning`].
 //! - `model_pk3_conv_*`: the conversion cases of OM-23 (scalars: the other two sets and the
@@ -50,6 +51,27 @@ pub enum Pk3Kind {
     Conversion,
     /// `d_<parameter>` on a grid.
     Derivatives,
+    /// A macro input in a free zone of MOD-3C-08 (zone (0) or (iii)): the engine may refuse it or
+    /// accept it; when it accepts, `conc`, `auc`, `aumc` on a grid and the `scalar` group (the
+    /// quantities that follow from the macro input alone) are held, [`Pk3Case::zone`].
+    Free,
+}
+
+/// The claim of a large-coupling case that one root sits next to one pole of the secular function
+/// (`_pole_` in the case name): which root, which pole, on which side and how far.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PoleClaim {
+    /// `alpha`, `beta` or `gamma`.
+    pub root: String,
+    /// `k21` or `k31`.
+    pub pole: String,
+    /// `above` or `below`: where the root lies relative to the pole.
+    pub side: String,
+    /// The distance of the root to the pole, in half-spacings of the doubles on that side of the
+    /// pole, measured at 256 bits.
+    pub half_spacings: f64,
+    /// The relative distance the case promises not to exceed.
+    pub max_relative_distance: f64,
 }
 
 /// One three-compartment case.
@@ -66,6 +88,17 @@ pub struct Pk3Case {
     pub textbook_double_ok: bool,
     /// Names of the scalars in the group `scalar_ill`.
     pub scalar_ill: Vec<String>,
+    /// `measured` when `textbook_double_ok` was decided by running the naive forms at the testkit's
+    /// tolerance (T-165), `declared` when it is the rule of the generator.
+    pub textbook_basis: Option<String>,
+    /// The largest ratio of the naive error to the tolerance over the times and the three
+    /// quantities when the flag is measured: at most 1 exactly when the flag is true. `None` when
+    /// declared; infinite when the naive forms returned a non-finite value.
+    pub textbook_worst_ratio: Option<f64>,
+    /// The pole claim of a `_pole_` case.
+    pub pole: Option<PoleClaim>,
+    /// For a [`Pk3Kind::Free`] case, the zone of MOD-3C-08 (`0` or `iii`).
+    pub zone: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,6 +109,27 @@ struct Extra {
     textbook_double_ok: bool,
     #[serde(default)]
     scalar_ill_names: Vec<String>,
+    #[serde(default)]
+    textbook_basis: Option<String>,
+    #[serde(default)]
+    textbook_worst_ratio: Option<serde_json::Value>,
+    #[serde(default)]
+    pole_root: Option<String>,
+    #[serde(default)]
+    pole: Option<String>,
+    #[serde(default)]
+    pole_side: Option<String>,
+    #[serde(default)]
+    pole_distance_half_spacings: Option<f64>,
+    #[serde(default)]
+    pole_max_relative_distance: Option<f64>,
+    #[serde(default)]
+    zone: Option<ZoneField>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ZoneField {
+    zone: String,
 }
 
 /// Names of the value, conditioning, conversion and derivative cases, sorted (the multiple-dosing
@@ -105,6 +159,7 @@ pub fn load_pk3_case(name: &str) -> Result<Pk3Case, OracleError> {
         "model_conditioning" if name.contains("_conv_") => Pk3Kind::Conversion,
         "model_conditioning" => Pk3Kind::Conditioning,
         "model_derivatives" => Pk3Kind::Derivatives,
+        "model_macro_free" => Pk3Kind::Free,
         other => {
             return Err(OracleError::Inconsistent {
                 path: path.display().to_string(),
@@ -118,6 +173,47 @@ pub fn load_pk3_case(name: &str) -> Result<Pk3Case, OracleError> {
         parameterisation: extra.parameterisation,
         textbook_double_ok: extra.textbook_double_ok,
         scalar_ill: extra.scalar_ill_names,
+        textbook_basis: extra.textbook_basis,
+        textbook_worst_ratio: match extra.textbook_worst_ratio {
+            None | Some(serde_json::Value::Null) => None,
+            Some(serde_json::Value::String(s)) if s == "Infinity" => Some(f64::INFINITY),
+            Some(serde_json::Value::Number(n)) => n.as_f64(),
+            Some(other) => {
+                return Err(OracleError::Inconsistent {
+                    path: path.display().to_string(),
+                    message: format!("textbook_worst_ratio {other}"),
+                });
+            }
+        },
+        pole: match (
+            extra.pole_root,
+            extra.pole,
+            extra.pole_side,
+            extra.pole_distance_half_spacings,
+            extra.pole_max_relative_distance,
+        ) {
+            (
+                Some(root),
+                Some(pole),
+                Some(side),
+                Some(half_spacings),
+                Some(max_relative_distance),
+            ) => Some(PoleClaim {
+                root,
+                pole,
+                side,
+                half_spacings,
+                max_relative_distance,
+            }),
+            (None, None, None, None, None) => None,
+            _ => {
+                return Err(OracleError::Inconsistent {
+                    path: path.display().to_string(),
+                    message: "a pole claim must carry pole_root, pole, pole_side, pole_distance_half_spacings and pole_max_relative_distance".to_string(),
+                });
+            }
+        },
+        zone: extra.zone.map(|z| z.zone),
     })
 }
 

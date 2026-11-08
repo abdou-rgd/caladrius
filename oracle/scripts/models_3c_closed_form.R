@@ -43,6 +43,15 @@ points <- list(
   tie_9 = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 1e-9, 8), dose = 100),
   tie_12 = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 1e-12, 8), dose = 100),
   tie_exact = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1, 8), dose = 100),
+  # adjacent poles (MOD-3C-22, T-165): k21 and k31 are neighbouring doubles, no double strictly between them. The F1 case
+  # (k21 = 1, k31 the adjacent double below), the pair above, pairs at 0.3 and at a power of two (where the spacing differs
+  # on the two sides), and the swapped labelling
+  adj_below = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - 2^-53, 8), dose = 100),
+  adj_up = list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 + 2^-52, 8), dose = 100),
+  adj_0p3 = list(set = "micro", p = mic(0.375, 1.1875, 0.3, 0.7875, 0.3 + 2^-54, 8), dose = 100),
+  adj_0p3_swapped = list(set = "micro", p = mic(0.375, 1.1875, 0.3 + 2^-54, 0.7875, 0.3, 8), dose = 100),
+  adj_pow2_up = list(set = "micro", p = mic(0.375, 1.1875, 0.5, 0.7875, 0.5 + 2^-53, 8), dose = 100),
+  adj_pow2_down = list(set = "micro", p = mic(0.375, 1.1875, 0.5, 0.7875, 0.5 - 2^-54, 8), dose = 100),
   tie_clr = list(set = "clearance", p = clr(3, 8, 9.5, 9.5, 6.3, 6.3), dose = 100),
   swapped = list(set = "micro", p = mic(0.375, 0.7875, 0.2, 1.1875, 1, 8), dose = 100),
   ratio_1e3 = list(set = "macro", p = list(a = 7, b = 2, c = 1, alpha = 10, beta = 0.5, gamma = 0.01), dose = 100),
@@ -149,8 +158,21 @@ for (dl in c(1e-2, 1e-4, 1e-6, 1e-9, 1e-12))
   add_cond(sprintf("tie_%s", format(dl, scientific = TRUE)), "micro", mic(0.375, 1.1875, 1, 0.7875, 1 - dl, 8), 100,
            paste("H22 family, k31 = k21 (1 -", dl, "): w_beta is O(delta^2) and ill-conditioned by nature (MOD-3C-08)"))
 add_cond("tie_exact", "micro", mic(0.375, 1.1875, 1, 0.7875, 1, 8), 100, "exact tie k21 = k31: beta = k21, w_beta = 0 exactly (structural)")
-add_cond("tie_ulp", "micro", mic(0.375, 1.1875, 1, 0.7875, 1 - 2^-53, 8), 100, "k31 one ulp below k21")
-add_cond("tie_ulp_up", "micro", mic(0.375, 1.1875, 1, 0.7875, 1 + 2^-52, 8), 100, "k31 one ulp above k21")
+# adjacent poles (MOD-3C-22, T-165): VALUE cases with a time grid (conc, auc, aumc at 1e-12 relative) and the scalars; w_beta is
+# in the group scalar_abs (1e-12 absolute, whatever its condition number), the other scalars keep their groups. The first two
+# were scalar-only conditioning cases until round 4; the same inputs, the same scalars.
+add_adj <- function(name, pn, note) {
+  n_cond <<- n_cond + 1L
+  pt <- points[[pn]]
+  check(adjacent_poles(derive_q3("micro", pt$p, 100)), name, ": the poles k21 and k31 are not adjacent doubles")
+  write_case(paste0("cond_", name), "pk3.iv_bolus", "micro", pt$p, pt$dose, list(), note)
+}
+add_adj("tie_ulp", "adj_below", "k31 one ulp below k21 (the F1 case: k21 = 1, k31 = 1 - 2^-53, adjacent doubles, a power of two on the lower side)")
+add_adj("tie_ulp_up", "adj_up", "k31 one ulp above k21 (adjacent doubles, k21 = 1)")
+add_adj("tie_ulp_0p3", "adj_0p3", "k21 = 0.3 and k31 the next double above it (adjacent doubles, not a power of two)")
+add_adj("tie_ulp_0p3_swapped", "adj_0p3_swapped", "k31 = 0.3 and k21 the next double above it (the labelling of the previous case swapped)")
+add_adj("tie_ulp_pow2_up", "adj_pow2_up", "k21 = 0.5 (a power of two) and k31 the next double above it: the wider spacing 2^-53")
+add_adj("tie_ulp_pow2_down", "adj_pow2_down", "k21 = 0.5 (a power of two) and k31 the next double below it: the narrower spacing 2^-54")
 # couplings small but not too small: the roots still differ from the poles in doubles, so the model must be
 # ACCEPTED and its exponents and weights returned (MOD-3C-08); the refusals start further down (models_3c_more.R)
 for (pr in c(1e-12, 1e-13))
@@ -174,7 +196,8 @@ add_cond("close_exp", "micro", points$close_exp$p, 100, "three very close expone
 # A case whose name has _pole_ claims that one root sits within a stated relative distance of one pole; the
 # generator checks that claim at 256 bits (the claimed root is the one nearest to that pole, and within the stated
 # distance), and that the note says it in these words: "<root> within a relative <distance> of its pole <k21|k31>".
-check_pole_claim <- function(name, p, note, root, pole, maxrel) {
+spacing_at <- function(x, above) { e <- floor(log2(x)); if (above || x != 2^e) 2^(e - 52) else 2^(e - 53) }
+check_pole_claim <- function(name, p, note, root, pole, maxrel, side) {
   q <- derive_q3("micro", p, 100, list())
   pv <- if (pole == "k21") q$k21 else q$k31
   d <- sapply(1:3, function(i) asNumeric(abs(q$l[i] - pv) / pv))
@@ -182,18 +205,26 @@ check_pole_claim <- function(name, p, note, root, pole, maxrel) {
   check(which.min(d) == want, name, ": the root nearest to the pole ", pole, " is not ", root, " (relative distances ", paste(signif(d, 3), collapse = ", "), ")")
   check(d[want] <= maxrel, name, ": ", root, " is ", signif(d[want], 3), " from the pole ", pole, ", not within ", maxrel)
   check(grepl(sprintf("%s within a relative %g of its pole %s", root, maxrel, pole), note, fixed = TRUE), name, ": the note does not state the claim")
-  cat(sprintf("  pole claim %s: %s is %.2g (relative) from %s
-", name, root, d[want], pole))
+  # the side (T-165): the root lies above or below its pole, measured at 256 bits, and the note says so
+  above <- q$l[want] > pv
+  check(side %in% c("above", "below"), name, ": the claim states the side, above or below")
+  check((side == "above") == above, name, ": ", root, " lies ", if (above) "above" else "below", " the pole ", pole, ", the claim says ", side)
+  check(grepl(sprintf("(%s it)", side), note, fixed = TRUE), name, ": the note does not say '(", side, " it)'")
+  sp <- spacing_at(asNumeric(pv), above)
+  half <- asNumeric(abs(q$l[want] - pv) / (mpfr(sp, PREC) / 2))
+  POLE_CLAIMS[[paste0("lc_", name)]] <<- list(pole_root = root, pole = pole, pole_side = side, pole_max_relative_distance = maxrel,
+                                              pole_relative_distance = signif(d[want], 6), pole_distance_half_spacings = signif(half, 6))
+  cat(sprintf("  pole claim %s: %s is %.2g (relative) %s %s, %.3g half-spacings of the doubles\n", name, root, d[want], side, pole, half))
 }
 add_lc <- function(name, p, note, ids = "pk3.iv_bolus", pole = NULL) {
   pn <- paste0("lc_", name)
   if (grepl("_pole_", name, fixed = TRUE)) {
-    check(!is.null(pole), name, ": a case named _pole_ states the root, the pole and the distance it claims")
-    check_pole_claim(name, p, note, pole$root, pole$pole, pole$maxrel)
+    check(!is.null(pole), name, ": a case named _pole_ states the root, the pole, the side and the distance it claims")
+    check_pole_claim(name, p, note, pole$root, pole$pole, pole$maxrel, pole$side)
   }
   points[[pn]] <<- list(set = "micro", p = p, dose = 100)
-  for (id in ids) # the textbook forms in doubles lose digits with large couplings (naive AUC off by 1e-6 or more): not ok
-  add_case(id, pn, pn, note = paste("large coupling:", note), textbook_ok = FALSE)
+  # the textbook flag is measured by write_case (T-165), not declared here
+  for (id in ids) add_case(id, pn, pn, note = paste("large coupling:", note))
 }
 EXTRA_IDS <- c("pk3.iv_bolus", "pk3.oral_1_lag", "pk3.oral_0", "pk3.iv_infusion")
 add_lc("rev1", mic(7.83e-1, 4.52e5, 1.27e10, 1.69e-4, 1.08e-1, 2), "k12 = 4.5e5, k21 = 1.3e10 (reviewer set 1)", EXTRA_IDS)
@@ -209,12 +240,12 @@ add_lc("both_1e4_1e6", mic(0.4, 1e4, 1, 1e6, 0.2, 5), "k12 = 1e4 and k13 = 1e6")
 add_lc("both_1e7_1e5", mic(0.4, 1e7, 1, 1e5, 0.2, 5), "k12 = 1e7 and k13 = 1e5")
 # with k10 = 0.4 the rest of the secular function is negative at the pole, so the root next to the tiny coupling lies
 # ABOVE it and is beta (gamma is then 4e-6, far from any pole): these two are beta cases, named so
-add_lc("beta_pole_a", mic(0.4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large; beta within a relative 1e-12 of its pole k31 (above it); gamma is far from both poles", pole = list(root = "beta", pole = "k31", maxrel = 1e-12))
-add_lc("beta_pole_b", mic(0.4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large; beta within a relative 1e-12 of its pole k21 (above it); gamma is far from both poles", pole = list(root = "beta", pole = "k21", maxrel = 1e-12))
+add_lc("beta_pole_a", mic(0.4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large; beta within a relative 1e-12 of its pole k31 (above it); gamma is far from both poles", pole = list(root = "beta", pole = "k31", maxrel = 1e-12, side = "above"))
+add_lc("beta_pole_b", mic(0.4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large; beta within a relative 1e-12 of its pole k21 (above it); gamma is far from both poles", pole = list(root = "beta", pole = "k21", maxrel = 1e-12, side = "above"))
 # with a large k10 the rest of the function is positive at the pole: the root next to the tiny coupling lies BELOW
 # it and is gamma (k10 = 3e4, reviewer proposal of round 4)
-add_lc("gamma_pole_a", mic(3e4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large; gamma within a relative 3e-12 of its pole k31 (below it); beta 0.2308 and alpha 1.3e5", EXTRA_IDS, pole = list(root = "gamma", pole = "k31", maxrel = 3e-12))
-add_lc("gamma_pole_b", mic(3e4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large; gamma within a relative 3e-12 of its pole k21 (below it); beta 0.2308 and alpha 1.3e5", EXTRA_IDS, pole = list(root = "gamma", pole = "k21", maxrel = 3e-12))
+add_lc("gamma_pole_a", mic(3e4, 1e5, 1, 1e-8, 0.2, 5), "k12 = 1e5 large; gamma within a relative 3e-12 of its pole k31 (below it); beta 0.2308 and alpha 1.3e5", EXTRA_IDS, pole = list(root = "gamma", pole = "k31", maxrel = 3e-12, side = "below"))
+add_lc("gamma_pole_b", mic(3e4, 1e-8, 0.2, 1e5, 1, 5), "k13 = 1e5 large; gamma within a relative 3e-12 of its pole k21 (below it); beta 0.2308 and alpha 1.3e5", EXTRA_IDS, pole = list(root = "gamma", pole = "k21", maxrel = 3e-12, side = "below"))
 add_lc("deep_a", mic(0.3, 10, 5, 0.01, 1e-3, 10), "realistic deep compartment: k31 = 1e-3, k12 = 10", EXTRA_IDS)
 add_lc("deep_b", mic(0.3, 0.01, 1e-3, 10, 5, 10), "realistic deep compartment, peripherals swapped")
 # END-LARGE-COUPLING

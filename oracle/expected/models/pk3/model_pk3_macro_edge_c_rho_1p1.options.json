@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "kind": "model_macro_free",
+  "case": "model_pk3_macro_edge_c_rho_1p1",
+  "generated_by": "oracle/scripts/models_3c_closed_form.R",
+  "model": "pk3.iv_bolus",
+  "parameterisation": "macro",
+  "dose": 100,
+  "parameters": {
+    "a": 0.7,
+    "b": 0.3,
+    "c": 1.3799e-18,
+    "alpha": 3,
+    "beta": 0.5,
+    "gamma": 0.05
+  },
+  "times": [-1, 0, 3.33333e-10, 3.33333e-07, 0.00333333, 0.0333333, 0.166667, 0.333333, 0.5, 0.666667, 1, 1.33333, 2, 3, 4, 8, 10, 12, 20, 24, 40, 80, 160, 320, 800, 2000, 6000, 16000],
+  "units": {
+    "dose": "mg",
+    "time": "h",
+    "concentration": "mg/L"
+  },
+  "note": "family c, rho = 1.1 * 2^-55, just above the floor of zone (i): the bottom of the band (zone (iii): log2 rho -54.86, log2 tau -0.12, log2 rho*tau -54.98, limited by gamma)",
+  "textbook_double_ok": false,
+  "zone": {
+    "zone": "iii",
+    "tau": 0.923076923076923,
+    "log2_tau": -0.115477,
+    "rho": 3.05302875e-17,
+    "log2_rho": -54.8625,
+    "rho_tau": 2.818180384615385e-17,
+    "log2_rho_tau": -54.978,
+    "limiting_root": "gamma",
+    "rho_alpha": 1.4,
+    "rho_beta": 0.6,
+    "rho_gamma": 3.05302875e-17
+  },
+  "contract": "MOD-3C-08 zones (0) and (iii): the engine either refuses with DegenerateExponents or accepts; when it accepts, conc, auc, aumc at the times and the scalars written here (macro-alone quantities) are held to MODEL_VALUES, and the micro constants it reports (k10, k12, k21, k13, k31, vc) must be accepted when supplied as a micro input to the same engine",
+  "quantities": {
+    "conc": "concentration in the central compartment, 0 before the dose",
+    "auc": "AUC(0, t)",
+    "aumc": "AUMC(0, t)",
+    "scalar": "the quantities that follow from the macro input alone: alpha, beta, gamma, w_alpha, w_beta, w_gamma, a, b, c, vc, half_life, half_life_alpha, half_life_beta, half_life_gamma"
+  },
+  "method": {
+    "closed_form": "256-bit arithmetic (Rmpfr) on the exact conversion of the macro doubles (MOD-3C-04); the exponents and weights are the macro input itself",
+    "cross_check": "the macro form summed in double precision, agreement 1e-10 of the largest value of each quantity",
+    "macro_alone_cross_check_gaps": [1.11e-16, 1.33e-16, 1.74e-16]
+  },
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "expm": "1.0.1",
+    "deSolve": "1.42",
+    "gmp": "0.7.5.1"
+  },
+  "n_values": 98,
+  "quantities_per_time": 3,
+  "n_times": 28
+}

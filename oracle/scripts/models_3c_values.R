@@ -14,6 +14,7 @@ num <- function(x) if (is.null(x)) NA_real_ else as.numeric(x)
 REG <- new.env()    # case name -> kind, for the .cases file
 register <- function(name, kind) assign(name, kind, envir = REG)
 ILLREG <- new.env() # case names that have scalar_ill rows
+ABSREG <- new.env() # case names that have scalar_abs rows (adjacent poles, MOD-3C-22)
 
 SET_NAMES <- list(clearance = c("cl", "vc", "q2", "vp2", "q3", "vp3"),
                   micro = c("k10", "k12", "k21", "k13", "k31", "vc"),
@@ -198,9 +199,51 @@ FLOOR_EXPM <- 1e-9    # value cases: expm agrees to 1e-8 relative down to 1e-9 o
 FLOOR_ODE <- 1e-9     # value cases: the solver likewise
 GAPS <- list()        # name -> measured gaps, written to the options files
 
+# Zone of a macro input at 256 bits (MOD-3C-08, T-165): the exact conversion of MOD-3C-04 applied to the doubles
+# as given. n1 = k21 + k31, n0 = k21 k31, Delta = n1^2 - 4 n0, tau = sqrt(|Delta|) / n1; for Delta >= 0 rho is the
+# smallest signed relative offset of a root to its pole (alpha over d_max, gamma under d_min, beta to the nearest
+# pole, negative when beta lies outside [d_min, d_max]). Zones, in this order: (0) tau < 2^-20 free; (i) Delta < 0
+# or rho < 2^-55 refused; (iii) rho tau < 2^-48 free; (ii) accepted. Needs the domain checks to have passed.
+Z_TAU <- 2^-20
+Z_RHO <- 2^-55
+Z_RHOTAU <- 2^-48
+macro_zone <- function(p) {
+  P <- lapply(p, mp)
+  s <- P$a + P$b + P$c
+  w <- c(P$a, P$b, P$c) / s
+  l <- c(P$alpha, P$beta, P$gamma)
+  S <- sum(l)
+  n1 <- sum(w * (S - l))
+  n0 <- w[1] * l[2] * l[3] + w[2] * l[1] * l[3] + w[3] * l[1] * l[2]
+  disc <- n1 * n1 - 4 * n0
+  tau <- sqrt(abs(disc)) / n1
+  out <- list(disc = asNumeric(disc), tau = asNumeric(tau), log2tau = asNumeric(log2(tau)),
+              rho = NA_real_, rho_alpha = NA_real_, rho_beta = NA_real_, rho_gamma = NA_real_,
+              log2rho = NA_real_, log2rho_tau = NA_real_)
+  if (disc >= 0) {
+    r <- sqrt(disc); dmax <- (n1 + r) / 2; dmin <- n0 / dmax
+    ra <- (l[1] - dmax) / dmax; rg <- (dmin - l[3]) / dmin
+    rb <- if (l[2] < dmin) -(dmin - l[2]) / dmin else if (l[2] > dmax) -(l[2] - dmax) / dmax
+          else min((l[2] - dmin) / dmin, (dmax - l[2]) / dmax)
+    rho <- min(ra, rb, rg)
+    out$rho <- asNumeric(rho); out$rho_alpha <- asNumeric(ra); out$rho_beta <- asNumeric(rb); out$rho_gamma <- asNumeric(rg)
+    out$log2rho <- if (rho > 0) asNumeric(log2(rho)) else -Inf
+    out$log2rho_tau <- if (rho > 0 && tau > 0) asNumeric(log2(rho * tau)) else -Inf
+    out$rho_tau <- asNumeric(rho * tau)
+    out$limit <- c("alpha", "beta", "gamma")[which.min(c(out$rho_alpha, out$rho_beta, out$rho_gamma))]
+  }
+  out$zone <- if (out$tau < Z_TAU) "0" else if (disc < 0 || !(rho >= Z_RHO)) "i" else if (!(out$rho_tau >= Z_RHOTAU)) "iii" else "ii"
+  out
+}
+
 # Relative offsets of alpha above max(k21, k31) and of gamma below min(k21, k31), 256 bits (MOD-3C-08):
-# the engine must refuse when either rounds onto the pole in doubles.
+# the engine must refuse when either rounds onto the pole in doubles. For the macro set (T-165) the offsets are
+# those of the exact conversion of the macro doubles, with beta's signed offset as well (macro_zone).
 rel_offsets <- function(set, p) {
+  if (set == "macro") {
+    z <- macro_zone(p)
+    return(c(alpha = z$rho_alpha, beta = z$rho_beta, gamma = z$rho_gamma))
+  }
   q <- derive_q3(set, p, 100, list())
   hi <- if (q$k21 > q$k31) q$k21 else q$k31
   lo <- if (q$k21 > q$k31) q$k31 else q$k21
@@ -236,7 +279,113 @@ textbook_flag <- function(q, extra) {
   ok
 }
 
+# ---------------------------------------------------------------- the naive textbook forms in doubles (T-165)
+# A port of crates/caladrius-testkit/src/naive3c.rs (trigonometric roots, weights (k21 - l)(k31 - l) / prod(l_j - l),
+# the plain sum of exponentials, powi by repeated squaring as in compiler-rt), used to MEASURE textbook_double_ok:
+# the flag is true exactly when the naive forms pass at the testkit's tolerance, |v - want| <= 1e-8 |want| +
+# 1e-11 max|want| (the maximum over the times of the case, per quantity). The largest ratio of the two sides is
+# written into the options (textbook_worst_ratio). The testkit test recomputes it in Rust.
+npowi <- function(a, b) { r <- 1; while (TRUE) { if (bitwAnd(b, 1L) == 1L) r <- r * a; b <- b %/% 2L; if (b == 0L) break; a <- a * a }; r }
+nfact <- function(n) { r <- 1; if (n >= 1L) for (j in 1:n) r <- r * j; r }
+nipow <- function(p, l, x) {
+  if (l == 0) return(npowi(x, p + 1L) / (p + 1))
+  y <- l * x
+  partial <- 0; for (j in 0:p) partial <- partial + npowi(y, j) / nfact(j)
+  nfact(p) / npowi(l, p + 1L) * (1 - exp(-y) * partial)
+}
+naive_micro <- function(set, p) {
+  g <- function(n) if (is.null(p[[n]])) NA_real_ else as.numeric(p[[n]])
+  if (set == "clearance") { vc <- g("vc"); list(vc = vc, k10 = g("cl") / vc, k12 = g("q2") / vc, k21 = g("q2") / g("vp2"), k13 = g("q3") / vc, k31 = g("q3") / g("vp3")) }
+  else if (set == "micro") list(vc = g("vc"), k10 = g("k10"), k12 = g("k12"), k21 = g("k21"), k13 = g("k13"), k31 = g("k31"))
+  else NULL
+}
+naive_roots <- function(m) {
+  a2 <- m$k10 + m$k12 + m$k13 + m$k21 + m$k31
+  a1 <- m$k10 * (m$k21 + m$k31) + m$k21 * m$k31 + m$k12 * m$k31 + m$k13 * m$k21
+  a0 <- m$k10 * m$k21 * m$k31
+  pp <- a1 - a2 * a2 / 3
+  qq <- -2 * a2 * a2 * a2 / 27 + a2 * a1 / 3 - a0
+  radius <- 2 * sqrt(-pp / 3)
+  arg <- 3 * qq / (2 * pp) * sqrt(-3 / pp)
+  if (is.finite(arg)) arg <- min(1, max(-1, arg))
+  phi <- acos(arg) / 3
+  sort(radius * cos(phi - 2 * pi * (0:2) / 3) + a2 / 3, decreasing = TRUE)
+}
+# conc, auc, aumc of one model at t; NULL when the naive code has no such model or set
+naive3c <- function(model, set, p, dose, t) {
+  m <- naive_micro(set, p)
+  if (is.null(m)) return(NULL)
+  l <- naive_roots(m)
+  w <- c((m$k21 - l[1]) * (m$k31 - l[1]) / ((l[2] - l[1]) * (l[3] - l[1])),
+         (m$k21 - l[2]) * (m$k31 - l[2]) / ((l[1] - l[2]) * (l[3] - l[2])),
+         (m$k21 - l[3]) * (m$k31 - l[3]) / ((l[1] - l[3]) * (l[2] - l[3])))
+  a <- dose * w / m$vc
+  tau <- if (is.null(p$tlag)) 0 else as.numeric(p$tlag)
+  tm <- function(c, l, p) list(c = c, l = l, p = p)
+  bolus <- model == "pk3.iv_bolus"
+  segs <- NULL
+  if (bolus) segs <- list(list(s0 = 0, len = NA_real_, terms = lapply(1:3, function(i) tm(a[i], l[i], 0L))))
+  else if (model %in% c("pk3.iv_infusion", "pk3.oral_0", "pk3.oral_0_lag")) {
+    if (is.null(p$dur)) return(NULL)
+    T <- as.numeric(p$dur); during <- list(); after <- list()
+    for (i in 1:3) {
+      x <- a[i] / (l[i] * T)
+      during <- c(during, list(tm(x, 0, 0L), tm(-x, l[i], 0L)))
+      after <- c(after, list(tm(x * (1 - exp(-l[i] * T)), l[i], 0L)))
+    }
+    segs <- list(list(s0 = tau, len = T, terms = during), list(s0 = tau + T, len = NA_real_, terms = after))
+  } else if (model %in% c("pk3.oral_1", "pk3.oral_1_lag")) {
+    if (is.null(p$ka)) return(NULL)
+    ka <- as.numeric(p$ka); terms <- list(); sm <- 0
+    for (i in 1:3) { cc <- ka * a[i] / (ka - l[i]); sm <- sm + cc; terms <- c(terms, list(tm(cc, l[i], 0L))) }
+    terms <- c(terms, list(tm(-sm, ka, 0L)))
+    segs <- list(list(s0 = tau, len = NA_real_, terms = terms))
+  } else return(NULL)
+  conc <- 0
+  for (sg in segs) {
+    inside <- t >= sg$s0 && (is.na(sg$len) || t <= sg$s0 + sg$len)
+    if (inside) {
+      u <- t - sg$s0
+      conc <- if (!bolus && u == 0) 0 else { acc <- 0; for (x in sg$terms) acc <- acc + x$c * npowi(u, x$p) * exp(-x$l * u); acc }
+      break
+    }
+  }
+  auc <- 0; aumc <- 0
+  for (sg in segs) {
+    if (t <= sg$s0) next
+    upper <- if (is.na(sg$len)) t - sg$s0 else min(sg$len, t - sg$s0)
+    for (x in sg$terms) {
+      auc <- auc + x$c * nipow(x$p, x$l, upper)
+      aumc <- aumc + x$c * (sg$s0 * nipow(x$p, x$l, upper) + nipow(x$p + 1L, x$l, upper))
+    }
+  }
+  c(conc, auc, aumc)
+}
+# largest ratio |v - want| / (1e-8 |want| + 1e-11 max|want|) over the times and the three quantities (Inf: refused or not finite)
+naive_worst_ratio <- function(model, set, p, dose, times, conc, auc, aumc) {
+  big <- c(max(abs(conc)), max(abs(auc)), max(abs(aumc)))
+  worst <- 0
+  for (i in seq_along(times)) {
+    v <- naive3c(model, set, p, dose, times[i])
+    if (is.null(v) || any(!is.finite(v))) return(Inf)
+    want <- c(conc[i], auc[i], aumc[i])
+    den <- 1e-8 * abs(want) + 1e-11 * big
+    d <- abs(v - want)
+    r <- ifelse(den > 0, d / den, ifelse(d > 0, Inf, 0))
+    worst <- max(worst, r)
+  }
+  worst
+}
+# k21 and k31 are adjacent doubles (no double strictly between them, MOD-3C-22)
+nextup <- function(x) x + 2^(floor(log2(x)) - 52)
+adjacent_poles <- function(q) {
+  a <- asNumeric(q$k21); b <- asNumeric(q$k31)
+  lo <- min(a, b); hi <- max(a, b)
+  lo != hi && nextup(lo) == hi
+}
+
 # ---------------------------------------------------------------- one value case
+POLE_CLAIMS <- list()   # lc_<name> -> the pole claim of that point, filled by check_pole_claim (models_3c_closed_form.R)
 write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NULL, conditioning = FALSE) {
   q <- derive_q3(set, p, dose, extra)
   segs <- segments(model, q)
@@ -386,18 +535,32 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
 
   groups <- rep("scalar", length(scn))
   groups[names(scn) %in% ill] <- "scalar_ill"
+  # adjacent poles (MOD-3C-22): w_beta is held to 1e-12 ABSOLUTE (0 is allowed where the exact weight is below it),
+  # whatever its condition number: its own group, scalar_abs, outside scalar and scalar_ill
+  adjacent <- adjacent_poles(q)
+  if (adjacent) groups[names(scn) == "w_beta"] <- "scalar_abs"
+  ill_out <- setdiff(ill, if (adjacent) "w_beta" else character(0))
   tkeys <- if (length(times)) paste0("t=", num17(times)) else character(0)
   rows <- data.frame(subject = c(rep(tkeys, 3), groups), parameter = c(rep(c("conc", "auc", "aumc"), each = length(times)), names(scn)),
                      value = c(conc, auc, aumc, unname(scn)), stringsAsFactors = FALSE)
-  ord <- order(match(rows$subject, c(tkeys, "scalar", "scalar_ill")),
+  ord <- order(match(rows$subject, c(tkeys, "scalar", "scalar_ill", "scalar_abs")),
                match(rows$parameter, c("conc", "auc", "aumc", names(scn))))
   rows <- rows[ord, ]
   base <- paste0("model_pk3_", gsub("[^A-Za-z0-9_]", "_", name))
-  if (length(ill) > 0L) assign(base, TRUE, envir = ILLREG)
+  if (length(ill_out) > 0L) assign(base, TRUE, envir = ILLREG)
+  if (adjacent) assign(base, TRUE, envir = ABSREG)
   write_lines_lf(c("subject,parameter,value", sprintf("%s,%s,%s", rows$subject, rows$parameter, num17(rows$value))),
                  file.path(exp_dir, paste0(base, ".csv")))
   if (is.null(textbook_ok)) textbook_ok <- textbook_flag(q, extra)
   textbook_ok <- textbook_ok && length(ill) == 0L
+  # T-165: the flag is MEASURED where the testkit's naive code can run (clearance and micro sets, a positive dose,
+  # a time grid); the declared rule above stays for the others (the macro set, dose 0, the conditioning cases)
+  textbook_basis <- "declared"; worst_ratio <- NA_real_
+  if (!conditioning && dose > 0 && set != "macro" && length(times) > 0L) {
+    worst_ratio <- suppressWarnings(naive_worst_ratio(model, set, c(p, extra), dose, times, conc, auc, aumc))
+    textbook_ok <- is.finite(worst_ratio) && worst_ratio <= 1
+    textbook_basis <- "measured"
+  }
   kap_kept <- kap[!(names(kap) %in% ill)]
   meta <- list(
     schema = 1L, kind = if (conditioning) "model_conditioning" else "model", case = base,
@@ -408,20 +571,24 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
     units = list(dose = "mg", time = "h", concentration = "mg/L"),
     note = note,
     textbook_double_ok = textbook_ok,
+    textbook_basis = textbook_basis,
+    textbook_worst_ratio = if (is.finite(worst_ratio)) signif(worst_ratio, 4) else if (is.na(worst_ratio)) NULL else "Infinity",
     quantities = list(
       conc = "concentration in the central compartment (apparent for extravascular input), 0 before the dose and before the lag; the bolus at t = 0 is D / vc",
       auc = "area under the concentration curve from the dose time to the time",
       aumc = "area under the first moment curve from the dose time to the time",
       scalar = "alpha > beta > gamma; k10, k12, k21, k13, k31; cl, vc, q2, vp2, q3, vp3; a, b, c (INTRAVENOUS coefficients D*w/vc for every route); w_alpha, w_beta, w_gamma; half_life = ln2/gamma, half_life_alpha, half_life_beta, half_life_gamma; vss, vz = cl/gamma, v_extrap = vc/w_gamma; auc_inf = D/cl; aumc_inf; mrt_system = vss/cl; mrt = mrt_system + m; c0 (bolus); tmax_pred, cmax_pred (not the bolus; absent for a zero dose with first-order input); k21_ge_k31 (1 when k21 >= k31)",
-      scalar_ill = "the scalars whose condition number (conditions) exceeds 1e3 with respect to the parameters of the case: written, with their condition, but outside the group the engine is held to at MODEL_VALUES; the decision is the orchestrator's"
+      scalar_ill = "the scalars whose condition number (conditions) exceeds 1e3 with respect to the parameters of the case: written, with their condition, but outside the group the engine is held to at MODEL_VALUES; the decision is the orchestrator's",
+      scalar_abs = "only for adjacent poles (k21, k31 adjacent doubles, MOD-3C-22): w_beta, held to 1e-12 ABSOLUTE (0 is allowed where the exact weight is below 1e-12), whatever its condition number"
     ),
     conditions = as.list(kap),
-    scalar_ill_names = arr(ill),
+    scalar_ill_names = arr(ill_out),
     method = list(
       closed_form = "independent implementation of the explicit sums of exponentials (MOD-3C-10 to 14), 256-bit arithmetic (Rmpfr); the exponents are the roots of the cubic found by Newton inside the brackets given by the critical points of the cubic, the weights the product-of-differences form (checked against the sum-of-positive-terms form), AUC and AUMC exact integrals of the terms; the confluent limit is used when |ka - lambda| is below 2^-150",
       cross_checks = list("matrix exponential (expm) of the 7-state system on intervals of constant input", "adaptive ODE solver (deSolve bdf with an analytic Jacobian, rtol 1e-13, atol 1e-18 of the dose, any solver warning or early return is an error) with AUC and first-moment states", "eigenvalues of the 3 x 3 system (alpha always; beta and gamma where the solver's absolute error, eig_abs_tol, is below the tolerance), and for beta and gamma, when they are apart, the stable identities alpha beta gamma = k10 k21 k31 and the sum of products of pairs (no subtraction of like numbers); a 256-bit scaling-and-squaring matrix exponential for the times that neither double precision check covers"),
-      cross_check_tolerance = 1e-8,
+      cross_check_tolerance_finite_times = 1e-8,
       cross_check_floor = "agreement is relative (1e-8) down to a floor times the largest value of the quantity in the case. The search order is: all times first, then (if that fails) only the times with ||A|| t <= 1e8; for each of the two the floors in increasing order (expm: 1e-9, 1e-8, 1e-7, 1e-6; ODE: 1e-9 up to 1e-3); the first that holds is used and written in cross_check_results (floor, number of times checked, limit). ODE to infinity (AUC, AUMC, MRT): 1e-8, or 1e-7 when times were dropped (ode_inf_tol, with the measured ode_inf_gap). Times covered by neither: expm256_times_checked, held to 1e-20",
+      eigenvalue_note = "beta and gamma are pinned by the Vieta identities (the product of the exponents = k10 k21 k31 and the sum of their products in pairs = k10 k21 + k10 k31 + k21 k31 + k12 k31 + k13 k21, both sums of positive terms, with alpha from the eigenvalue solver) wherever eig_abs_tol (1e-14 of the largest matrix entry, the absolute error of a backward-stable eigenvalue solver) is larger than 1e-9 of the value of the exponent, because the eigenvalue solver cannot resolve it there; where the gaps of the exponents allow it the identities are applied to every case, and eig_checks lists the checks that ran",
       cross_check_tolerance_to_infinity = "see ode_inf_tol of cross_check_results",
       kappa_max = KAPPA_MAX
     ),
@@ -431,8 +598,76 @@ write_case <- function(name, model, set, p, dose, extra, note, textbook_ok = NUL
     quantities_per_time = 3L,
     n_times = length(times)
   )
+  # the pole claim of a large-coupling case (T-165): the root, the pole, the side and the distance in half-spacings of the doubles
+  claim <- NULL
+  for (k in names(POLE_CLAIMS)) if (endsWith(name, k)) claim <- POLE_CLAIMS[[k]]
+  if (!is.null(claim)) meta <- c(meta, claim)
   write_lines_lf(jenc(meta), file.path(exp_dir, paste0(base, ".options.json")))
   register(base, if (conditioning) "conditioning" else "values")
   cat(sprintf("%-52s %3d times %4d values %d ill\n", base, length(times), nrow(rows), length(ill)))
+  nrow(rows)
+}
+
+# ---------------------------------------------------------------- free-zone macro inputs (MOD-3C-08 zones (0) and (iii), T-165)
+# A macro input whose zone leaves the outcome to the engine: it may refuse (DegenerateExponents) or accept. When it
+# accepts, the quantities that follow from the macro input alone are those of the exact model within the tolerance of
+# the model oracle: the concentration, the areas and the moments on a time grid, the exponents, the weights, the
+# half-lives, the intravenous coefficients and vc; and the micro constants it reports, fed back as a micro input,
+# are accepted. No micro-derived constant, no clearance and no scalar built from them is written (no contract).
+FREE_SCALARS <- c("alpha", "beta", "gamma", "w_alpha", "w_beta", "w_gamma", "a", "b", "c", "vc",
+                  "half_life", "half_life_alpha", "half_life_beta", "half_life_gamma")
+write_free_case <- function(name, p, dose, note) {
+  z <- macro_zone(p)
+  check(z$zone %in% c("0", "iii"), name, ": a free-zone case is in zone (0) or (iii), not ", z$zone)
+  check(z$disc >= 0, name, ": the free cases written here have real poles")
+  model <- "pk3.iv_bolus"
+  q <- derive_q3("macro", p, dose, list())
+  segs <- segments(model, q)
+  times <- make_times(model, q, list())
+  tm <- mp(times)
+  cm <- conc_vec(segs, tm, TRUE); am <- area_vec(segs, tm, 0); mm <- area_vec(segs, tm, 1)
+  conc <- sapply(cm, tonum); auc <- sapply(am, tonum); aumc <- sapply(mm, tonum)
+  sc <- scalars_of(model, q, segs)
+  scn <- sapply(sc[FREE_SCALARS], tonum)
+  # the macro-alone quantities by the plain double precision sums of the macro form (a, b, c, alpha, beta, gamma)
+  A <- c(p$a, p$b, p$c); L <- c(p$alpha, p$beta, p$gamma)
+  big <- c(max(abs(conc)), max(abs(auc)), max(abs(aumc)))
+  gaps <- c(0, 0, 0)
+  for (i in seq_along(times)) {
+    t <- times[i]
+    if (t < 0) next
+    v <- c(sum(A * exp(-L * t)), sum(A * (1 - exp(-L * t)) / L), sum(A * (1 / L^2 - exp(-L * t) * (t / L + 1 / L^2))))
+    gaps <- pmax(gaps, abs(v - c(conc[i], auc[i], aumc[i])) / big)
+  }
+  check(all(gaps < 1e-10), name, ": the macro form in doubles disagrees with the 256-bit value, gaps ", paste(signif(gaps, 3), collapse = " "))
+  tkeys <- paste0("t=", num17(times))
+  rows <- data.frame(subject = c(rep(tkeys, 3), rep("scalar", length(scn))),
+                     parameter = c(rep(c("conc", "auc", "aumc"), each = length(times)), names(scn)),
+                     value = c(conc, auc, aumc, unname(scn)), stringsAsFactors = FALSE)
+  base <- paste0("model_pk3_", name)
+  write_lines_lf(c("subject,parameter,value", sprintf("%s,%s,%s", rows$subject, rows$parameter, num17(rows$value))),
+                 file.path(exp_dir, paste0(base, ".csv")))
+  meta <- list(
+    schema = 1L, kind = "model_macro_free", case = base,
+    generated_by = "oracle/scripts/models_3c_closed_form.R",
+    model = model, parameterisation = "macro", dose = dose, parameters = p, times = arr(times),
+    units = list(dose = "mg", time = "h", concentration = "mg/L"),
+    note = note,
+    textbook_double_ok = FALSE,
+    zone = list(zone = z$zone, tau = z$tau, log2_tau = signif(z$log2tau, 6), rho = z$rho, log2_rho = signif(z$log2rho, 6),
+                rho_tau = z$rho_tau, log2_rho_tau = signif(z$log2rho_tau, 6), limiting_root = z$limit,
+                rho_alpha = z$rho_alpha, rho_beta = z$rho_beta, rho_gamma = z$rho_gamma),
+    contract = "MOD-3C-08 zones (0) and (iii): the engine either refuses with DegenerateExponents or accepts; when it accepts, conc, auc, aumc at the times and the scalars written here (macro-alone quantities) are held to MODEL_VALUES, and the micro constants it reports (k10, k12, k21, k13, k31, vc) must be accepted when supplied as a micro input to the same engine",
+    quantities = list(
+      conc = "concentration in the central compartment, 0 before the dose", auc = "AUC(0, t)", aumc = "AUMC(0, t)",
+      scalar = paste("the quantities that follow from the macro input alone:", paste(FREE_SCALARS, collapse = ", "))),
+    method = list(closed_form = "256-bit arithmetic (Rmpfr) on the exact conversion of the macro doubles (MOD-3C-04); the exponents and weights are the macro input itself",
+                  cross_check = "the macro form summed in double precision, agreement 1e-10 of the largest value of each quantity",
+                  macro_alone_cross_check_gaps = signif(gaps, 3)),
+    versions = versions, n_values = nrow(rows), quantities_per_time = 3L, n_times = length(times)
+  )
+  write_lines_lf(jenc(meta), file.path(exp_dir, paste0(base, ".options.json")))
+  register(base, "free")
+  cat(sprintf("%-52s zone %-3s log2 tau %7.2f rho %.3g (free) %3d values\n", base, z$zone, z$log2tau, z$rho, nrow(rows)))
   nrow(rows)
 }

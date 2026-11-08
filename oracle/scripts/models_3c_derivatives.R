@@ -215,6 +215,11 @@ for (id in IDS) {
   for (pn in c("fast_dist", "small2_6", "small3_9", "tie_4", "tie_9", "tie_exact", "close_exp"))
     dadd(id, pn, pn)
 }
+# adjacent poles (MOD-3C-22, T-165): the F1 case and the pairs at 0.3 and at a power of two as derivative cases; the entries with a
+# condition number above 1e3 are not written, as everywhere (most of the entries that go through w_beta are among them)
+for (id in IDS) dadd(id, "adj_below", "adj_below", note = "k21 = 1, k31 the adjacent double below (the F1 case)")
+for (pn in c("adj_up", "adj_0p3", "adj_0p3_swapped", "adj_pow2_up", "adj_pow2_down")) dadd("pk3.iv_bolus", pn, pn, note = "adjacent poles")
+dadd("pk3.oral_1", "adj_up", "adj_up", note = "adjacent poles")
 dadd("pk3.oral_1", "ka_eq_alpha", "base_macro", extra = list(ka = 3), note = "ka = alpha exactly (confluent limit)")
 dadd("pk3.oral_1", "ka_eq_beta", "base_macro", extra = list(ka = 0.5), note = "ka = beta exactly")
 dadd("pk3.oral_1", "ka_eq_gamma", "base_macro", extra = list(ka = 0.05), note = "ka = gamma exactly")

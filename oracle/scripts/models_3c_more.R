@@ -243,21 +243,149 @@ for (nm in names(beta_probes)) {
 }
 BAND_LO <- 2^-55
 BAND_HI <- 2^-50
-# the same through the macro set (item 3): a weight so small that the micro constants returned put a root on a pole
+# the same through the macro set (item 3): a weight so small that the micro constants returned put a root on a pole.
+# MOD-3C-08 (T-165) decides every macro input by its zone, computed at 256 bits on the exact conversion of the doubles
+# (macro_zone in models_3c_values.R): (i) refused, (ii) accepted with values, (0) and (iii) free (the engine may refuse
+# or accept; when it accepts the obligations are checked: the free cases below). The rows of the first two kinds keep
+# their outcomes; those of the band that used to be omitted, and the ones with rho between 2^-50 and 2^-48/tau that
+# used to be accepted, are free cases now.
 macro_words <- list(c("degenerate", "macro", "valid"), c("a", "b", "c", "offset", "exponent"))
+N_MACRO_FREE <- 0L; N_MACRO_I <- 0L; N_MACRO_II <- 0L
+FREE_NAMES <- character(0)
+free_row <- function(name, p, note) {
+  z <- macro_zone(p)
+  check(z$zone %in% c("0", "iii"), name, ": expected a free zone, got ", z$zone)
+  N_MACRO_FREE <<- N_MACRO_FREE + 1L
+  FREE_NAMES <<- c(FREE_NAMES, name)
+  n_rows <<- n_rows + write_free_case(name, p, 100, sprintf("%s (zone (%s): log2 rho %.2f, log2 tau %.2f, log2 rho*tau %.2f, limited by %s)",
+                                                           note, z$zone, z$log2rho, z$log2tau, z$log2rho_tau, z$limit))
+}
+refusal_row <- function(id, p, note, words = macro_words, spec = paste(M3, "item 3", "MOD-3C-08")) {
+  z <- macro_zone(p)
+  check(z$zone == "i", id, ": expected zone (i), got ", z$zone)
+  N_MACRO_I <<- N_MACRO_I + 1L
+  err(id, "macro", spec, "pk3.iv_bolus", 100, p, words,
+      sprintf("%s (zone (i): log2 rho %.2f < -55, limited by %s; DegenerateExponents)", note, z$log2rho, z$limit))
+}
 for (nm in c("a", "c")) for (e in 17:30) {
   w <- list(a = 0.7, b = 0.3, c = 0.1); w[[nm]] <- 10^-e
   p <- c(w, list(alpha = 3, beta = 0.5, gamma = 0.05))
-  m <- min(rel_offsets("macro", p))
-  if (m < BAND_LO) {
+  z <- macro_zone(p)
+  id <- sprintf("macro_weight_%s_1e%d", nm, e)
+  if (z$zone == "i") {
     N_COUPLING_REFUSALS <- N_COUPLING_REFUSALS + 1L
-    err(sprintf("macro_weight_%s_1e%d", nm, e), "macro", paste(M3, "item 3", "MOD-3C-08"), "pk3.iv_bolus", 100, p,
-        macro_words, sprintf("weight `%s` = 1e-%d: the micro constants of the macro set put a root on a pole (relative offset %.2g < 2^-55)", nm, e, m))
-  } else if (m < BAND_HI) N_BAND_OMITTED <- N_BAND_OMITTED + 1L
-  else N_COUPLING_ACCEPTED <- N_COUPLING_ACCEPTED + 1L
+    err(id, "macro", paste(M3, "item 3", "MOD-3C-08"), "pk3.iv_bolus", 100, p,
+        macro_words, sprintf("weight `%s` = 1e-%d: the micro constants of the macro set put a root on a pole (relative offset %.2g < 2^-55; zone (i), DegenerateExponents)", nm, e, z$rho))
+  } else if (z$zone == "iii" || z$zone == "0") {
+    free_row(id, p, sprintf("weight `%s` = 1e-%d: in the band between the floor 2^-55 of zone (i) and the accepted zone (ii)", nm, e))
+  } else N_COUPLING_ACCEPTED <- N_COUPLING_ACCEPTED + 1L
 }
-cat(sprintf("coupling refusals: %d rows (%d at the rounding boundary, %d beta probes); %d inputs accepted (not refused; %d of them at the boundary); %d macro inputs in the ambiguous band left out
-", N_COUPLING_REFUSALS, N_EDGE_REFUSALS, N_BETA_PROBES, N_COUPLING_ACCEPTED, N_EDGE_ACCEPTED, N_BAND_OMITTED))
+# ---- the edges of the zones, by family: the weight that limits the root is tuned at 256 bits so that the metric hits the edge
+#   a-family: a tiny, rho limited by alpha;  c-family: c tiny, by gamma;  b-family: b tiny, by beta (beta next to a pole)
+#   rho: 0.9 * 2^-55 (zone (i), refused) | 1.1 * 2^-55 (the bottom of the band, free) | 2^-51.5 (mid-band, free)
+#   rho*tau: 0.9 * 2^-48 (the top of the band, free) | 1.1 * 2^-48 (zone (ii), accepted with values)
+MACRO_FAMILIES <- list(
+  a = list(x0 = 1e-16, make = function(x) list(a = x, b = 0.3, c = 0.1, alpha = 3, beta = 0.5, gamma = 0.05)),
+  c = list(x0 = 1e-16, make = function(x) list(a = 0.7, b = 0.3, c = x, alpha = 3, beta = 0.5, gamma = 0.05)),
+  b = list(x0 = 1e-16, make = function(x) list(a = 0.7, b = x, c = 0.1, alpha = 3, beta = 0.5, gamma = 0.05)))
+tune_macro <- function(F, kind, target, label) {
+  x <- F$x0
+  for (it in 1:10) {
+    z <- macro_zone(F$make(x))
+    x <- x * target / (if (kind == "rho") z$rho else z$rho_tau)
+  }
+  x <- signif(x, 5)
+  p <- F$make(x)
+  z <- macro_zone(p)
+  m <- if (kind == "rho") z$rho else z$rho_tau
+  check(abs(m / target - 1) < 2e-3, label, ": tuned ", kind, " ", m, " target ", target)
+  p
+}
+EDGE_II <- character(0)
+for (fam in names(MACRO_FAMILIES)) {
+  F <- MACRO_FAMILIES[[fam]]
+  refusal_row(sprintf("macro_edge_%s_rho_0p9", fam), tune_macro(F, "rho", 0.9 * 2^-55, paste("edge", fam, "rho 0.9")),
+              sprintf("family %s, rho = 0.9 * 2^-55, just below the floor of zone (i)", fam))
+  free_row(sprintf("macro_edge_%s_rho_1p1", fam), tune_macro(F, "rho", 1.1 * 2^-55, paste("edge", fam, "rho 1.1")),
+           sprintf("family %s, rho = 1.1 * 2^-55, just above the floor of zone (i): the bottom of the band", fam))
+  free_row(sprintf("macro_edge_%s_mid", fam), tune_macro(F, "rho", 2^-51.5, paste("edge", fam, "mid")),
+           sprintf("family %s, rho = 2^-51.5, mid-band", fam))
+  free_row(sprintf("macro_edge_%s_rhotau_0p9", fam), tune_macro(F, "rho_tau", 0.9 * 2^-48, paste("edge", fam, "rhotau 0.9")),
+           sprintf("family %s, rho * tau = 0.9 * 2^-48, the top of the band", fam))
+  pii <- tune_macro(F, "rho_tau", 1.1 * 2^-48, paste("edge", fam, "rhotau 1.1"))
+  check(macro_zone(pii)$zone == "ii", fam, ": rho*tau 1.1 * 2^-48 is not zone (ii)")
+  N_MACRO_II <- N_MACRO_II + 1L
+  nm <- sprintf("macro_edge_%s_rhotau_1p1", fam)
+  n_rows <- n_rows + write_case(nm, "pk3.iv_bolus", "macro", pii, 100, list(),
+    sprintf("family %s, rho * tau = 1.1 * 2^-48: the first accepted values above the band (zone (ii)); the scalars derived through the micro constants are written with their conditions (scalar_ill where above 1e3)", fam))
+}
+# ---- tau: the small-tau edge, zone (0) below 2^-20 and (ii) above, on a near-tie micro set converted to the macro doubles
+tau_edge_set <- function(target) {
+  delta <- 2 * target
+  for (it in 1:12) {
+    pm <- to_set(list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - delta, 8), dose = 100), "macro")
+    delta <- delta * target / macro_zone(pm)$tau
+  }
+  pm <- to_set(list(set = "micro", p = mic(0.375, 1.1875, 1, 0.7875, 1 - delta, 8), dose = 100), "macro")
+  check(abs(macro_zone(pm)$tau / target - 1) < 2e-2, "tau edge ", target, ": got ", macro_zone(pm)$tau)
+  lapply(pm, function(v) signif(as.numeric(v), 15))
+}
+free_row("macro_edge_tau_0p9", tau_edge_set(0.9 * 2^-20), "near-tie macro set, tau = 0.9 * 2^-20: zone (0), below the edge")
+pt1 <- tau_edge_set(1.1 * 2^-20)
+check(macro_zone(pt1)$zone == "ii", "tau 1.1 * 2^-20 is zone (ii)")
+n_rows <- n_rows + write_case("macro_edge_tau_1p1", "pk3.iv_bolus", "macro", pt1, 100, list(),
+  "near-tie macro set, tau = 1.1 * 2^-20: just above zone (0), accepted with values (zone (ii)); w_beta is of order 1e-13 and the scalars through the micro constants are ill-conditioned")
+# ---- the macro path: a sign that the plain evaluation of MOD-3C-04 in doubles cannot decide (N1, MOD-3C-06 item 3)
+# The plain double evaluation (n1 and n0 from the weights, the stable quadratic, k12 and k13 from P(x) = (x - alpha)(x - beta)(x - gamma))
+# is the one the spec uses to define "failed". The inputs below are in zone (i) at 256 bits AND fail that evaluation with a
+# non-positive k12 or k13 (or gap of the poles, or discriminant): the engine must refuse them with DegenerateExponents and a message
+# that names the pole and the coupling (not DerivedOutOfRange, not an overflow wording). They are a separate group, macro_n1.
+plain_double_macro <- function(p) {
+  w <- c(p$a, p$b, p$c) / (p$a + p$b + p$c)
+  l <- c(p$alpha, p$beta, p$gamma); S <- l[1] + l[2] + l[3]
+  n1 <- w[1] * (S - l[1]) + w[2] * (S - l[2]) + w[3] * (S - l[3])
+  n0 <- w[1] * l[2] * l[3] + w[2] * l[1] * l[3] + w[3] * l[1] * l[2]
+  disc <- n1 * n1 - 4 * n0
+  if (!(disc >= 0)) return("discriminant")
+  big <- (n1 + sqrt(disc)) / 2; small <- n0 / big
+  P <- function(x) (x - l[1]) * (x - l[2]) * (x - l[3])
+  if (!(big > small)) return("gap")
+  k12 <- -P(big) / ((big - small) * big); k13 <- -P(small) / ((small - big) * small)
+  if (!(k12 > 0)) "k12" else if (!(k13 > 0)) "k13" else "ok"
+}
+N1_KINDS <- c(k12 = 0L, k13 = 0L, gap = 0L, discriminant = 0L)
+N1_CAND <- list(
+  a = function(x, v) list(a = x, b = 0.25 * v, c = 0.15 * v, alpha = 4, beta = 0.6, gamma = 0.04),
+  c = function(x, v) list(a = 0.6 * v, b = 0.2 * v, c = x, alpha = 4, beta = 0.6, gamma = 0.04),
+  b = function(x, v) list(a = 0.55 * v, b = x, c = 0.2 * v, alpha = 4, beta = 0.6, gamma = 0.04))
+N1_COUNT <- 0L
+for (fam in names(N1_CAND)) for (e in 19:26) for (v in c(1, 3)) {
+  p <- N1_CAND[[fam]](10^-e, v)
+  if (macro_zone(p)$zone != "i") next
+  res <- plain_double_macro(p)
+  if (res == "ok") next
+  N1_COUNT <- N1_COUNT + 1L
+  N1_KINDS[[res]] <- N1_KINDS[[res]] + 1L
+  z <- macro_zone(p)
+  err(sprintf("macro_n1_%s_1e%d_v%d", fam, e, v), "macro_n1", paste(M3, "item 3", "N1"), "pk3.iv_bolus", 100, p,
+      list(c("k21", "k31"), c("k12", "k13"), c("valid")),
+      sprintf("weight `%s` = 1e-%d (zone (i), rho %.2g): the plain double evaluation of MOD-3C-04 fails on %s; refused with DegenerateExponents, the message naming the pole (k21 or k31), the coupling (k12 or k13) and saying that the macro set gives no valid three-compartment model", fam, e, z$rho, res))
+}
+cat(sprintf("N1 rows (zone (i), plain double evaluation fails): %d (%s)\n", N1_COUNT, paste(names(N1_KINDS), N1_KINDS, sep = " ", collapse = ", ")))
+# ---- two poles two spacings apart (MOD-3C-22 asks the engine to refuse a beta that rounds onto a pole): k21 = 1 and k31 = 1 - 2^-52,
+# one double strictly between them; k13 = 0.7875 puts beta at 0.80 of a spacing from k31: it rounds to the double in the middle,
+# accepted; k13 = 0.3 puts it at 0.40: it rounds onto k31, refused
+two_spacing <- function(k13) mic(0.375, 1.1875, 1, k13, 1 - 2^-52, 8)
+check(!any(roots_onto_pole(two_spacing(0.7875))), "two-spacing pair: k13 = 0.7875 must not round onto a pole")
+check(roots_onto_pole(two_spacing(0.3))[2], "two-spacing pair: k13 = 0.3 must put beta onto a pole")
+check(!adjacent_poles(derive_q3("micro", two_spacing(0.7875), 100)), "two-spacing pair: the poles must not be adjacent")
+n_cond <- n_cond + 1L
+n_rows <- n_rows + write_case("cond_tie_two_spacings", "pk3.iv_bolus", "micro", two_spacing(0.7875), 100, list(),
+  "k21 = 1 and k31 = 1 - 2^-52, two spacings apart (one double between them); beta lies 0.80 of a spacing from k31, so it rounds to the double in the middle and the model is accepted (w_beta is ill-conditioned: scalar_ill)")
+add_coupling_row("numeric_tie_two_spacings_k13_0p3", two_spacing(0.3), "k13", "beta",
+                 "k21 = 1 and k31 = 1 - 2^-52, two spacings apart; beta lies 0.40 of a spacing from k31 and rounds onto it")
+cat(sprintf("coupling refusals: %d rows (%d at the rounding boundary, %d beta probes); %d inputs accepted (not refused; %d of them at the boundary)\n", N_COUPLING_REFUSALS, N_EDGE_REFUSALS, N_BETA_PROBES, N_COUPLING_ACCEPTED, length(EDGE_ACCEPTED)))
+cat(sprintf("macro zones: %d refusals in zone (i), %d accepted edge rows in zone (ii), %d free rows (zones (0) and (iii)), %d N1 rows\n", N_MACRO_I + sum(grepl("^macro_weight_", vapply(errors, function(e) e$id, ""))), N_MACRO_II, N_MACRO_FREE, N1_COUNT))
 # times (MOD-GEN-04)
 err("times_nan", "times", "MOD-GEN-04", "pk3.iv_bolus", 100, cl3, list(c("time", "nan", "finite")), "a NaN time is refused", times = list(1, "NaN"))
 err("times_infinite", "times", "MOD-GEN-04", "pk3.iv_bolus", 100, cl3, list(c("time", "infinite", "finite")), "an infinite time is refused", times = list("Infinity"))
@@ -274,7 +402,7 @@ write_error_suite <- function(base, errs, groups, note) {
                  file.path(exp_dir, paste0(base, ".options.json")))
   length(errs)
 }
-n_err <- write_error_suite("model_pk3_errors", errors, c("domain", "one_compartment", "macro", "sets", "numeric", "times"),
+n_err <- write_error_suite("model_pk3_errors", errors, c("domain", "one_compartment", "macro", "macro_n1", "sets", "numeric", "times"),
   "inputs the three-compartment engine must refuse (MOD-3C-06, MOD-3C-26); the expected table has one not-available row (empty value) per case, the reason is in `reason`, the rule in `spec`, and the readable message must contain, for each inner list of `message_contains`, at least one of its words (lower case)")
 cat(sprintf("error cases: %d\n", n_err))
 

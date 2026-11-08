@@ -49,7 +49,7 @@ pub use pk2::{
     pk2_dir,
 };
 pub use pk3::{
-    PK3_ERRORS, Pk3Case, Pk3Kind, list_pk3_cases, list_pk3_md_cases, load_pk3_case,
+    PK3_ERRORS, Pk3Case, Pk3Kind, PoleClaim, list_pk3_cases, list_pk3_md_cases, load_pk3_case,
     load_pk3_errors, load_pk3_md_case, pk3_dir,
 };
 pub use step3::{

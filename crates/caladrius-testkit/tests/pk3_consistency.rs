@@ -55,6 +55,7 @@ fn scalar(c: &Pk3Case, name: &str) -> Option<f64> {
         .get("scalar", name)
         .flatten()
         .or_else(|| c.case.expected.get("scalar_ill", name).flatten())
+        .or_else(|| c.case.expected.get("scalar_abs", name).flatten())
 }
 
 const IDS: [&str; 6] = [
@@ -206,7 +207,7 @@ fn the_naive_forms_reproduce_the_well_conditioned_cases() {
 #[test]
 fn the_scalars_satisfy_the_identities_of_the_specification() {
     for c in all_cases() {
-        if c.kind == Pk3Kind::Derivatives {
+        if c.kind == Pk3Kind::Derivatives || c.kind == Pk3Kind::Free {
             continue;
         }
         let name = c.case.name.as_str();
@@ -508,6 +509,7 @@ fn the_error_suite_covers_every_group() {
         "domain",
         "one_compartment",
         "macro",
+        "macro_n1",
         "sets",
         "numeric",
         "times",
@@ -526,4 +528,275 @@ fn the_error_suite_covers_every_group() {
             e.id
         );
     }
+}
+
+// ---------------------------------------------------------------- T-165
+
+/// The textbook flag is MEASURED (T-165): for a case whose basis is `measured`, the flag is true exactly
+/// when the naive forms of this crate pass at the tolerance of
+/// `the_naive_forms_reproduce_the_well_conditioned_cases`, and the worst ratio written in the options
+/// is at most 1 exactly then.
+#[test]
+fn the_textbook_flag_is_what_the_naive_forms_do() {
+    let mut measured = 0;
+    let mut disagreements = Vec::new();
+    for c in of_kind(Pk3Kind::Values) {
+        match c.textbook_basis.as_deref() {
+            Some("measured") => {}
+            Some("declared") | None => continue,
+            Some(other) => panic!("{}: textbook_basis {other:?}", c.case.name),
+        }
+        measured += 1;
+        let ratio = c
+            .textbook_worst_ratio
+            .unwrap_or_else(|| panic!("{}: a measured flag has its worst ratio", c.case.name));
+        assert_eq!(
+            c.textbook_double_ok,
+            ratio <= 1.0,
+            "{}: flag {} but worst ratio {ratio}",
+            c.case.name,
+            c.textbook_double_ok
+        );
+        let mut worst = 0.0_f64;
+        for (i, &t) in c.case.times.iter().enumerate() {
+            let key = &c.case.time_keys[i];
+            let naive = conc_auc_aumc(
+                &c.case.model,
+                &c.parameterisation,
+                &c.case.parameters,
+                c.case.dose,
+                t,
+            );
+            for (j, q) in ["conc", "auc", "aumc"].into_iter().enumerate() {
+                let want = c.case.expected.get(key, q).flatten().unwrap();
+                let big = c
+                    .case
+                    .time_keys
+                    .iter()
+                    .filter_map(|k| c.case.expected.get(k, q).flatten())
+                    .fold(0.0_f64, |m, x| m.max(x.abs()));
+                let allowed = 1e-8 * want.abs() + 1e-11 * big;
+                let v = naive.map_or(f64::NAN, |a| a[j]);
+                let diff = (v - want).abs();
+                let r = if !v.is_finite() {
+                    f64::INFINITY
+                } else if allowed > 0.0 {
+                    diff / allowed
+                } else if diff > 0.0 {
+                    f64::INFINITY
+                } else {
+                    0.0
+                };
+                worst = worst.max(r);
+            }
+        }
+        if (worst <= 1.0) != c.textbook_double_ok {
+            disagreements.push(format!(
+                "{}: flag {}, R ratio {ratio}, Rust ratio {worst}",
+                c.case.name, c.textbook_double_ok
+            ));
+        }
+    }
+    assert!(measured >= 100, "only {measured} measured flags");
+    assert!(
+        disagreements.is_empty(),
+        "the flag and the naive forms of the testkit disagree:\n{}",
+        disagreements.join("\n")
+    );
+}
+
+/// Distance of the double `x` from the double `y` in half-spacings of the doubles at `y` on the side
+/// of `x` (positive doubles only; just below a power of two the spacing is half as wide).
+fn half_spacings_between(x: f64, y: f64) -> f64 {
+    let above = x > y;
+    let biased = (y.to_bits() >> 52) & 0x7ff;
+    let power_of_two = y.to_bits() & ((1_u64 << 52) - 1) == 0;
+    // spacing of the doubles at y on the side of x: 2^(e-52), half as wide just below a power of two
+    let exponent = if above || !power_of_two {
+        biased - 52
+    } else {
+        biased - 53
+    };
+    let spacing = f64::from_bits(exponent << 52);
+    (x - y).abs() / (spacing / 2.0)
+}
+
+/// A large-coupling case named `_pole_` claims that one root sits next to one pole (T-165): the root, the
+/// pole, the side and the distance in half-spacings are in its options, and the values of the case
+/// (the scalars of the csv) agree with them.
+#[test]
+fn the_pole_claims_are_asserted() {
+    let mut seen = 0;
+    let (mut above, mut below) = (0, 0);
+    for c in all_cases() {
+        let name = c.case.name.as_str();
+        let claim = c.pole.as_ref();
+        assert_eq!(
+            claim.is_some(),
+            name.contains("_pole_"),
+            "{name}: exactly the _pole_ cases carry a pole claim"
+        );
+        let Some(claim) = claim else { continue };
+        assert!(
+            ["alpha", "beta", "gamma"].contains(&claim.root.as_str()),
+            "{name}: root {}",
+            claim.root
+        );
+        assert!(["k21", "k31"].contains(&claim.pole.as_str()), "{name}");
+        assert!(["above", "below"].contains(&claim.side.as_str()), "{name}");
+        let root = scalar(&c, &claim.root).unwrap();
+        let pole = scalar(&c, &claim.pole).unwrap();
+        assert_eq!(
+            root > pole,
+            claim.side == "above",
+            "{name}: {} = {root:e} against {} = {pole:e}, the claim says {}",
+            claim.root,
+            claim.pole,
+            claim.side
+        );
+        let relative = (root - pole).abs() / pole;
+        assert!(
+            relative <= claim.max_relative_distance * (1.0 + 1e-6),
+            "{name}: relative distance {relative:e} above the promised {:e}",
+            claim.max_relative_distance
+        );
+        let others = ["alpha", "beta", "gamma"]
+            .iter()
+            .filter(|n| **n != claim.root)
+            .map(|n| (scalar(&c, n).unwrap() - pole).abs() / pole)
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            others > relative,
+            "{name}: another root is nearer to {}",
+            claim.pole
+        );
+        let half = half_spacings_between(root, pole);
+        assert!(
+            (half - claim.half_spacings).abs() <= 2.0 + 1e-6 * claim.half_spacings,
+            "{name}: {half} half-spacings in the csv, {} in the options",
+            claim.half_spacings
+        );
+        if claim.side == "above" {
+            above += 1;
+        } else {
+            below += 1;
+        }
+        seen += 1;
+    }
+    assert!(seen >= 4, "{seen} pole cases");
+    assert!(above >= 2 && below >= 2, "{above} above, {below} below");
+}
+
+/// Two doubles are neighbours when their bit patterns (both positive) differ by one.
+fn adjacent(a: f64, b: f64) -> bool {
+    a > 0.0 && b > 0.0 && a.to_bits().abs_diff(b.to_bits()) == 1
+}
+
+/// Adjacent poles (MOD-3C-22): w_beta is held to 1e-12 ABSOLUTE in the group `scalar_abs`, and only
+/// there; no other value case has that group.
+#[test]
+fn adjacent_poles_have_the_absolute_group() {
+    let mut adjacent_cases = 0;
+    for c in of_kind(Pk3Kind::Values) {
+        let name = c.case.name.as_str();
+        let is_adjacent = match (
+            c.case.expected.get("scalar", "k21").flatten(),
+            c.case.expected.get("scalar", "k31").flatten(),
+        ) {
+            (Some(a), Some(b)) => adjacent(a, b),
+            _ => false,
+        };
+        let abs_rows: Vec<_> = c
+            .case
+            .expected
+            .iter()
+            .filter(|(g, _, _)| *g == "scalar_abs")
+            .collect();
+        if is_adjacent {
+            adjacent_cases += 1;
+            assert_eq!(abs_rows.len(), 1, "{name}: w_beta alone is in scalar_abs");
+            assert_eq!(abs_rows[0].1, "w_beta", "{name}");
+            assert!(
+                c.case.expected.get("scalar", "w_beta").is_none()
+                    && c.case.expected.get("scalar_ill", "w_beta").is_none(),
+                "{name}: w_beta is in one group only"
+            );
+            let w = abs_rows[0].2.unwrap();
+            assert!((0.0..1.0).contains(&w), "{name}: w_beta {w}");
+        } else {
+            assert!(
+                abs_rows.is_empty(),
+                "{name}: scalar_abs without adjacent poles"
+            );
+        }
+    }
+    assert!(adjacent_cases >= 6, "{adjacent_cases} adjacent-pole cases");
+}
+
+/// The free-zone cases (MOD-3C-08 zones (0) and (iii)): macro input, a time grid, the macro-alone
+/// scalars and the zone; no scalar built from the micro constants is written.
+#[test]
+fn the_free_zone_cases_have_their_shape() {
+    let free = of_kind(Pk3Kind::Free);
+    assert!(free.len() >= 10, "{} free cases", free.len());
+    let (mut zero, mut iii) = (0, 0);
+    for c in &free {
+        let name = c.case.name.as_str();
+        assert_eq!(c.parameterisation, "macro", "{name}");
+        assert_eq!(c.case.model, "pk3.iv_bolus", "{name}");
+        assert!(c.case.dose > 0.0, "{name}");
+        match c.zone.as_deref() {
+            Some("0") => zero += 1,
+            Some("iii") => iii += 1,
+            other => panic!("{name}: zone {other:?}"),
+        }
+        for q in [
+            "alpha",
+            "beta",
+            "gamma",
+            "w_alpha",
+            "w_beta",
+            "w_gamma",
+            "a",
+            "b",
+            "c",
+            "vc",
+            "half_life",
+        ] {
+            assert!(scalar(c, q).is_some(), "{name}: no {q}");
+        }
+        for q in ["k10", "k12", "k13", "cl", "vss", "mrt"] {
+            assert!(
+                scalar(c, q).is_none(),
+                "{name}: {q} has no contract in a free zone"
+            );
+        }
+        let (a, b, cc) = (
+            c.case.parameters["a"],
+            c.case.parameters["b"],
+            c.case.parameters["c"],
+        );
+        close(
+            &format!("{name} vc"),
+            scalar(c, "vc").unwrap(),
+            c.case.dose / (a + b + cc),
+            1e-12,
+        );
+        close(&format!("{name} a"), scalar(c, "a").unwrap(), a, 1e-14);
+        let t0 = c.case.times.iter().position(|&t| t == 0.0).unwrap();
+        close(
+            &format!("{name} C(0)"),
+            c.case
+                .expected
+                .get(&c.case.time_keys[t0], "conc")
+                .flatten()
+                .unwrap(),
+            a + b + cc,
+            1e-12,
+        );
+    }
+    assert!(
+        zero >= 1 && iii >= 5,
+        "{zero} in zone (0), {iii} in zone (iii)"
+    );
 }
