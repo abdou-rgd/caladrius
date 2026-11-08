@@ -6,10 +6,12 @@
 //!
 //! * `oracle/expected/pop/exact/`: the exact identification suite (POP-ORA-01). Objectives and conditional
 //!   modes at fixed parameters, computed at 256 bits by `oracle/scripts/pop_exact.R` with no population
-//!   software, on the test-only model `identity_linear` (POP-MOD-05) and on the catalogue models. Cases whose
-//!   variance is held ("frozen", OP-14) identify the objective forms against each other and are checked in
-//!   `caladrius-testkit` only: the engine has no frozen mode, so they are not given to it
-//!   (`POP_EXACT_IDENTITY_CASES`).
+//!   software, on the test-only model `identity_linear` (POP-MOD-05) and on the catalogue models. Three kinds by
+//!   the field `frozen_sigma` (OP-14, POP-OBJ-06): `none` cases are given to the engine with `foce_i` and `fo`
+//!   (`POP_EXACT_ENGINE_CASES`); `pred0` cases (the variance frozen at the population prediction) are the exact
+//!   cases of `method = foce` (`POP_EXACT_FOCE_CASES`); `mode` cases (the variance frozen at the mode) are not an
+//!   engine method, they identify the objective forms against each other and are checked in `caladrius-testkit`
+//!   only (`POP_EXACT_IDENTITY_CASES`).
 //! * `oracle/expected/pop/ofv/`: the objective at fixed parameters in double precision, with the
 //!   diagnostics (PRED, IPRED, IWRES, CWRES in three forms, shrinkage with both divisors, AIC and BIC with k),
 //!   for three models by four error models, on seeded synthetic data, Theoph and Indometh.
@@ -34,7 +36,10 @@
 //!   "error_model": "additive" | "proportional" | "combined" | "combined_sd",
 //!   "error_init": [a] | [b] | [a, b],          user units, as FIT-ML-21
 //!   "model_options": { "z_powers": [..] },     identity_linear only: Z column k = t^z_powers[k]
-//!   "options": { "method": "foce_i" | "fo",    POP-OBJ-03 (foce_i is the default)
+//!   "fixed": { "<par>": x }, "bounds": { "<par>": { "lower": x, "upper": x } },   refusal rows only (POP-API-01 item 12)
+//!   "dataset_file": "data/pop/..csv",          in place of "subjects" (refusal rows)
+//!   "options": { "method": "foce_i" | "foce" | "fo",   POP-OBJ-03, POP-OBJ-06 (foce_i is the default)
+//!                "covariance": "sandwich" | "r" | "s", "exclude_subjects": ["<label>"],
 //!                "ofv_convention": "full" | "no_2pi",       POP-OBJ-05
 //!                "evaluate_only": true },      assumed name: the objective, the modes and the
 //!                                              diagnostics at the given parameters, no outer iteration
@@ -46,25 +51,31 @@
 //! ```text
 //! { "method", "ofv_convention", "ofv": total,
 //!   "subjects": [ { "id", "ofv", "eta_hat": [..],
-//!                   "pred", "ipred", "iwres", "cwres_diagonal", "cwres_cholesky", "cwres_symmetric": [..] } ],
+//!                   "pred", "ipred", "iwres", "cwres_diagonal", "cwres_cholesky": [..] } ],
 //!   "eta_shrinkage": [..]  (divisor m - 1, POP-DIA-03),  "eps_shrinkage": x (divisor N - 1),
 //!   "k": n, "aic": x, "bic": x  (BIC with ln N, OP-05) }
 //! and, for a fit (no evaluate_only):
-//!   "estimate": { "<par>": x, "<xi name>": x }, "se": { "<par>": x },
-//!   "omega": [[..]] (q by q, in the order of "random_effects"), "status": "converged" | .. }
+//!   "estimate": { "<par>": x, "omega_diagonal": { "<random effect>": x }, "omega_full": [[..]] (q by q, in the
+//!                 order of "random_effects"), "xi": { "a": x, "b": x } },           POP-API-01 item 13
+//!   "se": { same keys },  "status": "converged" | .. | "evaluated",
+//!   "covariance": { "flags": ["few_subjects", "few_observations"], .. } }
 //! ```
 //!
 //! The sealed test reads `status`: a replicate whose status is not `converged` is counted, printed and left
 //! out of the aggregates, and an asserted design may have at most `MAX_NOT_CONVERGED_SHARE` of them. The
-//! estimates of Omega and of the error parameters are printed, not asserted.
+//! estimates of Omega (`estimate.omega_full`) and of the error parameters (`estimate.xi`) are printed, not
+//! asserted. An accepted row of `errors.json` that carries `expect_flags` is run as a full fit and the array
+//! `covariance.flags` of the answer must hold them.
 //!
 //! If T-153 renames fields, the adapter `population_fit` absorbs it, with one exception: the refusal rows of
 //! `errors.json` carry their own `request` JSON (in the vocabulary above), which the tests also give to the
 //! adapter unchanged, so a renamed request field must be accepted by the adapter in that JSON as well.
 //!
 //! A refusal is a `PopError { code, message }` (serialised code: `unbounded_likelihood`,
-//! `non_positive_sigma`, `too_few_subjects`, `too_few_observations`, `inner_failed`, `invalid_option`). The
-//! three CWRES forms are all required while OP-06 is open; FO has no EBE-based quantity (POP-OBJ-03).
+//! `non_positive_sigma`, `too_few_subjects`, `too_few_observations`, `inner_failed`, `invalid_option`,
+//! `unsupported_history`). The engine must return `cwres_cholesky` and `cwres_diagonal`; `cwres_symmetric` is
+//! kept in the reference as a cross-check and is not compared with the engine (POP-API-01 item 3, OP-06 decided).
+//! FO has no EBE-based quantity (POP-OBJ-03).
 //!
 //! # Tolerances
 //!
@@ -245,14 +256,18 @@ fn ofv_label(method: &str) -> &'static str {
 
 // ---------------------------------------------------------------- exact cases (POP-ORA-01)
 
-fn exact_case(name: &str) -> PopExactCase {
+/// An exact case given to the engine: `frozen_sigma` is `none` for `foce_i` and `fo`, `pred0` for `foce`.
+fn exact_case(name: &str, frozen: &str) -> PopExactCase {
     let case = load_pop_exact_case(name).expect("the exact case loads");
-    assert_eq!(case.frozen_sigma, "none", "{name}: not an engine case");
+    assert_eq!(
+        case.frozen_sigma, frozen,
+        "{name}: not a case with the variance frozen as `{frozen}`"
+    );
     case
 }
 
-fn check_exact_ofv(name: &str, method: &str) {
-    let case = exact_case(name);
+fn check_exact_ofv(name: &str, frozen: &str, method: &str) {
+    let case = exact_case(name, frozen);
     let answer = evaluate(&case.model, &case.subjects, method, "full");
     let form = ofv_label(method);
     let mut p = Problems::new();
@@ -274,9 +289,9 @@ fn check_exact_ofv(name: &str, method: &str) {
     p.finish(name);
 }
 
-fn check_exact_modes(name: &str) {
-    let case = exact_case(name);
-    let answer = evaluate(&case.model, &case.subjects, "foce_i", "full");
+fn check_exact_modes(name: &str, frozen: &str, method: &str) {
+    let case = exact_case(name, frozen);
+    let answer = evaluate(&case.model, &case.subjects, method, "full");
     let mut p = Problems::new();
     let subjects = answer_subjects(&answer, case.expected.per_subject.len());
     for (a, e) in subjects.iter().zip(&case.expected.per_subject) {
@@ -298,11 +313,29 @@ macro_rules! exact_case_tests {
                 use super::*;
                 const NAME: &str = stringify!($case);
                 #[test]
-                fn ofv_foce_i() { check_exact_ofv(NAME, "foce_i"); }
+                fn ofv_foce_i() { check_exact_ofv(NAME, "none", "foce_i"); }
                 #[test]
-                fn ofv_fo() { check_exact_ofv(NAME, "fo"); }
+                fn ofv_fo() { check_exact_ofv(NAME, "none", "fo"); }
                 #[test]
-                fn conditional_modes() { check_exact_modes(NAME); }
+                fn conditional_modes() { check_exact_modes(NAME, "none", "foce_i"); }
+            }
+        )*
+    };
+}
+
+/// The exact cases of `method = foce` (POP-OBJ-06): the variance frozen at the population prediction. The total
+/// and the per-subject objectives are the `linearised` form of the file, the modes are those of the frozen
+/// problem.
+macro_rules! exact_foce_case_tests {
+    ($($case:ident),* $(,)?) => {
+        $(
+            mod $case {
+                use super::*;
+                const NAME: &str = stringify!($case);
+                #[test]
+                fn ofv_foce() { check_exact_ofv(NAME, "pred0", "foce"); }
+                #[test]
+                fn conditional_modes_foce() { check_exact_modes(NAME, "pred0", "foce"); }
             }
         )*
     };
@@ -382,7 +415,6 @@ fn check_diagnostics(name: &str) {
             ("iwres", &d.iwres),
             ("cwres_diagonal", &d.cwres_diagonal),
             ("cwres_cholesky", &d.cwres_cholesky),
-            ("cwres_symmetric", &d.cwres_symmetric),
         ] {
             p.check_vec(
                 &format!("{name} {} {key}", e.id),
@@ -531,13 +563,25 @@ fn check_refused(name: &str) {
 fn check_accepted(name: &str) {
     let row = error_row(name);
     assert_eq!(row.expect, "accepted", "{name}");
-    let request = row_request(row.request.as_ref().expect("an accepted row has a request"));
-    let answer = population_fit(&request);
-    assert!(
-        answer.is_ok(),
-        "{name}: the request must not be refused: {:?}",
-        answer.err()
-    );
+    let mut request = row_request(row.request.as_ref().expect("an accepted row has a request"));
+    if !row.expect_flags.is_empty() {
+        // flags belong to a fit: the covariance exists only after the outer iteration
+        request["options"]["evaluate_only"] = json!(false);
+    }
+    let answer = match population_fit(&request) {
+        Ok(answer) => answer,
+        Err(e) => panic!("{name}: the request must not be refused: {e}"),
+    };
+    let flags: Vec<&str> = answer["covariance"]["flags"]
+        .as_array()
+        .map(|a| a.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    for wanted in &row.expect_flags {
+        assert!(
+            flags.contains(&wanted.as_str()),
+            "{name}: the flags of the covariance must hold `{wanted}`, they are {flags:?}"
+        );
+    }
 }
 
 macro_rules! refusal_tests {
@@ -702,14 +746,14 @@ fn check_sealed_recovery(design: &str) {
             }
         }
         for (i, xi) in xis.iter().enumerate() {
-            if let Some(v) = answer["estimate"][xi.as_str()].as_f64() {
+            if let Some(v) = answer["estimate"]["xi"][xi.as_str()].as_f64() {
                 xi_hat[i].push(v);
             }
         }
         let mut at = 0;
         for row in 0..q {
             for col in 0..=row {
-                if let Some(v) = answer["omega"][row][col].as_f64() {
+                if let Some(v) = answer["estimate"]["omega_full"][row][col].as_f64() {
                     omega_hat[at].push(v);
                 }
                 at += 1;
@@ -833,6 +877,7 @@ fn strings(list: &[&str]) -> Vec<String> {
 #[test]
 fn every_case_row_and_design_has_tests() {
     let mut exact = strings(POP_EXACT_ENGINE_CASES);
+    exact.extend(strings(POP_EXACT_FOCE_CASES));
     exact.extend(strings(POP_EXACT_IDENTITY_CASES));
     exact.sort();
     assert_eq!(
@@ -877,22 +922,23 @@ fn every_case_row_and_design_has_tests() {
     );
 }
 
-/// The identity cases are exactly those with a frozen variance, and the engine cases exactly those without.
+/// The exact cases are split by the frozen variance (POP-OBJ-06): none for `foce_i` and `fo`, at the population
+/// prediction for `foce`, at the mode for the identity checks of the testkit.
 #[test]
-fn engine_and_identity_cases_are_split_by_the_frozen_variance() {
-    for name in POP_EXACT_ENGINE_CASES {
-        assert_eq!(
-            load_pop_exact_case(name).unwrap().frozen_sigma,
-            "none",
-            "{name}"
-        );
-    }
-    for name in POP_EXACT_IDENTITY_CASES {
-        assert_ne!(
-            load_pop_exact_case(name).unwrap().frozen_sigma,
-            "none",
-            "{name}"
-        );
+fn engine_foce_and_identity_cases_are_split_by_the_frozen_variance() {
+    for (list, frozen) in [
+        (POP_EXACT_ENGINE_CASES, "none"),
+        (POP_EXACT_FOCE_CASES, "pred0"),
+        (POP_EXACT_IDENTITY_CASES, "mode"),
+    ] {
+        assert!(!list.is_empty(), "{frozen}");
+        for name in list {
+            assert_eq!(
+                load_pop_exact_case(name).unwrap().frozen_sigma,
+                frozen,
+                "{name}"
+            );
+        }
     }
 }
 
@@ -951,7 +997,7 @@ fn the_reference_is_complete_for_the_tests() {
         );
     }
     for name in POP_EXACT_ENGINE_CASES {
-        let case = exact_case(name);
+        let case = exact_case(name, "none");
         assert_eq!(
             case.subjects.len(),
             case.expected.per_subject.len(),

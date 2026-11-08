@@ -372,7 +372,8 @@ pub fn load_pop_ofv_case(id: &str) -> Result<PopOfvCase, OracleError> {
 /// What the message of a refusal must contain (words, not the exact sentence: the engine writes its own).
 #[derive(Debug, Clone, Deserialize)]
 pub struct PopExpectedError {
-    /// The serialised code of the error; absent where the spec does not give one (see `code_dataset`).
+    /// The serialised code of the error (every refused row has one; for a refusal of the dataset layer it is
+    /// the dataset's own code of the first affected subject, POP-INN-03.6).
     #[serde(default)]
     pub code: Option<String>,
     /// Words that must all appear in the message.
@@ -384,9 +385,6 @@ pub struct PopExpectedError {
     /// Words that must not appear (for example the other subjects of the dataset).
     #[serde(default)]
     pub must_not_contain: Vec<String>,
-    /// A refusal of the dataset layer: the code its sentence carries (POP-INN-03.6), not asserted.
-    #[serde(default)]
-    pub code_dataset: Option<String>,
 }
 
 /// A request that must not be refused, next to a refused one.
@@ -419,6 +417,10 @@ pub struct PopErrorCase {
     pub control: Option<PopControl>,
     #[serde(default)]
     pub note: Option<String>,
+    /// For an accepted row: the flags the covariance block of the answer must hold (POP-COV-03, POP-API-01 item 4);
+    /// the request is then run as a full fit, not as an evaluation.
+    #[serde(default)]
+    pub expect_flags: Vec<String>,
 }
 
 fn yes() -> bool {

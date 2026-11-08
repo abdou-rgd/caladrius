@@ -708,7 +708,7 @@ fn a_changed_sealed_file_is_detected() {
 #[test]
 fn errors_json_is_well_formed() {
     let rows = load_pop_errors().unwrap();
-    assert_eq!(rows.len(), 31);
+    assert_eq!(rows.len(), 32);
     let mut names = std::collections::BTreeSet::new();
     let (mut refused, mut accepted, mut controls) = (0, 0, 0);
     for r in &rows {
@@ -744,13 +744,12 @@ fn errors_json_is_well_formed() {
                     r.case,
                     e.words_basis
                 );
-                assert!(
-                    e.code.is_some() || e.code_dataset.is_some(),
-                    "{}: no code",
-                    r.case
-                );
+                assert!(e.code.is_some(), "{}: no code", r.case);
+                assert!(r.expect_flags.is_empty(), "{}", r.case);
                 if r.constructible {
                     assert!(r.request.is_some(), "{}: no request", r.case);
+                    // a refusal that can be built has a control: the same request, repaired, is accepted
+                    assert!(r.control.is_some(), "{}: no control", r.case);
                 } else {
                     assert!(r.request.is_none());
                 }
@@ -758,6 +757,14 @@ fn errors_json_is_well_formed() {
             _ => {
                 accepted += 1;
                 assert!(r.request.is_some(), "{}", r.case);
+                assert!(
+                    r.expect_flags
+                        .iter()
+                        .all(|f| f == "few_observations" || f == "few_subjects"),
+                    "{}: flags {:?}",
+                    r.case,
+                    r.expect_flags
+                );
             }
         }
         if let Some(c) = &r.control {
@@ -770,10 +777,10 @@ fn errors_json_is_well_formed() {
             );
         }
     }
-    assert_eq!((refused, accepted), (29, 2));
-    assert_eq!(controls, 26);
+    assert_eq!((refused, accepted), (30, 2));
+    assert_eq!(controls, 29);
     // every rule 1 to 6 is represented
-    for n in 1..=6 {
+    for n in 1..=7 {
         let tag = format!("POP-INN-03.{n}");
         assert!(
             rows.iter().any(|r| r.rule.contains(&tag)),
@@ -891,4 +898,58 @@ fn the_amplification_of_an_error_in_eta_is_below_the_documented_factor() {
     );
     assert!(lead.value < 1e3, "the documented factor 1e3 is exceeded");
     assert!(iwres.value < 1e3, "the documented factor 1e3 is exceeded");
+}
+
+/// The row for several dose rows (POP-INN-03.7): the table has two dose rows for S2 and one for S1 and S3, the
+/// words name S2 and not the others, and the control table is the same table without the second dose row of S2.
+#[test]
+fn the_several_dose_rows_table_is_constructed_as_it_says() {
+    let rows = load_pop_errors().unwrap();
+    let row = rows
+        .iter()
+        .find(|r| r.case == "pr6_several_dose_rows")
+        .expect("the row exists");
+    let dir = caladrius_testkit::oracle::oracle_dir();
+    let table = |file: &str| -> Vec<String> {
+        std::fs::read_to_string(dir.join(file))
+            .unwrap()
+            .lines()
+            .map(str::to_owned)
+            .collect()
+    };
+    let doses = |lines: &[String], id: &str| -> usize {
+        lines
+            .iter()
+            .skip(1)
+            .filter(|l| {
+                let f: Vec<&str> = l.split(',').collect();
+                f[0] == id && f[4] == "1"
+            })
+            .count()
+    };
+    let file = |q: &serde_json::Value| q["dataset_file"].as_str().unwrap().to_owned();
+    let refused = table(&file(row.request.as_ref().unwrap()));
+    let control = table(&file(&row.control.as_ref().unwrap().request));
+    assert_eq!(
+        [
+            doses(&refused, "S1"),
+            doses(&refused, "S2"),
+            doses(&refused, "S3")
+        ],
+        [1, 2, 1]
+    );
+    assert_eq!(
+        [
+            doses(&control, "S1"),
+            doses(&control, "S2"),
+            doses(&control, "S3")
+        ],
+        [1, 1, 1]
+    );
+    assert_eq!(refused.len(), control.len() + 1);
+    let e = row.error.as_ref().unwrap();
+    assert_eq!(e.code.as_deref(), Some("unsupported_history"));
+    assert!(e.words.iter().any(|w| w == "subject S2"));
+    assert!(e.must_not_contain.iter().any(|w| w == "S1"));
+    assert!(e.must_not_contain.iter().any(|w| w == "S3"));
 }

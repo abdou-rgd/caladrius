@@ -1871,9 +1871,10 @@
         "words": [
           "proportional",
           "standard deviation of 0",
-          "time 0"
+          "time 0",
+          "subject S1"
         ],
-        "words_basis": "reused_sentence"
+        "words_basis": "spec_sentence"
       },
       "reuses": "FIT-ML-14b (ml6b_sigma_zero_proportional)",
       "control": {
@@ -1989,7 +1990,7 @@
           ]
         }
       },
-      "note": "the spec does not say that this error names the subject (rule 1 does); if it should, add 'subject S1' to the words (question)"
+      "note": "the sentence of FIT-ML-14b with 'of subject S1' added after the time (POP-INN-03.2, decided 2026-11-08): the words are those of the individual rule plus 'subject S1'"
     },
     {
       "case": "pr3_too_few_subjects_px4",
@@ -2375,9 +2376,10 @@
       "error": {
         "code": "too_few_observations",
         "words": [
-          "observations"
+          "3 parameters",
+          "from 3 observations"
         ],
-        "words_basis": "inferred"
+        "words_basis": "spec_sentence"
       },
       "reuses": "FIT-ML-14a (analogue, ml6c_too_few_additive)",
       "control": {
@@ -2478,9 +2480,10 @@
       "error": {
         "code": "too_few_observations",
         "words": [
-          "observations"
+          "4 parameters",
+          "from 4 observations"
         ],
-        "words_basis": "inferred"
+        "words_basis": "spec_sentence"
       },
       "reuses": "FIT-ML-14a (analogue, ml6c_too_few_combined)",
       "control": {
@@ -2587,7 +2590,10 @@
         ],
         "omega_shape": "block"
       },
-      "note": "expected flag on the result covariance: 'few observations' (POP-INN-03.3, POP-COV-03); the flag's machine name is not in the spec (question)"
+      "note": "the fit is run in full (not evaluate_only) and the array flags of the covariance block of the answer holds few_observations (POP-INN-03.3, POP-COV-03, POP-API-01 item 4); the elements of Omega are left out of the refusal count but not of the flag",
+      "expect_flags": [
+        "few_observations"
+      ]
     },
     {
       "case": "pr4_inner_failed_sentence",
@@ -4383,9 +4389,10 @@
       "error": {
         "code": "invalid_option",
         "words": [
-          "v"
+          "`initial`",
+          "`v`"
         ],
-        "words_basis": "inferred"
+        "words_basis": "spec_sentence"
       },
       "control": {
         "change": "v = 32",
@@ -4500,7 +4507,7 @@
           ]
         }
       },
-      "note": "the rule says 'naming the option'; the word 'v' names the parameter (question: or 'initial')"
+      "note": "the sentence of POP-INN-03.5: option `initial`: the typical value of `v` is -1, outside its domain; the backticks keep the word 'v' from matching inside 'invalid'"
     },
     {
       "case": "pr5_omega_not_pd_diagonal",
@@ -5546,11 +5553,120 @@
       "error": {
         "code": "invalid_option",
         "words": [
-          "dur"
+          "random effect on `dur`",
+          "not available in this version",
+          "give `dur` as a shared typical value"
         ],
-        "words_basis": "inferred"
+        "words_basis": "spec_sentence"
       },
-      "note": "POP-MOD-02 rule 3 says InvalidOption naming the parameter; the sentence for dur is not written (question); the model name pk1.oral_0 is the zero-order oral model with parameter dur (see specs/models.md MOD-AB0-01)"
+      "control": {
+        "change": "dur as a shared typical value",
+        "request": {
+          "model": "pk1.oral_0",
+          "initial": {
+            "v": 10,
+            "cl": 2,
+            "dur": 2
+          },
+          "random_effects": [
+            "cl"
+          ],
+          "omega": [
+            [
+              0.09
+            ]
+          ],
+          "error_model": "combined",
+          "options": {},
+          "subjects": [
+            {
+              "id": "S1",
+              "dose": 319.992,
+              "time": [
+                0.25,
+                0.57,
+                1.12,
+                2.02,
+                3.82,
+                5.1,
+                7.03,
+                9.05,
+                12.12,
+                24.37
+              ],
+              "y": [
+                2.84,
+                6.57,
+                10.5,
+                9.66,
+                8.58,
+                8.36,
+                7.47,
+                6.89,
+                5.94,
+                3.28
+              ]
+            },
+            {
+              "id": "S2",
+              "dose": 318.56,
+              "time": [
+                0.27,
+                0.52,
+                1,
+                1.92,
+                3.5,
+                5.02,
+                7.03,
+                9,
+                12,
+                24.3
+              ],
+              "y": [
+                1.72,
+                7.91,
+                8.31,
+                8.33,
+                6.85,
+                6.08,
+                5.4,
+                4.55,
+                3.01,
+                0.9
+              ]
+            },
+            {
+              "id": "S3",
+              "dose": 319.365,
+              "time": [
+                0.27,
+                0.58,
+                1.02,
+                2.02,
+                3.62,
+                5.08,
+                7.07,
+                9,
+                12.15,
+                24.17
+              ],
+              "y": [
+                4.4,
+                6.9,
+                8.2,
+                7.8,
+                7.5,
+                6.2,
+                5.3,
+                4.9,
+                3.7,
+                1.05
+              ]
+            }
+          ]
+        }
+      },
+      "note": "the sentence of POP-INN-03.5; the model name pk1.oral_0 is the zero-order oral model with parameter dur (see specs/models.md MOD-AB0-01)"
     },
     {
       "case": "pr6_dataset_refusal_addl",
@@ -5576,6 +5692,7 @@
         "dataset_file": "data/pop/errors/refuse_addl_3.csv"
       },
       "error": {
+        "code": "unsupported_history",
         "words": [
           "subject 1",
           "row 1 of subject 1",
@@ -5586,8 +5703,7 @@
         "must_not_contain": [
           "subject 2",
           "subject 3"
-        ],
-        "code_dataset": "unsupported_history"
+        ]
       },
       "reuses": "DAT-ERR-08 (oracle/expected/data/refuse_addl.json: same first rows, hence the same row number)",
       "control": {
@@ -5615,7 +5731,67 @@
           "dataset_file": "data/pop/errors/refuse_addl_3.csv"
         }
       },
-      "note": "the code of this refusal is not written in the spec (DAT-ERR-08 gives a mark and a sentence, not a population code); code null = not asserted (question). The dataset's own code is unsupported_history"
+      "note": "the code is the dataset's own code of the first affected subject (POP-INN-03.6, decided 2026-11-08); read by exact name, [[\"code\"]] (the operator $ matches names partly)"
+    },
+    {
+      "case": "pr6_several_dose_rows",
+      "rule": "POP-INN-03.7; DAT-USE-02",
+      "description": "event-layout dataset, subject S2 has two dose rows (times 0 and 3), S1 and S3 one: the run refuses, naming S2 only",
+      "expect": "refused",
+      "request": {
+        "model": "pk1.iv_bolus",
+        "initial": {
+          "v": 10,
+          "k": 0.2
+        },
+        "random_effects": [
+          "v"
+        ],
+        "omega": [
+          [
+            0.09
+          ]
+        ],
+        "error_model": "combined",
+        "options": {},
+        "dataset_file": "data/pop/errors/several_doses_3.csv"
+      },
+      "error": {
+        "code": "unsupported_history",
+        "words": [
+          "subject S2",
+          "2 dose rows",
+          "single dose",
+          "exclude_subjects"
+        ],
+        "words_basis": "spec_sentence",
+        "must_not_contain": [
+          "S1",
+          "S3"
+        ]
+      },
+      "reuses": "DAT-USE-01 (the NCA refuses more than one dose row); POP-DAT-01",
+      "control": {
+        "change": "the second dose row of S2 removed",
+        "request": {
+          "model": "pk1.iv_bolus",
+          "initial": {
+            "v": 10,
+            "k": 0.2
+          },
+          "random_effects": [
+            "v"
+          ],
+          "omega": [
+            [
+              0.09
+            ]
+          ],
+          "error_model": "combined",
+          "options": {},
+          "dataset_file": "data/pop/errors/several_doses_control_3.csv"
+        }
+      }
     },
     {
       "case": "pr6_exclude_unknown_label",
@@ -5990,6 +6166,123 @@
         "must_not_contain": [
           "S3"
         ]
+      },
+      "control": {
+        "change": "the misspelt label removed (S3 only)",
+        "request": {
+          "model": "pk1.oral_1",
+          "initial": {
+            "v": 32,
+            "cl": 2.8,
+            "ka": 1.5
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega": [
+            [
+              0.09,
+              0
+            ],
+            [
+              0,
+              0.04
+            ]
+          ],
+          "error_model": "combined",
+          "options": {
+            "exclude_subjects": [
+              "S3"
+            ]
+          },
+          "subjects": [
+            {
+              "id": "S1",
+              "dose": 319.992,
+              "time": [
+                0.25,
+                0.57,
+                1.12,
+                2.02,
+                3.82,
+                5.1,
+                7.03,
+                9.05,
+                12.12,
+                24.37
+              ],
+              "y": [
+                2.84,
+                6.57,
+                10.5,
+                9.66,
+                8.58,
+                8.36,
+                7.47,
+                6.89,
+                5.94,
+                3.28
+              ]
+            },
+            {
+              "id": "S2",
+              "dose": 318.56,
+              "time": [
+                0.27,
+                0.52,
+                1,
+                1.92,
+                3.5,
+                5.02,
+                7.03,
+                9,
+                12,
+                24.3
+              ],
+              "y": [
+                1.72,
+                7.91,
+                8.31,
+                8.33,
+                6.85,
+                6.08,
+                5.4,
+                4.55,
+                3.01,
+                0.9
+              ]
+            },
+            {
+              "id": "S3",
+              "dose": 319.365,
+              "time": [
+                0.27,
+                0.58,
+                1.02,
+                2.02,
+                3.62,
+                5.08,
+                7.07,
+                9,
+                12.15,
+                24.17
+              ],
+              "y": [
+                4.4,
+                6.9,
+                8.2,
+                7.8,
+                7.5,
+                6.2,
+                5.3,
+                4.9,
+                3.7,
+                1.05
+              ]
+            }
+          ]
+        }
       }
     }
   ]

@@ -24,13 +24,15 @@ const POP_EXACT_ENGINE_CASES: &[&str] = &[
     "nl_pk2_q2",
     "nl_px5",
 ];
+const POP_EXACT_FOCE_CASES: &[&str] = &[
+    "frz_oral_combined_pred0",
+    "frz_px2_pred0",
+];
 const POP_EXACT_IDENTITY_CASES: &[&str] = &[
     "frz_iv_combined_mode",
-    "frz_oral_combined_pred0",
     "frz_oral_prop_mode",
     "frz_pk2_combsd_mode",
     "frz_px2_mode",
-    "frz_px2_pred0",
 ];
 const POP_OFV_CASES: &[&str] = &[
     "indometh_additive",
@@ -83,6 +85,7 @@ const POP_REFUSALS: &[&str] = &[
     "pr6_dataset_refusal_addl",
     "pr6_exclude_unknown_label",
     "pr6_exclude_unknown_label_among_valid",
+    "pr6_several_dose_rows",
 ];
 const POP_ACCEPTED: &[&str] = &[
     "pr1_lag_upper_below_first_time_accepted",
@@ -119,6 +122,10 @@ exact_case_tests!(
     nl_pk2_q1,
     nl_pk2_q2,
     nl_px5,
+);
+exact_foce_case_tests!(
+    frz_oral_combined_pred0,
+    frz_px2_pred0,
 );
 ofv_case_tests!(
     indometh_additive,
@@ -171,6 +178,7 @@ refusal_tests!(
     pr6_dataset_refusal_addl,
     pr6_exclude_unknown_label,
     pr6_exclude_unknown_label_among_valid,
+    pr6_several_dose_rows,
 );
 accepted_tests!(
     pr1_lag_upper_below_first_time_accepted,

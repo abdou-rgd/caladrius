@@ -51,13 +51,14 @@ mod <- function(r, ...) { ch <- list(...); for (n in names(ch)) r[n] <- list(ch[
 mod_opt <- function(r, ...) { ch <- list(...); for (n in names(ch)) r$options[n] <- list(ch[[n]]); r }
 
 cases <- list()
-add <- function(id, rule, description, req, code, words, basis, reuses = NULL, control = NULL, must_not_contain = NULL, note = NULL, expect = "refused") {
+add <- function(id, rule, description, req, code, words, basis, reuses = NULL, control = NULL, must_not_contain = NULL, note = NULL, expect = "refused", expect_flags = NULL) {
   c <- list(case = id, rule = rule, description = description, expect = expect, request = req)
   if (expect == "refused") c$error <- list(code = code, words = arr(words), words_basis = basis)
   if (!is.null(must_not_contain)) c$error$must_not_contain <- arr(must_not_contain)
   if (!is.null(reuses)) c$reuses <- reuses
   if (!is.null(control)) c$control <- control
   if (!is.null(note)) c$note <- note
+  if (!is.null(expect_flags)) c$expect_flags <- arr(expect_flags)
   cases[[length(cases) + 1L]] <<- c
 }
 
@@ -117,10 +118,10 @@ sig_subjects <- list(theoph_subj("S1", 1), theoph_subj("S2", 2, TRUE), theoph_su
 r <- mod(base, error_model = "proportional", subjects = sig_subjects)
 add("pr2_sigma_zero_proportional", "POP-INN-03.2",
     "proportional error, S1 has sample 0.74 at time 0 where pk1.oral_1 predicts 0: sigma = 0 at eta = 0 (not rule 1: no lag, and proportional is not in rule 1 without a lag)",
-    r, "non_positive_sigma", unlist(ml_case("ml6b_sigma_zero_proportional")$error$words), "reused_sentence",
+    r, "non_positive_sigma", c(unlist(ml_case("ml6b_sigma_zero_proportional")$error$words), "subject S1"), "spec_sentence",
     reuses = "FIT-ML-14b (ml6b_sigma_zero_proportional)",
     control = list(change = "S1 without its row at time 0", request = mod(r, subjects = ok3)),
-    note = "the spec does not say that this error names the subject (rule 1 does); if it should, add 'subject S1' to the words (question)")
+    note = "the sentence of FIT-ML-14b with 'of subject S1' added after the time (POP-INN-03.2, decided 2026-11-08): the words are those of the individual rule plus 'subject S1'")
 
 # ================= rule 3, too few data =================
 one <- list(theoph_subj("S1", 1, TRUE))
@@ -137,14 +138,14 @@ iv <- function(em, n1, n2, re = "v", omega = omega_diag(0.09)) {
   request("pk1.iv_bolus", list(v = 10, k = 0.2), re, omega, em, subjects = list(subj("S1", 100, t1[seq_len(n1)], y1[seq_len(n1)]), subj("S2", 100, t2[seq_len(n2)], y2[seq_len(n2)])))
 }
 add("pr3_too_few_observations_additive", "POP-INN-03.3", "P_theta,free = 2 (v, k), Q = 1 (additive), N = 3: N <= P + Q",
-    iv("additive", 2, 1), "too_few_observations", c("observations"), "inferred",
+    iv("additive", 2, 1), "too_few_observations", c("3 parameters", "from 3 observations"), "spec_sentence",
     reuses = "FIT-ML-14a (analogue, ml6c_too_few_additive)", control = list(change = "N = 4", request = iv("additive", 2, 2)))
 add("pr3_too_few_observations_combined", "POP-INN-03.3", "P_theta,free = 2, Q = 2 (combined), N = 4: N <= P + Q",
-    iv("combined", 2, 2), "too_few_observations", c("observations"), "inferred",
+    iv("combined", 2, 2), "too_few_observations", c("4 parameters", "from 4 observations"), "spec_sentence",
     reuses = "FIT-ML-14a (analogue, ml6c_too_few_combined)", control = list(change = "N = 5", request = iv("combined", 3, 2)))
 add("pr3_omega_not_counted_accepted", "POP-INN-03.3", "N = 4 > P + Q = 3 with a full 2 x 2 block Omega (3 free elements): NOT refused (the elements of Omega are left out of the count on purpose); the covariance carries the flag few observations",
-    mod(iv("additive", 2, 2, re = c("v", "k"), omega = list(arr(c(0.09, 0.01)), arr(c(0.01, 0.04)))), omega_shape = "block"), NULL, NULL, NULL, expect = "accepted",
-    note = "expected flag on the result covariance: 'few observations' (POP-INN-03.3, POP-COV-03); the flag's machine name is not in the spec (question)")
+    mod(iv("additive", 2, 2, re = c("v", "k"), omega = list(arr(c(0.09, 0.01)), arr(c(0.01, 0.04)))), omega_shape = "block"), NULL, NULL, NULL, expect = "accepted", expect_flags = "few_observations",
+    note = "the fit is run in full (not evaluate_only) and the array flags of the covariance block of the answer holds few_observations (POP-INN-03.3, POP-COV-03, POP-API-01 item 4); the elements of Omega are left out of the refusal count but not of the flag")
 
 # ================= rule 4, inner_failed: no input can be built =================
 cases[[length(cases) + 1L]] <- list(case = "pr4_inner_failed_sentence", rule = "POP-INN-03.4; PX4", expect = "refused", constructible = FALSE,
@@ -161,8 +162,8 @@ inv("pr5_unknown_ofv_convention", "an unknown ofv_convention", mod_opt(base, ofv
 inv("pr5_unknown_omega_shape", "an unknown omega shape", mod(base, omega_shape = "banded"), c("omega"), control = list(change = "block", request = mod(base, omega_shape = "block", omega = list(arr(c(0.09, 0.01)), arr(c(0.01, 0.04))))))
 inv("pr5_unknown_covariance_kind", "an unknown covariance kind", mod_opt(base, covariance = "jackknife"), c("covariance"), control = list(change = "sandwich", request = mod_opt(base, covariance = "sandwich")))
 inv("pr5_missing_random_effects", "a missing random_effects", mod(base, random_effects = NULL), c("random_effects"), control = list(change = "cl, v", request = base))
-inv("pr5_initial_outside_domain", "an initial value outside its domain (v = -1, a volume)", mod(base, initial = list(v = -1, cl = 2.8, ka = 1.5)), c("v"), basis = "inferred",
-    control = list(change = "v = 32", request = base), note = "the rule says 'naming the option'; the word 'v' names the parameter (question: or 'initial')")
+inv("pr5_initial_outside_domain", "an initial value outside its domain (v = -1, a volume)", mod(base, initial = list(v = -1, cl = 2.8, ka = 1.5)), c("`initial`", "`v`"), basis = "spec_sentence",
+    control = list(change = "v = 32", request = base), note = "the sentence of POP-INN-03.5: option `initial`: the typical value of `v` is -1, outside its domain; the backticks keep the word 'v' from matching inside 'invalid'")
 inv("pr5_omega_not_pd_diagonal", "a negative variance on the diagonal of the starting Omega", mod(base, omega = omega_diag(0.09, -0.04)), c("omega"),
     control = list(change = "0.04", request = base))
 inv("pr5_omega_not_pd_block", "a block starting Omega that is not positive definite (covariance 0.1 > sqrt(0.04 * 0.04))",
@@ -176,8 +177,9 @@ inv("pr5_random_effect_on_tlag_px4", "a random effect on tlag (PX4)", tl,
     control = list(change = "tlag as a shared typical value", request = lag_base))
 inv("pr5_random_effect_on_dur", "a random effect on dur (the zero-order duration, same reason as tlag)",
     mod(request("pk1.oral_0", list(v = 10, cl = 2, dur = 2), c("cl", "dur"), omega_diag(0.09, 0.04), "combined", subjects = ok3), random_effects = arr(c("cl", "dur"))),
-    c("dur"), basis = "inferred", rule = "POP-INN-03.5; POP-MOD-02",
-    note = "POP-MOD-02 rule 3 says InvalidOption naming the parameter; the sentence for dur is not written (question); the model name pk1.oral_0 is the zero-order oral model with parameter dur (see specs/models.md MOD-AB0-01)")
+    c("random effect on `dur`", "not available in this version", "give `dur` as a shared typical value"), basis = "spec_sentence", rule = "POP-INN-03.5; POP-MOD-02",
+    control = list(change = "dur as a shared typical value", request = request("pk1.oral_0", list(v = 10, cl = 2, dur = 2), "cl", omega_diag(0.09), "combined", subjects = ok3)),
+    note = "the sentence of POP-INN-03.5; the model name pk1.oral_0 is the zero-order oral model with parameter dur (see specs/models.md MOD-AB0-01)")
 
 # ================= rule 6, data: DAT-ERR-08 and exclude_subjects =================
 # an event-layout dataset of three subjects; subject 1 carries ADDL (unsupported_history, DAT-ERR-06): the sentence is that of oracle/expected/data/refuse_addl.json
@@ -192,18 +194,31 @@ dref <- jsonlite::fromJSON(file.path(ROOT, "oracle", "expected", "data", "refuse
 ev <- request("pk1.iv_bolus", list(v = 10, k = 0.2), "v", omega_diag(0.09), "combined", dataset_file = "data/pop/errors/refuse_addl_3.csv")
 add("pr6_dataset_refusal_addl", "POP-INN-03.6; DAT-ERR-08; DAT-ERR-06",
     "event-layout dataset, subject 1 carries ADDL: the run refuses, naming the subject and the dataset's sentence; subjects 2 and 3 are fine",
-    ev, NA_character_, c("subject 1", unlist(dref$error$words)), "reused_sentence",
+    ev, dref$error[["code"]], c("subject 1", unlist(dref$error$words)), "reused_sentence",
     reuses = "DAT-ERR-08 (oracle/expected/data/refuse_addl.json: same first rows, hence the same row number)",
     control = list(change = "exclude_subjects = [\"1\"]", request = mod_opt(ev, exclude_subjects = arr("1"))),
     must_not_contain = c("subject 2", "subject 3"),
-    note = "the code of this refusal is not written in the spec (DAT-ERR-08 gives a mark and a sentence, not a population code); code null = not asserted (question). The dataset's own code is unsupported_history")
-cases[[length(cases)]]$error$code <- NULL
-cases[[length(cases)]]$error$code_dataset <- dref$error$code
+    note = "the code is the dataset's own code of the first affected subject (POP-INN-03.6, decided 2026-11-08); read by exact name, [[\"code\"]] (the operator $ matches names partly)")
+stopifnot(identical(dref$error[["code"]], "unsupported_history"))
+# several dose rows (POP-INN-03.7, DAT-USE-02): subject S2 has two dose rows, S1 and S3 one
+dose_rows <- c("ID,TIME,DV,AMT,EVID",
+               "S1,0,,100,1", "S1,0.5,9.0,,0", "S1,2,6.8,,0", "S1,6,3.1,,0",
+               "S2,0,,120,1", "S2,0.5,10.9,,0", "S2,2,8.1,,0", "S2,3,,120,1", "S2,6,7.4,,0",
+               "S3,0,,110,1", "S3,0.5,10.0,,0", "S3,2,7.4,,0", "S3,6,3.3,,0")
+write_lines_lf(dose_rows, file.path(DDIR, "several_doses_3.csv"))
+write_lines_lf(dose_rows[dose_rows != "S2,3,,120,1"], file.path(DDIR, "several_doses_control_3.csv"))
+ev2 <- request("pk1.iv_bolus", list(v = 10, k = 0.2), "v", omega_diag(0.09), "combined", dataset_file = "data/pop/errors/several_doses_3.csv")
+add("pr6_several_dose_rows", "POP-INN-03.7; DAT-USE-02", "event-layout dataset, subject S2 has two dose rows (times 0 and 3), S1 and S3 one: the run refuses, naming S2 only",
+    ev2, "unsupported_history", c("subject S2", "2 dose rows", "single dose", "exclude_subjects"), "spec_sentence",
+    reuses = "DAT-USE-01 (the NCA refuses more than one dose row); POP-DAT-01",
+    control = list(change = "the second dose row of S2 removed", request = mod(ev2, dataset_file = "data/pop/errors/several_doses_control_3.csv")),
+    must_not_contain = c("S1", "S3"))
 add("pr6_exclude_unknown_label", "POP-INN-03.6; POP-DAT-01", "exclude_subjects names a label that is not in the dataset (a misspelt label would otherwise exclude nothing, silently)",
     mod_opt(base, exclude_subjects = arr("S9")), "invalid_option", c("S9"), "rule_names_option",
     control = list(change = "exclude_subjects = [\"S3\"]", request = mod_opt(base, exclude_subjects = arr("S3"))))
 add("pr6_exclude_unknown_label_among_valid", "POP-INN-03.6", "one valid and one misspelt label: still refused, naming the misspelt one",
     mod_opt(base, exclude_subjects = arr(c("S3", "s2"))), "invalid_option", c("s2"), "rule_names_option",
+    control = list(change = "the misspelt label removed (S3 only)", request = mod_opt(base, exclude_subjects = arr("S3"))),
     must_not_contain = c("S3"))
 
 out <- list(schema = 1L, kind = "pop_errors", generated_by = "oracle/scripts/pop_errors.R", versions = versions_list(),
