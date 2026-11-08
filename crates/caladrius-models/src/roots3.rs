@@ -302,7 +302,11 @@ pub(crate) fn solve(k: f64, k12: f64, k21: f64, k13: f64, k31: f64) -> Result<Ex
         c_hi,
     };
     // The far pole is written in the shifted form too when it is within a factor 4 of the near
-    // one (the loss is then a factor 8 at most); otherwise in the direct form.
+    // one; otherwise in the direct form. A far pole p above the root x makes the shifted term
+    // r + C/(x − p) cancel by the factor (|r| + |C/(x − p)|) / |r·x/(x − p)| = (2p − x)/x. Measured
+    // over 400 000 draws with p_hi <= 4·p_lo (T-167): at most 6.997 for β measured from the lower
+    // pole (x >= p_lo, so at most 7 by the formula) and at most 14.96 for γ in (p_lo/2, p_lo) (at
+    // most 15); the digits lost are those of that factor, about one, against up to six without it.
     let near_other = p_hi <= 4.0 * p_lo;
     let seeds = trigonometric_seeds(k, k12, k21, k13, k31);
     let unconverged = |what: &str| {

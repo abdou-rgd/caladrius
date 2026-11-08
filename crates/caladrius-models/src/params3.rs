@@ -7,6 +7,8 @@
 use std::collections::BTreeMap;
 
 use crate::ModelError;
+use crate::dd::Dd;
+use crate::error::NO_VALID_MACRO_MODEL;
 use crate::model::ModelId;
 use crate::roots3::{self, Exponents};
 
@@ -323,8 +325,22 @@ fn from_micro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
 /// MOD-3C-04: vc = D/(a + b + c), w = a/(a + b + c), then k21 and k31 the two roots of
 /// s² − n1·s + n0 (the larger first: k21 ≥ k31, MOD-3C-05), k10 = αβγ/n0, and k12, k13 from
 /// −P(k21)/[(k21 − k31)·k21] and −P(k31)/[(k31 − k21)·k31]. The curve uses the exponents and
-/// weights as given; the micro-constants only decide whether the macro set is a valid model, by
-/// the solver of MOD-3C-07 (the derived set must give back distinct exponents).
+/// weights as given; the micro-constants decide whether the macro set is a valid model, and they
+/// are reported (MOD-3C-25).
+///
+/// The conversion is written so that it keeps its digits where the plain evaluation loses them
+/// (MOD-3C-08; the review of T-165 measured 2e-2 to 5e-2 on k12 and k13 and 9e-11 on k21 and k31
+/// at the edge of zone (ii)):
+/// - n1, n0 and the discriminant Δ = n1² − 4·n0 are carried in double-double from the macro
+///   doubles as given (`macro_roots`); the gap k21 − k31 is √Δ, never a difference of the two
+///   rounded poles;
+/// - the offsets of each exponent to the two poles come from the identity
+///   (λ − k21)(λ − k31) = w·Π(λ − λj) and from λ − k21 and λ − k31 differing by the gap
+///   (`macro_offsets`), and k12 = Π(λi − k21)/(gap·k21), k13 = Π(λi − k31)/(−gap·k31) are products
+///   of those offsets, never of differences of the rounded poles.
+///
+/// The derived constants are finally given to the solver of MOD-3C-07, so that a macro set is
+/// never accepted on micro constants that the micro rule refuses (MOD-3C-08, second obligation).
 fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelError> {
     let [a, b, c, alpha, beta, gamma] = p;
     if !(alpha > beta && beta > gamma) {
@@ -336,47 +352,68 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     let total = derived("a + b + c", "a + b + c", a + b + c)?;
     let vc = derived("vc", "dose / (a + b + c)", dose / total)?;
     let weight = [a / total, b / total, c / total];
-    let [wa, wb, wc] = weight;
-    let n1 = wa * (beta + gamma) + wb * (alpha + gamma) + wc * (alpha + beta);
-    let n0 = wa * beta * gamma + wb * alpha * gamma + wc * alpha * beta;
+    let lambda = [alpha, beta, gamma];
+    let (n1, n0, gap, dd) = macro_roots([a, b, c], weight, lambda);
     let n1 = derived("n1", "sum of w x (S - lambda)", n1)?;
     let n0 = derived("n0", "sum of w x lambda x lambda", n0)?;
-    // A negative discriminant can only come from rounding at a tie (the roots are real in exact
-    // arithmetic, MOD-3C-04); it is taken as 0, and the equal roots are refused below.
-    let discriminant = (n1 * n1 - 4.0 * n0).max(0.0);
-    let k21 = (n1 + libm::sqrt(discriminant)) / 2.0;
-    let k31 = n0 / k21;
     let k10 = derived(
         "k10",
         "alpha x beta x gamma / n0",
         alpha * beta * gamma / n0,
     )?;
-    let gap = k21 - k31;
-    if gap <= 0.0 {
-        // No macro set with positive a, b, c reaches this in exact arithmetic (MOD-3C-06 item 3).
-        return Err(ModelError::DerivedOutOfRange {
-            name: "k21 - k31".to_string(),
-            from: "the roots of s^2 - n1 s + n0".to_string(),
-            value: gap,
-        });
+    // The gap of the poles is the square root of the discriminant. A discriminant that is not
+    // positive cannot come from a macro set with a, b, c > 0 in exact arithmetic (MOD-3C-06
+    // item 3): it is the rounding of a set whose poles are too close to be told apart.
+    if !(gap > 0.0 && gap.is_finite()) {
+        return Err(no_valid_model(
+            id,
+            "k21",
+            "k12",
+            "the poles k21 and k31 of the micro-constants derived from it cannot be told apart (the gap k21 - k31 is not positive)",
+        ));
     }
-    let k12 = derived(
-        "k12",
-        "-P(k21) / ((k21 - k31) x k21)",
-        (alpha - k21) * (k21 - beta) * (k21 - gamma) / (gap * k21),
-    )?;
-    let k13 = derived(
-        "k13",
-        "-P(k31) / ((k31 - k21) x k31)",
-        (alpha - k31) * (beta - k31) * (k31 - gamma) / (gap * k31),
-    )?;
+    let k21 = (n1 + gap) / 2.0;
+    let k31 = n0 / k21;
+    let offsets = macro_offsets(lambda, [a, b, c], weight, gap, dd, k21, k31);
+    // The exponent next to a pole, judged from the offsets (zone (i) of MOD-3C-08).
+    check_macro_offsets(id, offsets, k21, k31)?;
+    let coupling = |name: &str, pole: &str, magnitudes: [f64; 3], k: f64| {
+        let value = magnitudes.iter().product::<f64>() / (gap * k);
+        if value.is_finite() && value > 0.0 {
+            Ok(value)
+        } else if value == 0.0 {
+            Err(ModelError::DerivedOutOfRange {
+                name: name.to_string(),
+                from: format!("the offsets of the exponents to the pole {pole}"),
+                value,
+            })
+        } else {
+            Err(no_valid_model(
+                id,
+                pole,
+                name,
+                "its coupling is not a positive number",
+            ))
+        }
+    };
+    let k12 = coupling("k12", "k21", offsets.map(|(o21, _)| o21.abs()), k21)?;
+    let k13 = coupling("k13", "k31", offsets.map(|(_, o31)| o31.abs()), k31)?;
     let cl = derived("cl", "k10 x vc", k10 * vc)?;
     let q2 = derived("q2", "k12 x vc", k12 * vc)?;
     let vp2 = derived("vp2", "vc x k12 / k21", vc * k12 / k21)?;
     let q3 = derived("q3", "k13 x vc", k13 * vc)?;
     let vp3 = derived("vp3", "vc x k13 / k31", vc * k13 / k31)?;
-    let lambda = [alpha, beta, gamma];
-    check_macro_offsets(id, lambda, weight, k21, k31)?;
+    // The second obligation of MOD-3C-08: the micro-constants reported here are accepted by the
+    // micro rule. The solver of MOD-3C-07 is that rule; its answer is not used (the curve takes the
+    // exponents and weights as given).
+    if let Err(detail) = roots3::solve(k10, k12, k21, k13, k31) {
+        return Err(ModelError::DegenerateExponents {
+            model: id.to_string(),
+            detail: Some(format!(
+                "{NO_VALID_MACRO_MODEL}: the micro-constants derived from it are refused by the micro rule ({detail})"
+            )),
+        });
+    }
     // The offsets of the macro set are only used as differences between the exponents: they are
     // written about β, which is the exact difference of the given exponents.
     let ex = Exponents {
@@ -408,16 +445,135 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     })
 }
 
-/// MOD-3C-06 item 5 and MOD-3C-08 for the macro set: the micro-constants derived from it are rounded,
-/// so the offset of an exponent to the pole it lies next to is not read from them. It is the
-/// partial-fraction identity N(λ) = (λ − k21)(λ − k31) = w·Π(λ − λj) of the numerator N(s) =
-/// s² − n1·s + n0 of MOD-3C-04: the offset to the nearer pole is N(λ) over the (large) distance to
-/// the other pole. An exponent that lies within half a unit in the last place of a pole is
-/// refused: the pole and the exponent cannot be told apart as doubles.
+/// A refusal of a macro set that gives no valid model where the doubles cannot decide: the
+/// message names the pole, the coupling and what failed, and does not speak of overflow, underflow
+/// or rescaling (MOD-3C-06 item 3).
+fn no_valid_model(id: &str, pole: &str, coupling: &str, what: &str) -> ModelError {
+    ModelError::DegenerateExponents {
+        model: id.to_string(),
+        detail: Some(format!(
+            "{NO_VALID_MACRO_MODEL} at the pole {pole} (coupling {coupling}): {what}"
+        )),
+    }
+}
+
+/// What the reverse conversion of a macro set keeps in double-double: T = a + b + c and
+/// Δ·T² = N1² − 4·N0·T (the discriminant of s² − n1·s + n0 scaled by T²), from which every
+/// quantity below is a sum of terms that do not cancel.
+#[derive(Debug, Clone, Copy)]
+struct MacroDd {
+    total: Dd,
+    delta: Dd,
+}
+
+/// n1 = Σ wi·(S − λi), n0 = Σ wi·λj·λk and the gap √(n1² − 4·n0) of the two poles, from the macro
+/// doubles as given (`coefficient` the unnormalised weights a, b, c): N1 = Σ ai·(S − λi),
+/// N0 = Σ ai·λj·λk and T are carried in double-double, and Δ·T² = N1² − 4·N0·T is formed in
+/// double-double, where the plain double loses its digits when the poles are close (with
+/// τ = gap/n1 the loss is of the order of 2⁻⁵²/τ² in Δ). Falls back on plain doubles (and `None`)
+/// when an operand is too large for the split of the product.
+fn macro_roots(
+    coefficient: [f64; 3],
+    weight: [f64; 3],
+    lambda: [f64; 3],
+) -> (f64, f64, f64, Option<MacroDd>) {
+    let [a, b, c] = coefficient;
+    let [alpha, beta, gamma] = lambda;
+    let total = Dd::sum(a, b).add_f(c);
+    let sum = Dd::sum(alpha, beta).add_f(gamma);
+    let term = |w: f64, minus: f64, j: f64, k: f64| {
+        (sum.add_f(-minus).mul_f(w), Dd::product(j, k).mul_f(w))
+    };
+    let (x0, y0) = term(a, alpha, beta, gamma);
+    let (x1, y1) = term(b, beta, alpha, gamma);
+    let (x2, y2) = term(c, gamma, alpha, beta);
+    let n1_num = x0.add(x1).add(x2);
+    let n0_num = y0.add(y1).add(y2);
+    let delta = n1_num.mul(n1_num).sub(n0_num.mul(total).mul_f(4.0));
+    if total.is_finite() && n1_num.is_finite() && n0_num.is_finite() && delta.is_finite() {
+        let t = total.value();
+        let gap = if delta.value() > 0.0 {
+            libm::sqrt(delta.value()) / t
+        } else {
+            0.0
+        };
+        return (
+            n1_num.value() / t,
+            n0_num.value() / t,
+            gap,
+            Some(MacroDd { total, delta }),
+        );
+    }
+    let [wa, wb, wc] = weight;
+    let n1 = wa * (beta + gamma) + wb * (alpha + gamma) + wc * (alpha + beta);
+    let n0 = wa * beta * gamma + wb * alpha * gamma + wc * alpha * beta;
+    (n1, n0, libm::sqrt((n1 * n1 - 4.0 * n0).max(0.0)), None)
+}
+
+/// λi − k21 and λi − k31 for each exponent, signed, accurate to a few units in the last place
+/// wherever the micro-constants are well conditioned. With N = wi·Π(λi − λj) =
+/// (λi − k21)(λi − k31) (the numerator of the transfer function at the root) and the two offsets
+/// differing by the gap g = k21 − k31 (k21 ≥ k31), the pair solves a quadratic whose root
+/// √(g² + 4N) is the sum of the two offsets in magnitude (|o21 + o31|): for α and γ (N > 0) the
+/// larger magnitude is (g + √(g² + 4N))/2 and the smaller one N over it; for β (N < 0) the
+/// magnitudes add to g, the larger is again (g + √(g² + 4N))/2 and the smaller one |N| over it, the
+/// smaller one belonging to the pole nearer to β. The radicand g² + 4N cancels for β near the
+/// middle of the poles: it is formed in double-double, as (Δ·T² + 4·ai·Π(λi − λj)·T)/T².
+fn macro_offsets(
+    lambda: [f64; 3],
+    coefficient: [f64; 3],
+    weight: [f64; 3],
+    gap: f64,
+    dd: Option<MacroDd>,
+    k21: f64,
+    k31: f64,
+) -> [(f64, f64); 3] {
+    let [alpha, beta, gamma] = lambda;
+    let [a, b, c] = coefficient;
+    let [wa, wb, wc] = weight;
+    // (N, √(g² + 4N)) for the exponent `li` with the others `lj`, `lk` and its coefficient.
+    let at = |coefficient: f64, w: f64, li: f64, lj: f64, lk: f64| -> (f64, f64) {
+        let plain_n = w * (li - lj) * (li - lk);
+        let exact = dd.and_then(|m| {
+            let product = Dd::sum(li, -lj).mul(Dd::sum(li, -lk)).mul_f(coefficient);
+            let radicand = m.delta.add(product.mul(m.total).mul_f(4.0));
+            let t = m.total.value();
+            (radicand.is_finite() && t > 0.0).then(|| {
+                (
+                    product.value() / t,
+                    libm::sqrt(radicand.value().max(0.0)) / t,
+                )
+            })
+        });
+        exact.unwrap_or_else(|| (plain_n, libm::sqrt((gap * gap + 4.0 * plain_n).max(0.0))))
+    };
+    // α: both offsets positive, o31 = o21 + g.
+    let (n, s) = at(a, wa, alpha, beta, gamma);
+    let big = (gap + s) / 2.0;
+    let alpha_offsets = (n / big, big);
+    // γ: both offsets negative, |o21| = |o31| + g.
+    let (n, s) = at(c, wc, gamma, alpha, beta);
+    let big = (gap + s) / 2.0;
+    let gamma_offsets = (-big, -(n / big));
+    // β: o21 <= 0 <= o31 with o31 − o21 = g.
+    let (n, s) = at(b, wb, beta, alpha, gamma);
+    let big = (gap + s) / 2.0;
+    let small = -n / big;
+    let beta_offsets = if k21 - beta <= beta - k31 {
+        (-small, big)
+    } else {
+        (-big, small)
+    };
+    [alpha_offsets, beta_offsets, gamma_offsets]
+}
+
+/// MOD-3C-06 item 5 and MOD-3C-08 for the macro set: an exponent that lies within half a unit in
+/// the last place of a pole of the micro-constants derived from it is refused, the pole and the
+/// exponent cannot be told apart as doubles. The offset of the exponent to its nearer pole comes
+/// from the identity of `macro_offsets`, not from the rounded poles.
 fn check_macro_offsets(
     id: &str,
-    lambda: [f64; 3],
-    weight: [f64; 3],
+    offsets: [(f64, f64); 3],
     k21: f64,
     k31: f64,
 ) -> Result<(), ModelError> {
@@ -428,31 +584,23 @@ fn check_macro_offsets(
     // below the top of a binade and for an exponent just below a pole that is a power of two.
     // The macro check therefore refuses a macro set whose exponent lies up to twice as far from a
     // pole as half a spacing, which the exact rule (the exponent rounds onto the pole) would
-    // return; only that band between the exact limit and the threshold differs. The wording of the
-    // spec on this band belongs to card T-164; the behaviour is kept as it is.
+    // return; only that band between the exact limit and the threshold differs, and it lies in
+    // the free zones of MOD-3C-08.
     let unit = f64::EPSILON / 2.0;
     let names = ["alpha", "beta", "gamma"];
-    for (i, ((&root, &w), name)) in lambda.iter().zip(&weight).zip(names).enumerate() {
-        let others: Vec<f64> = lambda
-            .iter()
-            .enumerate()
-            .filter(|(j, _)| *j != i)
-            .map(|(_, x)| *x)
-            .collect();
-        let numerator = others.iter().fold(w, |acc, other| acc * (root - other));
-        let (d21, d31) = (root - k21, root - k31);
-        // The farther pole by subtraction (large), the nearer by the identity.
-        let (near, pole, pole_name) = if d21.abs() >= d31.abs() {
-            (numerator / d21, k31, "k31")
+    for (&(o21, o31), name) in offsets.iter().zip(names) {
+        let (near, pole, pole_name, coupling) = if o21.abs() <= o31.abs() {
+            (o21.abs(), k21, "k21", "k12")
         } else {
-            (numerator / d31, k21, "k21")
+            (o31.abs(), k31, "k31", "k13")
         };
-        if near.abs() < pole * unit {
+        if near.is_nan() || near < pole * unit {
             return Err(ModelError::DegenerateExponents {
                 model: id.to_string(),
                 detail: Some(format!(
-                    "the macro set (a, b, c, alpha, beta, gamma) is not valid: the exponent {name} lies at {:e} from the pole {pole_name} = {pole:e} of the micro-constants derived from it, below the rounding unit of the pole, so a root would equal a pole (a weight of the macro set is too small)",
-                    near.abs()
+                    "{NO_VALID_MACRO_MODEL}: the exponent {name} lies at {} from the pole {pole_name} = {} of the micro-constants derived from it (coupling {coupling}), below the rounding unit of the pole, so a root would equal a pole (a weight of the macro set is too small)",
+                    crate::error::short(near),
+                    crate::error::short(pole)
                 )),
             });
         }
@@ -600,22 +748,111 @@ mod tests {
         );
     }
 
-    /// A macro set whose smallest weight is far below the rounding unit is not a valid model.
+    /// The macro set of a micro set: a, b, c = dose·wi/vc and the exponents.
+    fn macro_of(micro: [(&str, f64); 6]) -> Vec<(&'static str, f64)> {
+        let c = resolve(ModelId::Pk3IvBolus, &given(&micro), 100.0).unwrap();
+        let w = c.weight();
+        let l = c.lambda();
+        vec![
+            ("a", 100.0 * w[0] / c.vc),
+            ("b", 100.0 * w[1] / c.vc),
+            ("c", 100.0 * w[2] / c.vc),
+            ("alpha", l[0]),
+            ("beta", l[1]),
+            ("gamma", l[2]),
+        ]
+    }
+
+    fn micro_set(k21: f64, k31: f64, k12: f64, k13: f64) -> [(&'static str, f64); 6] {
+        [
+            ("k10", 0.4),
+            ("k12", k12),
+            ("k21", k21),
+            ("k13", k13),
+            ("k31", k31),
+            ("vc", 8.0),
+        ]
+    }
+
+    /// Poles closer than the rounding of the plain algorithm (the edge rows of T-165): the macro set of
+    /// a well conditioned micro set gives its constants back to 1e-12, and the constants it reports are
+    /// accepted by the micro rule (MOD-3C-08, obligation of the free zones).
+    #[test]
+    fn close_poles_keep_their_constants_and_the_reported_micro_set_is_accepted() {
+        let mut accepted = 0;
+        for exp in [3, 6, 9, 12, 15, 18] {
+            let tau = libm::pow(2.0, -f64::from(exp));
+            for (k12, k13) in [(0.9, 0.5), (0.3, 1.7), (2.0, 0.05)] {
+                let k21 = 1.0;
+                let k31 = k21 * (1.0 - tau) / (1.0 + tau);
+                let micro = micro_set(k21, k31, k12, k13);
+                let m = macro_of(micro);
+                let Ok(d) = resolve(ModelId::Pk3IvBolus, &given_owned(&m), 100.0) else {
+                    continue;
+                };
+                accepted += 1;
+                for (name, got) in [
+                    ("k10", d.k10),
+                    ("k12", d.k12),
+                    ("k21", d.k21),
+                    ("k13", d.k13),
+                    ("k31", d.k31),
+                ] {
+                    let want = micro.iter().find(|(n, _)| *n == name).unwrap().1;
+                    assert!(
+                        (got - want).abs() <= 1e-9 * want,
+                        "tau 2^-{exp}: {name} {got} against {want}"
+                    );
+                }
+                let reported = [
+                    ("k10", d.k10),
+                    ("k12", d.k12),
+                    ("k21", d.k21),
+                    ("k13", d.k13),
+                    ("k31", d.k31),
+                    ("vc", d.vc),
+                ];
+                assert!(
+                    resolve(ModelId::Pk3IvBolus, &given(&reported), 100.0).is_ok(),
+                    "tau 2^-{exp}: the reported micro set is refused"
+                );
+            }
+        }
+        assert!(accepted >= 10, "only {accepted} sets accepted");
+    }
+
+    fn given_owned(pairs: &[(&str, f64)]) -> BTreeMap<String, f64> {
+        given(pairs)
+    }
+
+    /// A macro set whose smallest weight is far below the rounding unit is not a valid model: the
+    /// refusal names the pole and the coupling and never speaks of overflow, underflow or rescaling.
     #[test]
     fn a_macro_set_with_a_vanishing_weight_is_refused() {
-        let e = resolve(
-            ModelId::Pk3IvBolus,
-            &given(&[
-                ("a", 1e-20),
-                ("b", 0.7),
-                ("c", 0.3),
-                ("alpha", 3.0),
-                ("beta", 0.5),
-                ("gamma", 0.05),
-            ]),
-            100.0,
-        )
-        .unwrap_err();
-        assert!(matches!(e, ModelError::DegenerateExponents { .. }), "{e}");
+        for small in 0..3 {
+            let mut w = [0.7, 0.2, 0.1];
+            w[small] = 1e-20;
+            let e = resolve(
+                ModelId::Pk3IvBolus,
+                &given(&[
+                    ("a", w[0]),
+                    ("b", w[1]),
+                    ("c", w[2]),
+                    ("alpha", 3.0),
+                    ("beta", 0.5),
+                    ("gamma", 0.05),
+                ]),
+                100.0,
+            )
+            .unwrap_err();
+            assert!(matches!(e, ModelError::DegenerateExponents { .. }), "{e}");
+            let text = e.to_string();
+            assert!(text.contains("k21") || text.contains("k31"), "{text}");
+            assert!(text.contains("k12") || text.contains("k13"), "{text}");
+            assert!(text.contains("valid"), "{text}");
+            for word in ["overflow", "underflow", "rescal"] {
+                assert!(!text.contains(word), "{text}");
+            }
+        }
     }
 }

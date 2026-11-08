@@ -321,7 +321,8 @@ impl fmt::Display for ModelError {
             ),
             Self::DerivedOutOfRange { name, from, value } => write!(
                 f,
-                "the derived `{name}` = {from} = {value} is not a finite number > 0 (overflow or underflow); rescale the parameters (for example change the units)"
+                "the derived `{name}` = {from} = {} is not a finite number > 0 (overflow or underflow); rescale the parameters (for example change the units)",
+                short(*value)
             ),
             Self::InvalidRegimen { problem } => write!(f, "dosing regimen: {problem}"),
             Self::RegimenOutOfDomain {
@@ -363,6 +364,13 @@ impl fmt::Display for ModelError {
             Self::DegenerateExponents {
                 model,
                 detail: Some(detail),
+            } if detail.starts_with(NO_VALID_MACRO_MODEL) => write!(
+                f,
+                "degenerate exponents of {model}: {detail}; the macro doubles cannot decide it: give the micro-constants or the clearances, or macro constants whose exponents are further from the poles of the model"
+            ),
+            Self::DegenerateExponents {
+                model,
+                detail: Some(detail),
             } => write!(
                 f,
                 "degenerate exponents of {model}: {detail}; the data describe a model with fewer compartments or an exponent that is not representable in double precision (rescale the parameters, or use the pk2 or pk1 model of the same route)"
@@ -390,6 +398,11 @@ impl fmt::Display for ModelError {
         }
     }
 }
+
+/// The start of the detail of a macro set that gives no valid three-compartment model (MOD-3C-06
+/// item 3, MOD-3C-08): its message says so and does not speak of overflow, underflow or rescaling.
+pub(crate) const NO_VALID_MACRO_MODEL: &str =
+    "the macro set (a, b, c, alpha, beta, gamma) gives no valid three-compartment model";
 
 /// A number for a message in a short round-trip form: plain decimal for the magnitudes people
 /// write (1e-4 up to 1e16, and 0), scientific (`1e-300`, `2.5e300`) beyond, so that no message

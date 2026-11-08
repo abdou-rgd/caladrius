@@ -12,6 +12,7 @@
 //! to 8) and two compartments (`pk2.*`, section 11).
 
 mod curves;
+mod dd;
 mod dosing;
 mod error;
 mod float;
