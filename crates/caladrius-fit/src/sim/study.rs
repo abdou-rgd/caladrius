@@ -97,29 +97,33 @@ pub struct Study {
     pub(super) replicates: u64,
     pub(super) subjects: Vec<SubjectPlan>,
     pub(super) n_dv_ignored: usize,
+    /// Built by [`Study::for_draws`]: only [`Study::cell_with_draws`] is usable.
+    draws_only: bool,
 }
 
 impl Study {
     /// Checks the call (section 7) and prepares the evaluation. Nothing is drawn here: a refusal stops the
     /// run before any output.
     pub fn new(input: &SimInput) -> Result<Study, SimError> {
-        Study::build(input, true)
-    }
-
-    /// The study of the test entry point of SIM-ORA-03 (with [`Study::cell_with_draws`]): the same checks as
-    /// [`Study::new`] except the order of the observation times, because the exact part is evaluated
-    /// observation row by observation row and its cases may repeat a time to place two draws on one
-    /// prediction. Decision taken meanwhile (2026-11-08), reversible by Abdou: `specs/simulation.md` gives
-    /// the entry point no rule on times, and `duplicate_times` is a refusal of a design (SIM-REF-04).
-    pub fn for_draws(input: &SimInput) -> Result<Study, SimError> {
         Study::build(input, false)
     }
 
-    fn build(input: &SimInput, strict_times: bool) -> Result<Study, SimError> {
+    /// The study of the test entry point of SIM-ORA-03 (with [`Study::cell_with_draws`]): the same checks as
+    /// [`Study::new`] except that two observations of a subject may share a time (`time_not_increasing` stays),
+    /// because the cases of the exact part repeat a time to place two draws on one prediction. Decision taken
+    /// meanwhile (2026-11-08), reversible by Abdou: `specs/simulation.md` gives the entry point no rule on
+    /// times, and `duplicate_times` is a refusal of a design (SIM-REF-04). Such a design would give a dataset the
+    /// reader refuses (SIM-OUT-02), so on this study [`Study::cell`], [`Study::cell_at`] and
+    /// [`Study::simulate`] refuse with `invalid_option`; only [`Study::cell_with_draws`] is usable.
+    pub fn for_draws(input: &SimInput) -> Result<Study, SimError> {
+        Study::build(input, true)
+    }
+
+    fn build(input: &SimInput, draws_only: bool) -> Result<Study, SimError> {
         let seed = input.seed.ok_or_else(missing_seed)?;
         // The design first (SIM-REF-04, `label_key_collision`): it is the cheapest check and the one a
         // user meets most.
-        let (raw, n_dv_ignored) = plan_design(&input.design, strict_times)?;
+        let (raw, n_dv_ignored) = plan_design(&input.design, draws_only)?;
         let model = parse_model(&input.model)?;
         let names = parameter_names(model);
 
@@ -311,6 +315,7 @@ impl Study {
             replicates: input.replicates,
             subjects,
             n_dv_ignored,
+            draws_only,
         })
     }
 
@@ -349,8 +354,18 @@ impl Study {
         self.subjects.get(subject).map(|s| s.pred.as_slice())
     }
 
+    pub(super) fn refuse_if_draws_only(&self) -> Result<(), SimError> {
+        if self.draws_only {
+            return Err(SimError::invalid(
+                "this study was built for given draws (Study::for_draws): only cell_with_draws can run it",
+            ));
+        }
+        Ok(())
+    }
+
     /// The cell of a flat index `replicate * subjects + subject`.
     pub fn cell_at(&self, index: usize) -> Result<Cell, SimError> {
+        self.refuse_if_draws_only()?;
         let m = self.subjects.len().max(1);
         self.cell((index / m) as u64, index % m)
     }
@@ -358,6 +373,7 @@ impl Study {
     /// One cell, drawn from the streams of (seed, replicate, purpose, label). A pure function of its
     /// arguments and the study.
     pub fn cell(&self, replicate: u64, subject: usize) -> Result<Cell, SimError> {
+        self.refuse_if_draws_only()?;
         let plan = self
             .subjects
             .get(subject)
@@ -558,7 +574,7 @@ struct RawSubject {
 
 /// The subjects of a design in order of first appearance, with the refusals of SIM-REF-04 and
 /// `label_key_collision`; and the number of observation rows whose value cell was filled.
-fn plan_design(design: &Design, strict_times: bool) -> Result<(Vec<RawSubject>, usize), SimError> {
+fn plan_design(design: &Design, allow_ties: bool) -> Result<(Vec<RawSubject>, usize), SimError> {
     let mut ignored = 0;
     let subjects: Vec<RawSubject> = match design {
         Design::Subjects(list) => {
@@ -675,7 +691,7 @@ fn plan_design(design: &Design, strict_times: bool) -> Result<(Vec<RawSubject>, 
                 s.label
             )));
         }
-        check_times(&s.label, &s.times, strict_times)?;
+        check_times(&s.label, &s.times, allow_ties)?;
     }
     let mut seen: BTreeMap<LabelKey, &str> = BTreeMap::new();
     for s in &subjects {
@@ -694,16 +710,16 @@ fn plan_design(design: &Design, strict_times: bool) -> Result<(Vec<RawSubject>, 
     Ok((subjects, ignored))
 }
 
-/// The observation times of one subject: at least one and, when `strict`, not going backwards and no two
+/// The observation times of one subject: at least one, not going backwards and, unless `allow_ties`, no two
 /// equal (DAT-ORD-01).
-fn check_times(label: &str, times: &[f64], strict: bool) -> Result<(), SimError> {
+fn check_times(label: &str, times: &[f64], allow_ties: bool) -> Result<(), SimError> {
     if times.is_empty() {
         return Err(SimError::new(
             SimErrorCode::SubjectWithoutObservation,
             format!("subject {label} has no observation row: nothing would be simulated for it"),
         ));
     }
-    for w in times.windows(2).filter(|_| strict) {
+    for w in times.windows(2) {
         let (earlier, later) = match w {
             [a, b] => (*a, *b),
             _ => continue,
@@ -714,7 +730,7 @@ fn check_times(label: &str, times: &[f64], strict: bool) -> Result<(), SimError>
                 format!("time goes backwards in subject {label}: {later} after {earlier}"),
             ));
         }
-        if later == earlier {
+        if later == earlier && !allow_ties {
             return Err(SimError::new(
                 SimErrorCode::DuplicateTimes,
                 format!("subject {label} has two observations at time {earlier}"),

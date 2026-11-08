@@ -100,6 +100,12 @@ fn simulation(request: &Value) -> Result<Value, SimError> {
         }
         Ok(out)
     }
+    // A label is a string: a missing or numeric one is refused, never read as the empty label.
+    fn label_of(v: &Value, what: &str) -> Result<String, SimError> {
+        v.as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| invalid(format!("{what} must be a string")))
+    }
     // The seed: a number below 2^53, or a decimal string. Absent or null is left to the engine (`missing_seed`).
     fn seed_of(v: Option<&Value>) -> Result<Option<eng::Seed>, SimError> {
         match v {
@@ -117,7 +123,7 @@ fn simulation(request: &Value) -> Result<Value, SimError> {
             let mut out = Vec::new();
             for s in list {
                 out.push(eng::DesignSubject {
-                    label: s["id"].as_str().unwrap_or_default().to_owned(),
+                    label: label_of(&s["id"], "id")?,
                     dose: num(&s["dose"]),
                     dose_time: 0.0,
                     times: sim::numbers(&s["time"])
@@ -136,21 +142,21 @@ fn simulation(request: &Value) -> Result<Value, SimError> {
                     .ok_or_else(|| invalid("m must be an integer from 1"))?,
             })
         } else if let Some(rows) = d.get("table").and_then(Value::as_array) {
-            Ok(eng::Design::Table(
-                rows.iter()
-                    .map(|row| eng::TableRow {
-                        subject: row["subject"].as_str().unwrap_or_default().to_owned(),
-                        time: num(&row["time"]),
-                        kind: if row["event"].as_str() == Some("dose") {
-                            eng::RowKind::Dose
-                        } else {
-                            eng::RowKind::Observation
-                        },
-                        amt: row.get("amt").filter(|a| !a.is_null()).map(num),
-                        dv_given: row.get("dv").is_some_and(|a| !a.is_null()),
-                    })
-                    .collect(),
-            ))
+            let mut out = Vec::new();
+            for row in rows {
+                out.push(eng::TableRow {
+                    subject: label_of(&row["subject"], "subject")?,
+                    time: num(&row["time"]),
+                    kind: if row["event"].as_str() == Some("dose") {
+                        eng::RowKind::Dose
+                    } else {
+                        eng::RowKind::Observation
+                    },
+                    amt: row.get("amt").filter(|a| !a.is_null()).map(num),
+                    dv_given: row.get("dv").is_some_and(|a| !a.is_null()),
+                });
+            }
+            Ok(eng::Design::Table(out))
         } else {
             Err(invalid(
                 "design takes subjects, a table, or times with a dose and m",
@@ -320,7 +326,7 @@ fn simulation(request: &Value) -> Result<Value, SimError> {
             let mut subjects = Vec::new();
             for s in list {
                 subjects.push(eng::DesignSubject {
-                    label: s["id"].as_str().unwrap_or_default().to_owned(),
+                    label: label_of(&s["id"], "id")?,
                     dose,
                     dose_time: 0.0,
                     times: sim::numbers(&s["time"]).ok_or_else(|| invalid("time"))?,
@@ -370,7 +376,10 @@ fn simulation(request: &Value) -> Result<Value, SimError> {
             let replicates = match request.get("replicates") {
                 None | Some(Value::Null) => 1,
                 Some(v) => {
-                    let x = sim::number(v).filter(|x| x.fract() == 0.0 && *x >= 1.0);
+                    // Only what a u64 cannot hold is refused here; 0 and the rest are the engine's to judge.
+                    let x = sim::number(v).filter(|x| {
+                        x.fract() == 0.0 && *x >= 0.0 && *x < 18_446_744_073_709_551_616.0
+                    });
                     x.ok_or_else(|| invalid(format!("replicates {v} must be an integer from 1")))?
                         as u64
                 }

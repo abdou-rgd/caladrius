@@ -218,3 +218,63 @@ fn the_pinned_canonical_text_of_a_small_study() {
 
 /// SHA-256 of the canonical text of `bolus(3, 20)`; see the test above.
 const PINNED_SX2_20: &str = "c9b3ce1437b0e3a07a0a1b3cf647d9a30f82f0ce4ff066544b45b7d92c95a983";
+
+fn repeated_time(times: Vec<f64>) -> SimInput {
+    let mut input = bolus(1, 1);
+    input.design = Design::Subjects(vec![DesignSubject {
+        label: "S".to_owned(),
+        dose: 100.0,
+        dose_time: 0.0,
+        times,
+    }]);
+    input
+}
+
+#[test]
+fn a_study_for_given_draws_runs_nothing_else() {
+    let tied = repeated_time(vec![0.0, 0.0]);
+    // A design with a repeated time is refused by the checked call...
+    assert_eq!(
+        Study::new(&tied).map(|_| ()).map_err(|e| e.code),
+        Err(SimErrorCode::DuplicateTimes)
+    );
+    // ...and accepted by the test entry point, which evaluates given draws only.
+    let study = Study::for_draws(&tied).expect("study");
+    assert!(
+        study
+            .cell_with_draws(0, 0, &[0.1, 0.2], &[0.0, 0.0])
+            .is_ok()
+    );
+    for refused in [
+        study.cell(0, 0).map(|_| ()),
+        study.cell_at(0).map(|_| ()),
+        study.simulate().map(|_| ()),
+    ] {
+        assert_eq!(
+            refused.map_err(|e| e.code),
+            Err(SimErrorCode::InvalidOption)
+        );
+    }
+    // A time that goes backwards stays refused.
+    assert_eq!(
+        Study::for_draws(&repeated_time(vec![2.0, 1.0]))
+            .map(|_| ())
+            .map_err(|e| e.code),
+        Err(SimErrorCode::TimeNotIncreasing)
+    );
+}
+
+#[test]
+fn a_request_may_leave_out_the_defaults() {
+    // omega_shape (diagonal), replicates (1) and negative (keep) have the defaults of SIM-MOD-05.
+    let mut value = serde_json::to_value(bolus(2, 3)).expect("json");
+    let object = value.as_object_mut().expect("an object");
+    for key in ["omega_shape", "replicates", "negative"] {
+        object.remove(key);
+    }
+    object.insert("omega".to_owned(), serde_json::json!([0.09, 0.04]));
+    let input: SimInput = serde_json::from_value(value).expect("input");
+    assert_eq!(input.omega_shape, OmegaShape::Diagonal);
+    assert_eq!(input.replicates, 1);
+    assert_eq!(input.negative, NegativeRule::Keep);
+}

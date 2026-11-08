@@ -239,6 +239,10 @@ pub enum Design {
     },
 }
 
+fn one() -> u64 {
+    1
+}
+
 /// The whole call (SIM-MOD-05). A result repeats it, seed and options included, so that it can be replayed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SimInput {
@@ -248,7 +252,8 @@ pub struct SimInput {
     pub theta: BTreeMap<String, f64>,
     /// The parameters with a random effect, in order: the order is part of the model (SIM-MOD-03).
     pub random_effects: Vec<String>,
-    /// The shape of `omega`.
+    /// The shape of `omega`; `diagonal` when absent.
+    #[serde(default)]
     pub omega_shape: OmegaShape,
     /// Omega: the variances, or the lower triangle by rows.
     pub omega: Vec<f64>,
@@ -262,9 +267,11 @@ pub struct SimInput {
     pub design: Design,
     /// The seed; required (`missing_seed` without it).
     pub seed: Option<Seed>,
-    /// The number of replicates, 1 to 2^24.
+    /// The number of replicates, 1 to 2^24; 1 when absent.
+    #[serde(default = "one")]
     pub replicates: u64,
-    /// The negative-value rule.
+    /// The negative-value rule; `keep` when absent.
+    #[serde(default)]
     pub negative: NegativeRule,
     /// The lower limit of quantification, one number for the run.
     pub lloq: Option<f64>,

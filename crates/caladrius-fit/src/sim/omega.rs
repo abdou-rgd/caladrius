@@ -9,10 +9,11 @@
 use serde::{Deserialize, Serialize};
 
 /// The two shapes of Omega.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OmegaShape {
-    /// q variances.
+    /// q variances (the default).
+    #[default]
     Diagonal,
     /// q (q + 1) / 2 numbers, the lower triangle by rows.
     Block,

@@ -102,6 +102,11 @@ pub struct Stream {
 
 impl Stream {
     pub fn new(seed: Seed, replicate: u32, purpose: Purpose, label: LabelKey) -> Stream {
+        // The replicate shares c1 with the purpose, which takes the top 8 bits.
+        debug_assert!(
+            replicate < 1 << 24,
+            "replicate {replicate} does not fit 24 bits"
+        );
         Stream {
             key: seed.key(),
             c1: (purpose.number() << 24) | replicate,

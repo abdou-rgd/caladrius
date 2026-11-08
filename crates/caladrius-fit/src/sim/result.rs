@@ -150,6 +150,7 @@ pub struct SimResult {
 impl Study {
     /// Runs every cell in index order on the calling thread and assembles the result.
     pub fn simulate(&self) -> Result<SimResult, SimError> {
+        self.refuse_if_draws_only()?;
         let cells = (0..self.cell_count())
             .map(|index| self.cell_at(index))
             .collect::<Result<Vec<_>, _>>()?;
