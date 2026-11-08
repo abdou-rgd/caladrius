@@ -149,3 +149,18 @@
   - **A fourth oracle family:** the exact estimates of the balanced linear case (H38, 30 data values in the spec).
   - Several decisions taken meanwhile, reversible by Abdou.
   - Specs only. Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-169 (engine, Sonnet high; Fable review): the `caladrius-fit` minors left by T-149 and T-151, on branch `iter3/ml` (5805a9d).
+  - The lag sentence of FIT-ML-13c is fixed.
+  - The comments now cite 13d.
+  - The A2 guard test proves the free-set clause alone, checked by a mutation run.
+  - The digest is unchanged. Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-152 (oracle, Sonnet high; review on Sonnet, rounds A and B, a re-check): the population-fit oracle on branch `iter3/pop` (up to 6ac902c).
+  - It holds the exact identification suite at 256 bits, the objectives at fixed parameters, the diagnostics, 32 refusal rows (29 with a control) and the sealed simulate-then-fit data (200 replicates per design).
+  - Every engine test fails with `not_built`, and the guards are green.
+  - Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-157 (reader, Sonnet high; Fable review, a fix round, a renumbering, a re-check and a last text round): `specs/simulation.md` on branch `iter3/sim` (a463a70 to 10fdd19).
+  - The generator is Philox4x32-10 with a stream address per (seed, label, replicate, purpose). The transform is AS 241.
+  - Bit-exact targets are separated from tolerance targets, and doubles are exchanged as hex floats.
+  - `duplicate_times` and random effects on `tlag` and `dur` are refused. The hand checks are H39 to H44.
+  - Two decisions taken meanwhile (OS-01 and OS-03), reversible by Abdou.
+  - Specs only. Not merged into `main` before 2026-11-18.
