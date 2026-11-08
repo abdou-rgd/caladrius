@@ -233,3 +233,142 @@ fn a_table_in_the_event_layout_is_read_on_the_time_since_the_dose() {
     assert_eq!(error.code, PopErrorCode::InvalidOption);
     assert!(error.message.contains("`Z`"));
 }
+
+#[test]
+fn an_error_parameter_is_fixed_under_the_keys_a_and_b() {
+    // (error model, error_init, fixed): a fixed value takes the place of the one in error_init.
+    type Case = (&'static str, Vec<f64>, Vec<(&'static str, f64)>);
+    let cases: [Case; 6] = [
+        ("additive", vec![0.4], vec![("a", 0.3)]),
+        ("proportional", vec![0.2], vec![("b", 0.1)]),
+        ("combined", vec![0.4, 0.2], vec![("a", 0.3)]),
+        ("combined", vec![0.4, 0.2], vec![("b", 0.1)]),
+        ("combined_sd", vec![0.4, 0.2], vec![("a", 0.3), ("b", 0.1)]),
+        ("combined_sd", vec![0.4, 0.2], vec![("b", 0.1)]),
+    ];
+    for (em, init, fixed) in cases {
+        let mut request = linear_request();
+        request.error_model = Some(em.to_string());
+        request.error_init = Some(init.clone());
+        for (k, x) in &fixed {
+            request.fixed.insert((*k).to_string(), *x);
+        }
+        let answer = run(&request).unwrap();
+        let keys: Vec<&str> = if em == "additive" {
+            vec!["a"]
+        } else if em == "proportional" {
+            vec!["b"]
+        } else {
+            vec!["a", "b"]
+        };
+        let mut same = init.clone();
+        for (i, key) in keys.iter().enumerate() {
+            let used = &answer.xi_used[*key];
+            match fixed.iter().find(|(k, _)| k == key) {
+                Some((_, x)) => {
+                    assert_eq!((used.value, used.source.as_str()), (*x, "fixed"), "{em}");
+                    same[i] = *x;
+                }
+                None => assert_eq!((used.value, used.source.as_str()), (init[i], "error_init")),
+            }
+        }
+        // The same objective as the values given in error_init.
+        let mut plain = linear_request();
+        plain.error_model = Some(em.to_string());
+        plain.error_init = Some(same);
+        let want = run(&plain).unwrap().ofv;
+        assert_eq!(answer.ofv, want, "{em} {fixed:?}");
+    }
+}
+
+#[test]
+fn a_fixed_error_parameter_the_model_does_not_have_is_refused() {
+    for (em, key) in [("additive", "b"), ("proportional", "a")] {
+        let mut request = linear_request();
+        request.error_model = Some(em.to_string());
+        request.error_init = Some(vec![0.4]);
+        request.fixed.insert(key.to_string(), 0.3);
+        let error = run(&request).unwrap_err();
+        assert_eq!(error.code, PopErrorCode::InvalidOption);
+        assert_eq!(
+            error.message,
+            format!("option `fixed`: the {em} error model has no parameter `{key}`; leave it out")
+        );
+    }
+}
+
+#[test]
+fn an_error_parameter_under_another_key_does_not_reach_the_typical_values() {
+    let mut request = PopRequest {
+        model: Some("pk1.iv_bolus".to_string()),
+        initial: [("cl".to_string(), 2.0), ("v".to_string(), 10.0)]
+            .into_iter()
+            .collect(),
+        random_effects: Some(vec!["cl".to_string()]),
+        omega: Some(vec![vec![0.09]]),
+        error_model: Some("additive".to_string()),
+        error_init: Some(vec![0.5]),
+        options: PopOptions {
+            evaluate_only: true,
+            ..PopOptions::default()
+        },
+        subjects: Some(vec![
+            subject("S1", &[1.0, 4.0], &[0.08, 0.04]),
+            subject("S2", &[1.0, 4.0], &[0.09, 0.05]),
+        ]),
+        ..PopRequest::default()
+    };
+    assert!(run(&request).is_ok());
+    request.fixed.insert("error_a".to_string(), 0.5);
+    let error = run(&request).unwrap_err();
+    assert_eq!(error.code, PopErrorCode::InvalidOption);
+    assert!(
+        error
+            .message
+            .starts_with("option `fixed`: `error_a` is not a parameter of `pk1.iv_bolus`")
+    );
+}
+
+#[test]
+fn a_fixed_error_parameter_is_not_counted_as_free() {
+    // Two subjects, 3 observations, 2 typical values: with `a` free, N ≤ P + Q refuses.
+    let mut request = linear_request();
+    request.error_init = None;
+    request.options.evaluate_only = false;
+    request.subjects = Some(vec![
+        subject("S1", &[0.5, 1.0], &[1.3, 1.4]),
+        subject("S2", &[0.5], &[0.9]),
+    ]);
+    assert_eq!(
+        run(&request).unwrap_err().code,
+        PopErrorCode::TooFewObservations
+    );
+    request.fixed.insert("a".to_string(), 0.4);
+    // The counts pass; what stops the run is the outer estimation, not built yet.
+    assert_eq!(run(&request).unwrap_err().code, PopErrorCode::NotAvailable);
+}
+
+#[test]
+fn a_missing_error_init_takes_the_moments_and_says_so() {
+    let mut request = linear_request();
+    request.error_init = None;
+    let answer = run(&request).unwrap();
+    let used = &answer.xi_used["a"];
+    assert_eq!(used.source, "moments");
+    assert!(used.value > 0.0);
+}
+
+#[test]
+fn the_failures_that_are_not_the_inner_problem_have_their_own_sentences() {
+    let item4 = inner_failed("S2").message;
+    for error in [
+        fo_derivatives_failed("S2"),
+        covariance_failed("S2", Method::Fo),
+        covariance_failed("S2", Method::FoceI),
+    ] {
+        assert_eq!(error.code, PopErrorCode::InnerFailed);
+        assert!(error.message.contains("subject S2"), "{}", error.message);
+        assert_ne!(error.message, item4);
+        assert!(!error.message.contains("did not converge"));
+    }
+}

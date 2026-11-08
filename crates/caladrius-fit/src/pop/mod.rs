@@ -156,8 +156,21 @@ pub struct PopAnswer {
     /// Observations used, all subjects.
     pub n_observations: usize,
     pub random_effects: Vec<String>,
+    /// The error parameters the evaluation used, in the user's units, by key (`a`, `b`), with where
+    /// each value comes from. Not the estimate of a fit (that is `estimate.xi`, T-154).
+    pub xi_used: BTreeMap<String, ErrorValue>,
     /// Every subject of the run, in dataset order.
     pub subjects: Vec<SubjectAnswer>,
+}
+
+/// One error parameter used by an evaluation.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ErrorValue {
+    /// In the user's units (FIT-ML-21).
+    pub value: f64,
+    /// `fixed`, `error_init`, or `moments` (FIT-ML-10 at the population prediction) when the
+    /// request gives neither.
+    pub source: String,
 }
 
 /// One subject of the answer.
@@ -248,6 +261,31 @@ fn inner_failed(id: &str) -> PopError {
     }
 }
 
+/// FO needs G_i at η = 0 and the model cannot give it there (the code is that of POP-INN-03 item 4).
+fn fo_derivatives_failed(id: &str) -> PopError {
+    PopError {
+        code: PopErrorCode::InnerFailed,
+        message: format!(
+            "the derivatives of the prediction of subject {id} with respect to its random effects are not finite at the typical values, and the method `fo` needs them there; check the typical values, the model and the data of that subject"
+        ),
+    }
+}
+
+/// C_i = G·Ω·Gᵀ + diag(σ²) is not positive definite, or OFV_i is not finite, at η̂ (at 0 for FO).
+fn covariance_failed(id: &str, method: Method) -> PopError {
+    let at = if method == Method::Fo {
+        "at the typical values"
+    } else {
+        "at the conditional mode"
+    };
+    PopError {
+        code: PopErrorCode::InnerFailed,
+        message: format!(
+            "the linearised covariance of the observations of subject {id} (G·Ω·Gᵀ + diag σ²) is not positive definite {at}, or the objective of that subject is not finite; check omega, the error parameters and the data of that subject"
+        ),
+    }
+}
+
 // ---------------------------------------------------------------- the run
 
 /// Evaluates the population objective at the parameters of the request (`options.evaluate_only`).
@@ -283,6 +321,8 @@ struct Setup {
     l_inv: Mat,
     /// The moved error variables.
     xi: Vec<f64>,
+    /// The error parameters used, for the answer.
+    xi_used: BTreeMap<String, ErrorValue>,
     subjects: Vec<Subject>,
     /// The population prediction of each subject.
     pred0: Vec<Vec<f64>>,
@@ -492,6 +532,24 @@ fn theta_of(
                     ));
                 }
             }
+            // A name that is not a parameter of the model (an error parameter under another key,
+            // for example) must not reach θ.
+            let names = structure::model_parameters(*model);
+            if let Some(p) = theta.keys().find(|p| !names.contains(&p.as_str())) {
+                let option = if request.fixed.contains_key(p) {
+                    "fixed"
+                } else {
+                    "initial"
+                };
+                return Err(invalid(
+                    option,
+                    format!(
+                        "`{p}` is not a parameter of `{}`; give parameters of that model ({}), and the error parameters as `a` and `b`",
+                        model.id(),
+                        names.join(", ")
+                    ),
+                ));
+            }
             for (p, &x) in &theta {
                 let zero_allowed = p == "tlag";
                 let inside = if zero_allowed { x >= 0.0 } else { x > 0.0 };
@@ -519,8 +577,7 @@ fn theta_of(
 }
 
 /// Ω, its shape and its lower factor.
-fn omega_of(request: &PopRequest, q: usize) -> Result<(Mat, Mat), PopError> {
-    let block = block_of(request.omega_shape.as_deref())?;
+fn omega_of(request: &PopRequest, q: usize, block: bool) -> Result<(Mat, Mat), PopError> {
     let Some(rows) = &request.omega else {
         return Err(invalid(
             "omega",
@@ -570,33 +627,61 @@ fn omega_of(request: &PopRequest, q: usize) -> Result<(Mat, Mat), PopError> {
     Ok((omega, l_inv))
 }
 
-/// The error parameters in the user's units given by `error_init` and `fixed` (a, b), one entry
-/// per parameter of the error model, `None` where neither gives it.
-fn error_given(request: &PopRequest, em: ErrorModel) -> Result<Vec<Option<f64>>, PopError> {
-    let names = em.names();
-    let mut out: Vec<Option<f64>> = vec![None; names.len()];
+/// The keys of the error parameters in a request (POP-API-01 item 12): `a` for the first parameter
+/// of the error model and `b` for the last, in the order of [`ErrorModel::names`].
+fn error_keys(em: ErrorModel) -> &'static [&'static str] {
+    match em {
+        ErrorModel::Additive => &["a"],
+        ErrorModel::Proportional => &["b"],
+        ErrorModel::Combined | ErrorModel::CombinedSd => &["a", "b"],
+    }
+}
+
+/// Where a value of an error parameter given by the request comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ErrorSource {
+    Fixed,
+    Init,
+}
+
+impl ErrorSource {
+    fn id(self) -> &'static str {
+        match self {
+            ErrorSource::Fixed => "fixed",
+            ErrorSource::Init => "error_init",
+        }
+    }
+}
+
+/// The error parameters in the user's units given by `error_init` and `fixed` (keys `a`, `b`), one
+/// entry per parameter of the error model in the order of [`error_keys`], `None` where neither
+/// gives it. A value in `fixed` takes the place of the one in `error_init`.
+fn error_given(
+    request: &PopRequest,
+    em: ErrorModel,
+) -> Result<Vec<Option<(f64, ErrorSource)>>, PopError> {
+    let keys = error_keys(em);
+    let mut out: Vec<Option<(f64, ErrorSource)>> = vec![None; keys.len()];
     if let Some(init) = &request.error_init {
-        if init.len() != names.len() {
+        if init.len() != keys.len() {
             return Err(invalid(
                 "error_init",
                 format!(
                     "the {} error model has {} parameter(s) ({}) but {} value(s) are given; give one value per parameter",
                     em.id(),
-                    names.len(),
-                    names.join(", "),
+                    keys.len(),
+                    keys.join(", "),
                     init.len()
                 ),
             ));
         }
-        out = init.iter().map(|x| Some(*x)).collect();
+        out = init.iter().map(|x| Some((*x, ErrorSource::Init))).collect();
     }
-    for (k, name) in names.iter().enumerate() {
-        if let (Some(x), Some(slot)) = (request.fixed.get(*name), out.get_mut(k)) {
-            *slot = Some(*x);
-        }
-    }
-    for (name, k) in [("a", "a"), ("b", "b")] {
-        if request.fixed.contains_key(name) && !names.contains(&k) {
+    for name in ["a", "b"] {
+        let Some(&x) = request.fixed.get(name) else {
+            continue;
+        };
+        let Some(k) = keys.iter().position(|key| *key == name) else {
             return Err(invalid(
                 "fixed",
                 format!(
@@ -604,12 +689,15 @@ fn error_given(request: &PopRequest, em: ErrorModel) -> Result<Vec<Option<f64>>,
                     em.id()
                 ),
             ));
+        };
+        if let Some(slot) = out.get_mut(k) {
+            *slot = Some((x, ErrorSource::Fixed));
         }
     }
-    for x in out.iter().flatten() {
+    for (x, source) in out.iter().flatten() {
         if !(x.is_finite() && *x >= 0.0) {
             return Err(invalid(
-                "error_init",
+                source.id(),
                 format!(
                     "the error parameter {x} is not a finite number at or above 0; give such a number"
                 ),
@@ -666,13 +754,14 @@ impl Setup {
     fn new(request: &PopRequest) -> Result<Self, PopError> {
         let method = method_of(request.options.method.as_deref())?;
         let convention = convention_of(request.options.ofv_convention.as_deref())?;
+        // Validation only: an evaluation computes no covariance (that is T-154).
         check_covariance(request.options.covariance.as_deref())?;
-        block_of(request.omega_shape.as_deref())?;
+        let block = block_of(request.omega_shape.as_deref())?;
         let error_model = error_model_of(request.error_model.as_deref())?;
         let structure = structure_of(request)?;
         let random_effects = random_effects_of(request, &structure)?;
         let theta = theta_of(request, &structure, &random_effects)?;
-        let (omega, l_inv) = omega_of(request, random_effects.len())?;
+        let (omega, l_inv) = omega_of(request, random_effects.len(), block)?;
         let given = error_given(request, error_model)?;
         let subjects = data::subjects(request)?;
 
@@ -681,12 +770,10 @@ impl Setup {
         let complete = given.iter().all(Option::is_some);
         if !(request.options.evaluate_only && complete) {
             let free_theta = request.initial.len();
-            let free_xi = given.len()
-                - error_model
-                    .names()
-                    .iter()
-                    .filter(|n| request.fixed.contains_key(**n))
-                    .count();
+            let free_xi = given
+                .iter()
+                .filter(|g| !matches!(g, Some((_, ErrorSource::Fixed))))
+                .count();
             checks::refuse_too_few(error_model, &subjects, free_theta, free_xi)?;
         }
         // POP-INN-03 item 1, before anything that needs σ.
@@ -716,11 +803,29 @@ impl Setup {
             pred0.push(p);
         }
         let moments = moment_xi(error_model, &subjects, &pred0);
-        let user: Vec<f64> = given
+        // An evaluation uses `error_init` (POP-API-01 item 6). A parameter the request does not give
+        // takes the moment estimate, and the answer says so in `xi_used`: the controls of the
+        // refusal rows of the oracle give no `error_init`.
+        let mut user = Vec::with_capacity(given.len());
+        let mut xi_used = BTreeMap::new();
+        for ((g, m), key) in given
             .iter()
             .zip(error_model.user_values(&moments))
-            .map(|(g, m)| g.unwrap_or(m))
-            .collect();
+            .zip(error_keys(error_model))
+        {
+            let (value, source) = match g {
+                Some((x, source)) => (*x, source.id()),
+                None => (m, "moments"),
+            };
+            user.push(value);
+            xi_used.insert(
+                (*key).to_string(),
+                ErrorValue {
+                    value,
+                    source: source.to_string(),
+                },
+            );
+        }
         let xi = error_model.moved_from_user(&user);
         // POP-INN-03 item 2.
         checks::refuse_non_positive_sigma(error_model, &xi, &subjects, &pred0)?;
@@ -734,6 +839,7 @@ impl Setup {
             omega,
             l_inv,
             xi,
+            xi_used,
             subjects,
             pred0,
         })
@@ -773,7 +879,9 @@ impl Setup {
             let zero = vec![0.0; q];
             let (core, eta_hat, decrement) = match self.method {
                 Method::Fo => {
-                    let ev = model.evaluate(&zero).ok_or_else(|| inner_failed(&s.id))?;
+                    let ev = model
+                        .evaluate(&zero)
+                        .ok_or_else(|| fo_derivatives_failed(&s.id))?;
                     let core = linearised(&s.y, &ev.pred, &ev.g, &zero, &sigma0, &self.omega);
                     (core, None, None)
                 }
@@ -800,7 +908,7 @@ impl Setup {
                     (core, Some(p.eta), Some(p.decrement))
                 }
             };
-            let core = core.ok_or_else(|| inner_failed(&s.id))?;
+            let core = core.ok_or_else(|| covariance_failed(&s.id, self.method))?;
             let ofv = match self.convention {
                 OfvConvention::Full => n as f64 * ln_2pi + core,
                 OfvConvention::No2Pi => core,
@@ -823,6 +931,7 @@ impl Setup {
             n_subjects: self.subjects.iter().filter(|s| !s.y.is_empty()).count(),
             n_observations: self.subjects.iter().map(|s| s.y.len()).sum(),
             random_effects: self.random_effects.clone(),
+            xi_used: self.xi_used.clone(),
             subjects: answers,
         })
     }

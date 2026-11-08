@@ -89,8 +89,7 @@ pub(crate) fn refuse_unbounded(
     })
 }
 
-/// The sentences of FIT-ML-13c with "in subject {S}, " inserted. The clause "(or exclude the subject
-/// with `exclude_subjects`)" is added: it is the population route of the same remedy (POP-DAT-01).
+/// The sentences of FIT-ML-13c with "in subject {S}, " inserted after "here: " (POP-INN-03 item 1).
 fn unbounded_sentence(em: ErrorModel, s: &Subject, lag: bool, rows: &[usize]) -> String {
     let list = rows
         .iter()
@@ -105,12 +104,12 @@ fn unbounded_sentence(em: ErrorModel, s: &Subject, lag: bool, rows: &[usize]) ->
     let id = em.id();
     if lag {
         format!(
-            "The {id} error model has no maximum likelihood here: in subject {}, observation(s) {list} ({at}) are exactly 0 before the first nonzero observation, and with a lag the model predicts exactly 0 up to `tlag`, which is, or which the fit can move to, at or beyond those times, so the standard deviation can shrink to 0 there without cost. Exclude those observations (or exclude the subject with `exclude_subjects`), bound or fix `tlag` below the first of them, or use the additive error model.",
+            "The {id} error model has no maximum likelihood here: in subject {}, observation(s) {list} ({at}) are exactly 0 before the first nonzero observation, and with a lag the model predicts exactly 0 up to `tlag`, which is, or which the fit can move to, at or beyond those times, so the standard deviation can shrink to 0 there without cost. Exclude those observations, bound or fix `tlag` below the first of them, or use the additive error model.",
             s.id
         )
     } else {
         format!(
-            "The {id} error model has no maximum likelihood here: in subject {}, observation(s) {list} ({at}) are exactly 0 where the model predicts exactly 0 for every parameter value, so the standard deviation can shrink to 0 there without cost. Exclude those observations (or exclude the subject with `exclude_subjects`), or use the additive error model.",
+            "The {id} error model has no maximum likelihood here: in subject {}, observation(s) {list} ({at}) are exactly 0 where the model predicts exactly 0 for every parameter value, so the standard deviation can shrink to 0 there without cost. Exclude those observations, or use the additive error model.",
             s.id
         )
     }
