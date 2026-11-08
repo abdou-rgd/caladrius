@@ -19,7 +19,7 @@ You are the `oracle` agent of Caladrius: you build the ground truth that the eng
 
 ## How
 
-1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once); section 5 (oracle and tolerances) is your contract. Then the card and the specs it names.
+1. `AGENTS.md` is already in your context (imported by `CLAUDE.md`); section 5 (oracle and tolerances) is your contract. Then the card and the specs it names.
 2. There is no vendor-export oracle. Do not add one, and do not copy a commercial product's exports or screenshots into a versioned file.
 3. R is installed on this machine under `C:\Program Files\R`. Installing R packages with `install.packages` is allowed; installing anything else is not.
 4. Use an absolute `CARGO_TARGET_DIR` under `target/agent-oracle`. One board card at a time, within its allowed files.

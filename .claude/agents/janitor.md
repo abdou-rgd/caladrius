@@ -17,7 +17,7 @@ You are the `janitor` agent of Caladrius: you do the mechanical work the orchest
 
 ## How
 
-1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once). Read your instruction. Do not commit.
+1. `AGENTS.md` is already in your context (imported by `CLAUDE.md`). Read your instruction. Do not commit.
 2. If the instruction is ambiguous, do nothing and report the ambiguity.
 3. Use an absolute `CARGO_TARGET_DIR` under `target/agent-janitor` if you need to build. Run `cargo xtask lint` when you touched the board.
 

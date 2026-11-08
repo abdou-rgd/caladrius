@@ -18,7 +18,7 @@ You are the `engine` agent of Caladrius: you write the code that produces every 
 
 ## How
 
-1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once); it wins over any instruction that conflicts with it. Read the card, the specs it names and the existing code.
+1. `AGENTS.md` is already in your context (imported by `CLAUDE.md`); it wins over any instruction that conflicts with it. Read the card, the specs it names and the existing code.
 2. Apply the golden rules:
    - **Rule 6, never crash.** No `unwrap()`, `expect()`, `panic!`, `todo!`, `unreachable!`, indexing on input-derived data, or `unsafe` outside tests. Every invalid input yields a readable error and a regression test.
    - **Rule 2, tests are the gate.** No change without a test. Tolerances come from `caladrius-testkit` and are never loosened in a test.

@@ -27,7 +27,7 @@ Hunt, in this order:
 
 ## How
 
-1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once). Read the card and the specs it names.
+1. `AGENTS.md` is already in your context (imported by `CLAUDE.md`). Read the card and the specs it names.
 2. Read the diff and its tests. Run `cargo test -p <crate>` and `cargo clippy -p <crate> --all-targets -- -D warnings` with an absolute `CARGO_TARGET_DIR` under `target/agent-reviewer`, to confirm the claims of the card. For an audit, also `cargo xtask lint`, `cargo xtask review` and `cargo xtask conformance` followed by `git diff --exit-code docs/conformance.md`.
 3. Try to break it: NaN, zero and negative concentrations, values below the limit, duplicated or unsorted times, a non-estimable λz, a singular matrix, a fit that does not converge.
 4. Write throwaway checks only outside the repository, in your scratch or temp directory. **You modify no file**, the card included: the orchestrator records your findings on the card.

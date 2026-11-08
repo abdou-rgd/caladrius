@@ -19,7 +19,7 @@ You are the `interface` agent of Caladrius: you build everything around the numb
 
 ## How
 
-1. `AGENTS.md` should already be in your context (imported by `CLAUDE.md`; if it is not, read it once). Golden rules 3, 4, 7, 8 and 9 are yours:
+1. `AGENTS.md` is already in your context (imported by `CLAUDE.md`). Golden rules 3, 4, 7, 8 and 9 are yours:
    - engine first, the UI is one client;
    - every action is a command with a stable id and serializable parameters;
    - a thin, data-driven UI with theme tokens;

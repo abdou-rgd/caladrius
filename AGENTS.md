@@ -156,7 +156,7 @@ One file per task and per message: this is what stops two agents from editing th
 The project runs on a Max subscription, with no pay-as-you-go billing. The quota refills in windows; when it runs out, the session stops dead, with no warning. Consequences:
 
 1. **Always resumable.** After each task: tree builds, tests green, commit, entry in `LOG.md`. A session can be cut at any moment; the next one restarts from the board, not from conversation memory.
-2. **Two at a time.** At most 2 subagents in parallel, only on independent cards that share no crate and no file, and at most one of them on Fable. Never 8.
+2. **Parallel by independence.** Every independent card of a wave may run at once, with no fixed cap, as long as no two of them share a crate or a file.
 3. **The most expensive model reads the least.** Fable reads a diff and its card. The orchestrator reads the board, the reports and the output of the commands it re-runs, not the code. File search, renames, formatting: Sonnet or lighter.
 4. **Small tasks.** A task fits in one subagent's context: one function and its tests, not a whole crate.
 5. **No loops.** Three failed attempts on the same test: the task becomes `blocked` with the diagnosis, and you switch tasks.
