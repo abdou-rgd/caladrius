@@ -168,7 +168,7 @@ PREDbin is the median (type 7) of PRED_j over **the design rows of the bin and s
 - Sources: D; Bergstrand et al. 2011.
 
 ### VPC-PC-05 A non-positive denominator: the row is dropped and counted
-A row with PRED_j − lb ≤ 0 cannot be corrected (the ratio is infinite or negative). **This is routine, not an error**: an oral model has PRED(0) = 0, and an observation at the dose time is a valid row (DAT-ORD-01) that is not `before_dose`; with lb = 0 its denominator is exactly 0 (H-VX7). Such a row is **dropped from the whole VPC**, observed and simulated, after the simulation and before the binning (VPC-SIM-02), and counted: `n_pred_dropped` in the header (VPC-OUT-06), `excluded = non_positive_pred` in `vpc_obs` (VPC-OUT-05). The call is **refused** (`non_positive_pred`, naming the first row and its value) only when **no row is left**. A user who prefers a refusal at the first such row is offered in OV-08.
+A row with PRED_j − lb ≤ 0 cannot be corrected (the ratio is infinite or negative). **This is routine, not an error**: an oral model has PRED(0) = 0, and an observation at the dose time is a valid row (DAT-ORD-01) that is not `before_dose`; with lb = 0 its denominator is exactly 0 (H-VX7). Such a row is **dropped from the whole VPC**, observed and simulated, after the simulation and before the binning (VPC-SIM-02), and counted: `n_pred_dropped` in the header (VPC-OUT-06), `excluded = non_positive_pred` in `vpc_obs` (VPC-OUT-05); it is 0 without the correction. The call is **refused** (`non_positive_pred`, naming the first row and its value) only when **no row is left**. A user who prefers a refusal at the first such row is offered in OV-08.
 - Status: `assumed`
 - Sources: D; DAT-ORD-01; H-VX3 (PRED = lb gives an infinite ratio), H-VX7 (the oral case).
 
@@ -239,7 +239,7 @@ One row per (stratum, bin): `stratum`, `bin`, `left`, `right`, `closed_right` (t
 - Sources: D.
 
 ### VPC-OUT-02 `vpc_quantiles`
-One row per (stratum, bin, p): `stratum`, `bin`, `p`, `obs`, `sim_lo`, `sim_med`, `sim_hi`, `n_rep_defined`, `n_rep_below` (zero under `omit`), `obs_below`, `lo_below`, `hi_below` (booleans, true when the observed statistic, the lower band end or the upper band end is below the LLOQ under `censored_rank`, and then the matching number is not a number; always false under `omit`), `flag` (`ok`, `sparse`, `empty`, `band_undefined`; the first that applies in the order empty, band_undefined, sparse), `inside` (true if sim_lo ≤ obs ≤ sim_hi with all three numbers; absent otherwise). The three booleans are needed because the observed statistic and each band end can be below the LLOQ independently (H-VX4: observed below, the upper end a number).
+One row per (stratum, bin, p): `stratum`, `bin`, `p`, `obs`, `sim_lo`, `sim_med`, `sim_hi`, `n_rep_defined`, `n_rep_below` (zero under `omit`), `obs_below`, `lo_below`, `med_below`, `hi_below` (booleans, true when the observed statistic, the lower band end, the median or the upper band end is below the LLOQ under `censored_rank`, and then the matching number is not a number; always false under `omit`), `flag` (`ok`, `sparse`, `empty`, `band_undefined`; the first that applies in the order empty, band_undefined, sparse), `inside` (true if sim_lo ≤ obs ≤ sim_hi with all three numbers; absent otherwise). The four booleans are needed because the observed statistic and each band end can be below the LLOQ independently (H-VX4: observed below, the upper end a number).
 - Status: `assumed`
 - Sources: D; Bergstrand et al. 2011.
 
@@ -286,10 +286,10 @@ The only sums are the bin `x_mean` (and the counts, which are integers and assoc
 - Sources: SIM-SUM-01; H-VX3, H-VX6.
 
 ### VPC-DET-04 The canonical text
-The canonical text of a VPC run is the canonical text of SIM-DET-04 of the embedded simulation, **all six of its parts, the `summary` section included**, followed by the parts below. The embedded simulation is run with the VPC's R, seed and `lloq`, and its `quantiles` option is π, so the `summary` section is the one of SIM-SUM-01 at those probabilities. Spelling as in SIM-DET-04 (one line feed after every line, no carriage return, doubles as Rust `{:?}`, integers in decimal); fields are separated by `|` as in SIM-DET-04 part 4, lists are joined by `,` with no space.
+The canonical text of a VPC run is the canonical text of SIM-DET-04 of the embedded simulation, **all six of its parts, the `summary` section included**, followed by the parts below. The embedded simulation is run with the VPC's R, seed and `lloq`, and its `quantiles` option is π (its `negative` option is `keep`, the default of SIM-DET-04 part 2), so the `summary` section is the one of SIM-SUM-01 at those probabilities. Spelling as in SIM-DET-04 (one line feed after every line, no carriage return, doubles as Rust `{:?}`, integers in decimal); fields are separated by `|` as in SIM-DET-04 part 4, lists are joined by `,` with no space.
 7. The line `vpc`, then one line `key=value` per header key **in this exact order**: `seed`, `replicates`, `rng`, `pi`, `level`, `bins`, `k`, `edges`, `bin_x`, `min_obs`, `prediction_correction`, `lb`, `lloq`, `lloq_source`, `blq_quantiles`, `stratifier`, `parameter_uncertainty`, `flags`, `n_subjects`, `n_subjects_no_rows`, `n_rows`, `n_missing`, `n_before_dose`, `n_pred_dropped`, `n_outside_bins`, `n_blq`, `n_reflagged`. A value that does not apply is `none` (`k` for `nominal_time`, `edges` unless `edges`, `lloq`, `stratifier`); `flags` is the flags sorted in ascending byte order, joined by `,`, or `none`; `lloq_source` is `option`, `data` or `none`.
 8. The line `bins`, then one line per row of `vpc_bins`: `stratum|bin|left|right|closed_right|x|x_mean|x_middle|n_rows|n_obs|n_blq|n_subjects|status|pred_bin`.
-9. The line `quantiles`, then one line per row of `vpc_quantiles`: `stratum|bin|p|obs|sim_lo|sim_med|sim_hi|n_rep_defined|n_rep_below|obs_below|lo_below|hi_below|flag|inside`.
+9. The line `quantiles`, then one line per row of `vpc_quantiles`: `stratum|bin|p|obs|sim_lo|sim_med|sim_hi|n_rep_defined|n_rep_below|obs_below|lo_below|med_below|hi_below|flag|inside`.
 10. The line `blq`, then one line per row of `vpc_blq` (no line when there is no LLOQ): `stratum|bin|n_rows|n_blq|obs_fraction|sim_lo|sim_med|sim_hi|inside`.
 11. The line `obs`, then one line per row of `vpc_obs`: `subject|row|stratum|bin|x|y|pcy|blq|excluded`.
 
@@ -315,7 +315,7 @@ The correction is checked on a worked case (H-VX3) against the formula, bit for 
 - Sources: Bergstrand et al. 2011; H-VX3.
 
 ### VPC-ORA-04 Refusals
-Each code of VPC-REF-01 has one case with the expected code, **in the order of the table** (so a case with two causes names the code of the earlier row). The list: (1) no seed; (2) one case per option error: R = 0, level 1.2, π with a duplicate, π empty, `bins` unknown, k = 0, `bin_x` unknown, `min_obs` = −1, `lb` = NaN, a stratifier column that is not in the dataset; (3) `censored_rank` with the correction; (4) R = 39 at c = 0.95 (refused) and R = 40 (accepted), R = 19 and 20 at c = 0.9; (5) a fit that did not converge, with and without `allow_unconverged_fit`; (6) BLQ rows with no limit and no option, two different limits, a limit above the option; (7) a stratum with no subject, a missing covariate value, more strata than `MAX_STRATA`; (8) a size above the limits; (9) `nominal_time` on measured times, `edges` outside every row, duplicate edges; (10) the correction when no row is left; (11) **the accepted case**: the oral design of H-VX7 with a sample at the dose time and `prediction_correction = pc`, expected to run with `n_pred_dropped` = 6 and no refusal; (12) two causes at once (R = 39 and duplicate edges), which must report `too_few_replicates`.
+Each code of VPC-REF-01 has one case with the expected code, **in the order of the table** (so a case with two causes names the code of the earlier row). The list: (1) no seed; (2) one case per option error: R = 0, level 1.2, π with a duplicate, π empty, `bins` unknown, k = 0, `bin_x` unknown, `min_obs` = −1, `lb` = NaN, a stratifier column that is not in the dataset; (3) `censored_rank` with the correction; (4) R = 39 at c = 0.95 (refused) and R = 40 (accepted), R = 19 and 20 at c = 0.9; (5) a fit that did not converge, with and without `allow_unconverged_fit`; (6) BLQ rows with no limit and no option, two different limits, a limit above the option; (7) a stratum with no subject, a missing covariate value, more strata than `MAX_STRATA`; (8) a size above the limits; (9) duplicate edges; (10) the correction when no row is left; (11) `nominal_time` on measured times and `edges` outside every row; (12) **the accepted case**: the oral design of H-VX7 with a sample at the dose time and `prediction_correction = pc`, expected to run with `n_pred_dropped` = 6 and no refusal; (13) two causes at once (R = 39 and duplicate edges), which must report `too_few_replicates`.
 - Status: `assumed`
 - Sources: D; H-VX6, H-VX7.
 
@@ -340,9 +340,9 @@ Each refusal is an error value with a code and a sentence in the user's words, n
 | 4 | `missing_covariate`, `empty_stratum`, `too_many_strata` | VPC-STR-04 (`MAX_STRATA`, OV-12) |
 | 5 | `size_limit` | rows, replicates or table size above the limits (OS-04, OV-12) |
 | 6 | `bad_edges` | VPC-BIN-08 |
-| 6 | `no_bins` | the rule leaves no bin (no usable row, or `edges` outside every row) |
-| 6 | `too_many_bins` | `nominal_time` on measured times, or more bins than `MAX_BINS` (OV-12) |
-| 7 | `non_positive_pred` | VPC-PC-05, only when no row is left |
+| 6 | `non_positive_pred` | VPC-PC-05, only when no row is left (rows are dropped before the binning, so this precedes the bin refusals below) |
+| 7 | `no_bins` | the rule leaves no bin (no usable row, or `edges` outside every row) |
+| 7 | `too_many_bins` | `nominal_time` on measured times, or more bins than `MAX_BINS` (OV-12) |
 
 `covariate_varies` is the dataset's refusal (DAT-ERR-05), raised at import and not repeated here. `dataset_changed` exists only if OV-13 is adopted, at order 3.
 - Status: `assumed`
