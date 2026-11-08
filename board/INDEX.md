@@ -166,7 +166,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-154 | The population estimation (BFGS on φ, two-stage start), the covariance (sandwich, r, s), shrinkage and criteria | engine | in progress | T-153, T-168 |
 | T-157 | specs/simulation.md, population simulation (brick 4) | reader | done | T-162 |
 | T-158 | Oracle for the population simulation (Philox words, AS 241, exact part, distribution, refusals) | oracle | done | T-157 |
-| T-159 | The population simulator in the engine (caladrius-fit::sim) | engine | in progress | T-157, T-158 |
+| T-159 | The population simulator in the engine (caladrius-fit::sim) | engine | to review | T-157, T-158 |
 | T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | done | T-151 |
 | T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | done | T-150, T-149, T-151 |
 | T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | done | T-142 |
