@@ -36,7 +36,7 @@
 use std::collections::BTreeMap;
 
 use caladrius_models::{
-    Derivatives, DoseEvent, ModelId, ModelInput, ModelOutput, Regimen, jacobian, run,
+    Derivatives, DoseEvent, ModelError, ModelId, ModelInput, ModelOutput, Regimen, jacobian, run,
 };
 use caladrius_testkit::{
     MdCase, ModelCase, Pk3Kind, RegimenKind, Table, Tolerance, compare_tables, list_pk3_cases,
@@ -115,6 +115,79 @@ fn check(case_name: &str, kind: Pk3Kind, quantity: &str) {
     let output = run(&input)
         .unwrap_or_else(|e| panic!("{case_name}: the engine refuses a valid model: {e}"));
     compare(case_name, case, &output, quantity);
+    if quantity == "scalar" {
+        check_interlacing(case_name, &loaded, &output);
+    }
+}
+
+/// The exponents and the poles the engine returns, not the 1e-12 value check, decide on which side of a
+/// pole a root lies: a root a few ulps on the wrong side is a relative error of 1e-16 and passes any
+/// value tolerance (T-165 review).
+/// - A `_pole_` case (its options carry the claim): alpha > gamma, alpha > max(k21, k31), gamma <
+///   min(k21, k31), beta STRICTLY between k21 and k31, and the root of the claim strictly above or
+///   strictly below the pole of the claim, as the options say.
+/// - A case with adjacent poles (k21 and k31 neighbouring doubles; its options carry `scalar_abs`):
+///   alpha > max, gamma < min, and beta between the two poles, equality allowed (beta may round
+///   onto a pole, MOD-3C-22).
+fn check_interlacing(case_name: &str, loaded: &caladrius_testkit::Pk3Case, output: &ModelOutput) {
+    let adjacent = loaded
+        .case
+        .expected
+        .iter()
+        .any(|(group, _, _)| group == "scalar_abs");
+    if loaded.pole.is_none() && !adjacent {
+        return;
+    }
+    let get = |n: &str| {
+        output
+            .get(n)
+            .unwrap_or_else(|| panic!("{case_name}: the output has no {n}"))
+    };
+    let (alpha, beta, gamma, k21, k31) = (
+        get("alpha"),
+        get("beta"),
+        get("gamma"),
+        get("k21"),
+        get("k31"),
+    );
+    let (lo, hi) = (k21.min(k31), k21.max(k31));
+    let numbers =
+        format!("alpha {alpha:e}, beta {beta:e}, gamma {gamma:e}, k21 {k21:e}, k31 {k31:e}");
+    assert!(
+        alpha > beta && beta > gamma && gamma > 0.0,
+        "{case_name}: the exponents are not strictly ordered: {numbers}"
+    );
+    assert!(
+        alpha > hi,
+        "{case_name}: alpha not above max(k21, k31): {numbers}"
+    );
+    assert!(
+        gamma < lo,
+        "{case_name}: gamma not below min(k21, k31): {numbers}"
+    );
+    if let Some(claim) = &loaded.pole {
+        assert!(
+            lo < beta && beta < hi,
+            "{case_name}: beta not strictly between k21 and k31: {numbers}"
+        );
+        let root = get(&claim.root);
+        let pole = get(&claim.pole);
+        let ok = if claim.side == "above" {
+            root > pole
+        } else {
+            root < pole
+        };
+        assert!(
+            ok,
+            "{case_name}: {} must be {} {} ({}): {numbers}",
+            claim.root, claim.side, claim.pole, claim.side
+        );
+    } else {
+        assert!(
+            lo <= beta && beta <= hi,
+            "{case_name}: beta outside [min, max] of the adjacent poles: {numbers}"
+        );
+    }
 }
 
 /// The weight w_beta at adjacent poles (MOD-3C-22, group `scalar_abs`): ABSOLUTE error at most
@@ -151,7 +224,7 @@ fn check_free(case_name: &str) {
     let output = match run(&input) {
         Err(e) => {
             assert!(
-                format!("{e:?}").starts_with("DegenerateExponents"),
+                matches!(e, ModelError::DegenerateExponents { .. }),
                 "{case_name}: refused with {e:?}, a free-zone refusal is DegenerateExponents"
             );
             return;
@@ -546,8 +619,10 @@ fn refused(group: &str) {
             Err(e) => {
                 // the oracle names the error variant in the reason of the rows it decides by the variant
                 // (ModelError is public): assert it, not only the words of the message
+                // ModelError is public: match on the variant, not on the text of the reason; the reason
+                // only says which rows owe this variant
                 if c.reason.contains("DegenerateExponents")
-                    && !format!("{e:?}").starts_with("DegenerateExponents")
+                    && !matches!(e, ModelError::DegenerateExponents { .. })
                 {
                     failures.push(format!(
                         "{}: refused with {e:?}, expected DegenerateExponents ({})",

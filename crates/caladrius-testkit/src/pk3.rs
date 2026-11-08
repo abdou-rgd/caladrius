@@ -85,6 +85,14 @@ pub struct Pk3Case {
     /// (a, b, c, alpha, beta, gamma).
     pub parameterisation: String,
     /// True when the textbook forms in double precision keep their digits for this case.
+    ///
+    /// Where `textbook_basis` is `measured` the flag comes from running the naive forms and
+    /// overrides the older rule `textbook_ok && no scalar_ill row` of the generator: the flag concerns
+    /// the concentration curve, so 39 measured-true cases also carry `scalar_ill` rows (scalars whose
+    /// condition number is above 1e3). Three cases sit near the 1e-8 threshold of the naive test:
+    /// `oral_1_lag_ka_alpha_p1e_06` (worst ratio 0.78, true), `oral_1_ka_beta_m1e_06` (1.89, false) and
+    /// `oral_1_lag_ka_beta_p1e_06` (2.08, false); a different libm `exp()` could flip them. The test
+    /// `the_textbook_flag_is_what_the_naive_forms_do` is not changed for them.
     pub textbook_double_ok: bool,
     /// Names of the scalars in the group `scalar_ill`.
     pub scalar_ill: Vec<String>,
