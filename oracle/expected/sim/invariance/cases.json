@@ -1,0 +1,3420 @@
+{
+  "rule": "SIM-ORA-05",
+  "RNGkind": "Mersenne-Twister/Inversion/Rejection",
+  "cells": 60,
+  "note": "kind answers_identical: the two answers are equal as JSON values; kind compare: rows matched by (rep, id, obs) of the tables listed (subjects: rep, id), restricted to ids and rep <= max_rep when given; relation equal: every listed field of every matched row equal (numbers bit for bit); relation differ: at least one matched row has a different value; eta_len: compare the first eta_len entries of eta. reversed_run_reference: the eta of the run 'reverse_random_effects' (b) in the order (v, cl), tolerance form |a - e| <= tol_exact * max(|e|, scale)",
+  "tol_exact": 1e-12,
+  "checks": [
+    {
+      "name": "threads_2",
+      "rule": "SIM-ORA-05 (1); SIM-DET-01",
+      "why": "1 thread against 2 threads: the whole answer is identical bit for bit",
+      "kind": "answers_identical",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 2
+        }
+      }
+    },
+    {
+      "name": "threads_7",
+      "rule": "SIM-ORA-05 (1); SIM-DET-01",
+      "why": "1 thread against 7 threads: 60 cells (6 subjects x 10 replicates), 7 does not divide 60",
+      "kind": "answers_identical",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 7
+        }
+      }
+    },
+    {
+      "name": "threads_64",
+      "rule": "SIM-ORA-05 (1); SIM-DET-01",
+      "why": "1 thread against 64 threads: more threads than the 60 cells",
+      "kind": "answers_identical",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 64
+        }
+      }
+    },
+    {
+      "name": "threads_default",
+      "rule": "SIM-ORA-05 (1); SIM-DET-01",
+      "why": "1 thread against the default (the option omitted)",
+      "kind": "answers_identical",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8
+        }
+      }
+    },
+    {
+      "name": "subject_alone",
+      "rule": "SIM-ORA-05 (2); SIM-RNG-03",
+      "why": "subject \"4\" alone equals subject \"4\" inside the design of six (every field of both tables)",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "pred",
+        "ipred",
+        "sigma",
+        "eps",
+        "y_raw",
+        "y",
+        "cens",
+        "dv"
+      ],
+      "ids": [
+        "4"
+      ]
+    },
+    {
+      "name": "subject_order_reversed",
+      "rule": "SIM-ORA-05 (2); SIM-RNG-03",
+      "why": "the subjects in reverse order give the same rows for every subject",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "pred",
+        "ipred",
+        "sigma",
+        "eps",
+        "y_raw",
+        "y",
+        "cens",
+        "dv"
+      ]
+    },
+    {
+      "name": "subject_removed",
+      "rule": "SIM-ORA-05 (2); SIM-RNG-03",
+      "why": "removing subjects \"1\" and \"2\" changes nothing for the others",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "pred",
+        "ipred",
+        "sigma",
+        "eps",
+        "y_raw",
+        "y",
+        "cens",
+        "dv"
+      ],
+      "ids": [
+        "3",
+        "4",
+        "5",
+        "6"
+      ]
+    },
+    {
+      "name": "replicate_prefix",
+      "rule": "SIM-ORA-05 (3); SIM-RNG-03",
+      "why": "a run of 4 replicates equals replicates 0..3 of a run of 10",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 4,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "pred",
+        "ipred",
+        "sigma",
+        "eps",
+        "y_raw",
+        "y",
+        "cens",
+        "dv"
+      ],
+      "max_rep": 3
+    },
+    {
+      "name": "replicate_prefix_one",
+      "rule": "SIM-ORA-05 (3)",
+      "why": "a run of 1 replicate equals replicate 0 of a run of 10",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 1,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "pred",
+        "ipred",
+        "sigma",
+        "eps",
+        "y_raw",
+        "y",
+        "cens",
+        "dv"
+      ],
+      "max_rep": 0
+    },
+    {
+      "name": "error_model_change",
+      "rule": "SIM-ORA-05 (4); SIM-RNG-06",
+      "why": "another error model leaves eta, eps and ipred unchanged",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "additive",
+        "xi": {
+          "a": 0.2
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "eps",
+        "pred",
+        "ipred"
+      ]
+    },
+    {
+      "name": "lloq_change",
+      "rule": "SIM-ORA-05 (4)",
+      "why": "no LLOQ leaves eta, eps and ipred unchanged",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "eps",
+        "pred",
+        "ipred"
+      ]
+    },
+    {
+      "name": "negative_change",
+      "rule": "SIM-ORA-05 (4)",
+      "why": "negative = zero leaves eta, eps and ipred unchanged",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "zero",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "p",
+        "eps",
+        "pred",
+        "ipred"
+      ]
+    },
+    {
+      "name": "append_random_effect",
+      "rule": "SIM-ORA-05 (5); SIM-MOD-03",
+      "why": "appending ka at the end of random_effects (Omega extended by a last row) leaves the first two eta and all eps unchanged",
+      "kind": "compare",
+      "relation": "equal",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.oral_1",
+        "theta": {
+          "cl": 5,
+          "v": 50,
+          "ka": 1.5
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 6,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.oral_1",
+        "theta": {
+          "cl": 5,
+          "v": 50,
+          "ka": 1.5
+        },
+        "random_effects": [
+          "cl",
+          "v",
+          "ka"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04,
+          0.01,
+          0.015,
+          0.0625
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 6,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects",
+        "observations"
+      ],
+      "fields": [
+        "eta",
+        "eps"
+      ],
+      "eta_len": 2,
+      "note": "eta is compared on its first 2 entries; the individual parameters and the predictions differ (ka now varies), and are not compared"
+    },
+    {
+      "name": "reverse_random_effects",
+      "rule": "SIM-ORA-05 (6); SIM-MOD-03",
+      "why": "reversing random_effects (with Omega reordered) changes the eta: eta_cl of the reversed run is not that of the base (a guard against a silent reordering)",
+      "kind": "compare",
+      "relation": "differ",
+      "a": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "b": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "v",
+          "cl"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.04,
+          0.03,
+          0.09
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2,
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "4",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "5",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "6",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 10,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "lloq": 0.8,
+          "threads": 1
+        }
+      },
+      "tables": [
+        "subjects"
+      ],
+      "fields": [
+        "p"
+      ]
+    }
+  ],
+  "reversed_run_reference": [
+    {
+      "rep": 0,
+      "id": "1",
+      "eta": [
+        "-0x1.ab2fe143e5d57p-2",
+        "-0x1.7a5795de762d8p-3"
+      ],
+      "scale": [
+        "0x1.ab2fe143e5d57p-2",
+        "0x1.c39c06f69da96p-2"
+      ],
+      "z_eta": [
+        "-0x1.0afdecca6fa56p+1",
+        "0x1.f9101e9b36e0ap-2"
+      ]
+    },
+    {
+      "rep": 0,
+      "id": "2",
+      "eta": [
+        "-0x1.2f2e37d7a3e74p-2",
+        "-0x1.cdf9033c39fc8p-3"
+      ],
+      "scale": [
+        "0x1.2f2e37d7a3e74p-2",
+        "0x1.cdf9033c39fc8p-3"
+      ],
+      "z_eta": [
+        "-0x1.7af9c5cd8ce11p+0",
+        "-0x1.bb8593ad16d6dp-7"
+      ]
+    },
+    {
+      "rep": 0,
+      "id": "3",
+      "eta": [
+        "0x1.ee07b213d595fp-3",
+        "0x1.0d98f230ba689p-1"
+      ],
+      "scale": [
+        "0x1.ee07b213d595fp-3",
+        "0x1.0d98f230ba689p-1"
+      ],
+      "z_eta": [
+        "0x1.34c4cf4c657dbp+0",
+        "0x1.5492a1e657709p+0"
+      ]
+    },
+    {
+      "rep": 0,
+      "id": "4",
+      "eta": [
+        "0x1.95070665caf7p-3",
+        "-0x1.298fea0a7b031p-3"
+      ],
+      "scale": [
+        "0x1.95070665caf7p-3",
+        "0x1.c48d39d195bacp-2"
+      ],
+      "z_eta": [
+        "0x1.fa48c7ff3db4bp-1",
+        "-0x1.2150fc76c17ecp+0"
+      ]
+    },
+    {
+      "rep": 0,
+      "id": "5",
+      "eta": [
+        "-0x1.0949416f45206p-3",
+        "-0x1.c8cef541f48d6p-5"
+      ],
+      "scale": [
+        "0x1.0949416f45206p-3",
+        "0x1.1bba24d66a8d2p-3"
+      ],
+      "z_eta": [
+        "-0x1.4b9b91cb16687p-1",
+        "0x1.464044a7c129ep-3"
+      ]
+    },
+    {
+      "rep": 0,
+      "id": "6",
+      "eta": [
+        "-0x1.f2ac2752c88d2p-5",
+        "-0x1.50fa982f97871p-3"
+      ],
+      "scale": [
+        "0x1.f2ac2752c88d2p-5",
+        "0x1.50fa982f97871p-3"
+      ],
+      "z_eta": [
+        "-0x1.37ab9893bd583p-2",
+        "-0x1.d492bf9a1bab9p-2"
+      ]
+    },
+    {
+      "rep": 1,
+      "id": "1",
+      "eta": [
+        "-0x1.53f3911988401p-2",
+        "-0x1.37315b179e096p-2"
+      ],
+      "scale": [
+        "0x1.53f3911988401p-2",
+        "0x1.37315b179e096p-2"
+      ],
+      "z_eta": [
+        "-0x1.a8f0755fea501p+0",
+        "-0x1.b0da4dcf266a9p-3"
+      ]
+    },
+    {
+      "rep": 1,
+      "id": "2",
+      "eta": [
+        "0x1.076db01e219b3p-2",
+        "0x1.f1a54a788258p-7"
+      ],
+      "scale": [
+        "0x1.076db01e219b3p-2",
+        "0x1.7b975dd96e55fp-2"
+      ],
+      "z_eta": [
+        "0x1.49491c25aa01fp+0",
+        "-0x1.5e4c297704deap-1"
+      ]
+    },
+    {
+      "rep": 1,
+      "id": "3",
+      "eta": [
+        "-0x1.57f6c4c9de823p-7",
+        "0x1.84dce58b02e5bp-4"
+      ],
+      "scale": [
+        "0x1.57f6c4c9de823p-7",
+        "0x1.c55b2a70dc9e1p-4"
+      ],
+      "z_eta": [
+        "-0x1.adf475fc5622bp-5",
+        "0x1.95367a374b62bp-2"
+      ]
+    },
+    {
+      "rep": 1,
+      "id": "4",
+      "eta": [
+        "-0x1.11347660ecf04p-2",
+        "0x1.66e75c526a70dp-2"
+      ],
+      "scale": [
+        "0x1.11347660ecf04p-2",
+        "0x1.805b06f1e6ecap-1"
+      ],
+      "z_eta": [
+        "-0x1.558193f9282c5p+0",
+        "0x1.0f431189098aep+1"
+      ]
+    },
+    {
+      "rep": 1,
+      "id": "5",
+      "eta": [
+        "0x1.416c95760eb5cp-3",
+        "-0x1.549a2a4968a8ep-4"
+      ],
+      "scale": [
+        "0x1.416c95760eb5cp-3",
+        "0x1.4637faaae5328p-2"
+      ],
+      "z_eta": [
+        "0x1.91c7bad392632p-1",
+        "-0x1.8bd71876fedbp-1"
+      ]
+    },
+    {
+      "rep": 1,
+      "id": "6",
+      "eta": [
+        "-0x1.2d13f5edac28fp-4",
+        "0x1.4266be7c3b133p-5"
+      ],
+      "scale": [
+        "0x1.2d13f5edac28fp-4",
+        "0x1.3268a8114fe37p-3"
+      ],
+      "z_eta": [
+        "-0x1.7858f36917332p-2",
+        "0x1.7466549f2df5ep-2"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "rng": "philox4x32-10/as241/v1",
+  "rule": "SIM-RNG-01, SIM-ORA-01 item 1",
+  "note": "counter, key and output are 8-digit hexadecimal 32-bit words; compare parsed integers",
+  "kat": [
+    {
+      "counter": ["00000000", "00000000", "00000000", "00000000"],
+      "key": ["00000000", "00000000"],
+      "out": ["6627e8d5", "e169c58d", "bc57ac4c", "9b00dbd8"]
+    },
+    {
+      "counter": ["ffffffff", "ffffffff", "ffffffff", "ffffffff"],
+      "key": ["ffffffff", "ffffffff"],
+      "out": ["408f276d", "41c83b0e", "a20bc7c6", "6d5451fd"]
+    },
+    {
+      "counter": ["243f6a88", "85a308d3", "13198a2e", "03707344"],
+      "key": ["a4093822", "299f31d0"],
+      "out": ["d16cfe09", "94fdcceb", "5001e420", "24126ea1"]
+    }
+  ],
+  "blocks": [
+    {
+      "name": "sx1_eta_1_block0",
+      "counter": ["00000000", "01000000", "6b86b273", "ff34fce1"],
+      "key": ["013528f4", "00000000"],
+      "out": ["bc2fc714", "04bc16cb", "0f6e941d", "b0671d12"]
+    },
+    {
+      "name": "sx1_eta_1_block1",
+      "counter": ["00000001", "01000000", "6b86b273", "ff34fce1"],
+      "key": ["013528f4", "00000000"],
+      "out": ["e0c78126", "c0b96feb", "dbcc1bce", "af56fc7b"]
+    },
+    {
+      "name": "counter_c0_alone",
+      "counter": ["00000001", "00000000", "00000000", "00000000"],
+      "key": ["00000000", "00000000"],
+      "out": ["f8e4cca4", "5cb200db", "b1a574eb", "097eff67"]
+    },
+    {
+      "name": "counter_c1_alone",
+      "counter": ["00000000", "00000001", "00000000", "00000000"],
+      "key": ["00000000", "00000000"],
+      "out": ["6ad0c5ec", "ea236249", "73a459f5", "074944b3"]
+    },
+    {
+      "name": "counter_c2_alone",
+      "counter": ["00000000", "00000000", "00000001", "00000000"],
+      "key": ["00000000", "00000000"],
+      "out": ["844515e1", "f08d6eaa", "0f19c053", "83f875f0"]
+    },
+    {
+      "name": "counter_c3_alone",
+      "counter": ["00000000", "00000000", "00000000", "00000001"],
+      "key": ["00000000", "00000000"],
+      "out": ["2dce73e5", "1348e23f", "fcf8e0ec", "a287aadb"]
+    },
+    {
+      "name": "key_k0_alone",
+      "counter": ["00000000", "00000000", "00000000", "00000000"],
+      "key": ["00000001", "00000000"],
+      "out": ["e3e80670", "e50a0ebc", "95f222c0", "b615aa27"]
+    },
+    {
+      "name": "key_k1_alone",
+      "counter": ["00000000", "00000000", "00000000", "00000000"],
+      "key": ["00000000", "00000001"],
+      "out": ["fdde3e0b", "fa7e58b6", "3380ec46", "d8d55c4f"]
+    },
+    {
+      "name": "high_bits",
+      "counter": ["ffffffff", "00000000", "00000000", "00000000"],
+      "key": ["00000000", "ffffffff"],
+      "out": ["3ffb5ad8", "0eee325e", "69a4c935", "6decab73"]
+    }
+  ]
+}

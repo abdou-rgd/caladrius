@@ -1,0 +1,311 @@
+{
+  "rule": "SIM-SUM-01, SX5",
+  "RNGkind": "Mersenne-Twister/Inversion/Rejection",
+  "note": "x and expected are hexadecimal doubles compared as parsed values; the quantile is compared bit for bit; type 7 in the form (1 - g) x_lo + g x_hi",
+  "alt_form_at_p_0_05": "0x1.b5f7d99afcaecp-1",
+  "alt_form_differs_on_these_doubles": false,
+  "cases": [
+    {
+      "name": "sx5_19_values",
+      "why": "SX5: the 19 values y(t = 4) of subject 1, replicates 0..18 (the doubles of the reference), p = 0.05, 0.5, 0.95; the values are in replicate order, the engine sorts",
+      "x": [
+        "0x1.d1c790ba1e0eep+0",
+        "0x1.a56a28e0b02d2p+0",
+        "0x1.c2c70712ee03ap-1",
+        "0x1.7bd5ce6aef561p+0",
+        "0x1.847ecfb3e7b38p+0",
+        "0x1.6e49ffca218ecp+0",
+        "0x1.960c3328b7e17p-1",
+        "0x1.d6d0d52a965bp+0",
+        "0x1.60f7462f17508p+0",
+        "0x1.6d91831f36fd2p+0",
+        "0x1.388a25d3c069fp+0",
+        "0x1.b983cfa7aefe7p-1",
+        "0x1.22a99a20dcd33p+0",
+        "0x1.62fffeb34c69p+0",
+        "0x1.4539f3a2bae8ap+0",
+        "0x1.ad0228a86f31dp+0",
+        "0x1.3cdfb19b0ae4bp+0",
+        "0x1.2543d1f6cabadp+0",
+        "0x1.05d2a45a3ef1cp+0"
+      ],
+      "p": [
+        "0x1.999999999999ap-5",
+        "0x1p-1",
+        "0x1.e666666666666p-1"
+      ],
+      "expected": [
+        "0x1.b5f7d99afcaecp-1",
+        "0x1.60f7462f17508p+0",
+        "0x1.d2487df8907cep+0"
+      ]
+    },
+    {
+      "name": "sx5_19_values_sorted",
+      "why": "the same values sorted ascending",
+      "x": [
+        "0x1.960c3328b7e17p-1",
+        "0x1.b983cfa7aefe7p-1",
+        "0x1.c2c70712ee03ap-1",
+        "0x1.05d2a45a3ef1cp+0",
+        "0x1.22a99a20dcd33p+0",
+        "0x1.2543d1f6cabadp+0",
+        "0x1.388a25d3c069fp+0",
+        "0x1.3cdfb19b0ae4bp+0",
+        "0x1.4539f3a2bae8ap+0",
+        "0x1.60f7462f17508p+0",
+        "0x1.62fffeb34c69p+0",
+        "0x1.6d91831f36fd2p+0",
+        "0x1.6e49ffca218ecp+0",
+        "0x1.7bd5ce6aef561p+0",
+        "0x1.847ecfb3e7b38p+0",
+        "0x1.a56a28e0b02d2p+0",
+        "0x1.ad0228a86f31dp+0",
+        "0x1.d1c790ba1e0eep+0",
+        "0x1.d6d0d52a965bp+0"
+      ],
+      "p": [
+        "0x1.999999999999ap-5",
+        "0x1p-1",
+        "0x1.e666666666666p-1"
+      ],
+      "expected": [
+        "0x1.b5f7d99afcaecp-1",
+        "0x1.60f7462f17508p+0",
+        "0x1.d2487df8907cep+0"
+      ]
+    },
+    {
+      "name": "sx5_19_values_reversed",
+      "why": "the same values sorted descending",
+      "x": [
+        "0x1.d6d0d52a965bp+0",
+        "0x1.d1c790ba1e0eep+0",
+        "0x1.ad0228a86f31dp+0",
+        "0x1.a56a28e0b02d2p+0",
+        "0x1.847ecfb3e7b38p+0",
+        "0x1.7bd5ce6aef561p+0",
+        "0x1.6e49ffca218ecp+0",
+        "0x1.6d91831f36fd2p+0",
+        "0x1.62fffeb34c69p+0",
+        "0x1.60f7462f17508p+0",
+        "0x1.4539f3a2bae8ap+0",
+        "0x1.3cdfb19b0ae4bp+0",
+        "0x1.388a25d3c069fp+0",
+        "0x1.2543d1f6cabadp+0",
+        "0x1.22a99a20dcd33p+0",
+        "0x1.05d2a45a3ef1cp+0",
+        "0x1.c2c70712ee03ap-1",
+        "0x1.b983cfa7aefe7p-1",
+        "0x1.960c3328b7e17p-1"
+      ],
+      "p": [
+        "0x1.999999999999ap-5",
+        "0x1p-1",
+        "0x1.e666666666666p-1"
+      ],
+      "expected": [
+        "0x1.b5f7d99afcaecp-1",
+        "0x1.60f7462f17508p+0",
+        "0x1.d2487df8907cep+0"
+      ]
+    },
+    {
+      "name": "four_values",
+      "why": "SX5: 1, 2, 3, 10 at p = 0.25, 0.5, 0.9 give 1.75, 2.5, 7.9",
+      "x": [
+        "0x1p+0",
+        "0x1p+1",
+        "0x1.8p+1",
+        "0x1.4p+3"
+      ],
+      "p": [
+        "0x1p-2",
+        "0x1p-1",
+        "0x1.ccccccccccccdp-1"
+      ],
+      "expected": [
+        "0x1.cp+0",
+        "0x1.4p+1",
+        "0x1.f99999999999bp+2"
+      ]
+    },
+    {
+      "name": "r_equals_one",
+      "why": "R = 1: every quantile equals the value",
+      "x": [
+        "0x1.ap+1"
+      ],
+      "p": [
+        "0x0p+0",
+        "0x1.999999999999ap-5",
+        "0x1p-1",
+        "0x1.e666666666666p-1",
+        "0x1p+0"
+      ],
+      "expected": [
+        "0x1.ap+1",
+        "0x1.ap+1",
+        "0x1.ap+1",
+        "0x1.ap+1",
+        "0x1.ap+1"
+      ]
+    },
+    {
+      "name": "ends",
+      "why": "p = 0 is the minimum and p = 1 the maximum",
+      "x": [
+        "0x1.4p+2",
+        "-0x1p+1",
+        "0x1.2p+3",
+        "0x1p-1"
+      ],
+      "p": [
+        "0x0p+0",
+        "0x1p+0"
+      ],
+      "expected": [
+        "-0x1p+1",
+        "0x1.2p+3"
+      ]
+    },
+    {
+      "name": "two_values",
+      "why": "R = 2",
+      "x": [
+        "0x1p+0",
+        "0x1p+1"
+      ],
+      "p": [
+        "0x1.999999999999ap-4",
+        "0x1p-1",
+        "0x1.ccccccccccccdp-1"
+      ],
+      "expected": [
+        "0x1.199999999999ap+0",
+        "0x1.8p+0",
+        "0x1.e666666666666p+0"
+      ]
+    },
+    {
+      "name": "ties",
+      "why": "equal values",
+      "x": [
+        "0x1p+1",
+        "0x1p+1",
+        "0x1p+1",
+        "0x1.4p+2",
+        "0x1.4p+2"
+      ],
+      "p": [
+        "0x1.999999999999ap-4",
+        "0x1.999999999999ap-2",
+        "0x1p-1",
+        "0x1.8p-1",
+        "0x1.ccccccccccccdp-1"
+      ],
+      "expected": [
+        "0x1p+1",
+        "0x1p+1",
+        "0x1p+1",
+        "0x1.4p+2",
+        "0x1.4p+2"
+      ]
+    },
+    {
+      "name": "negative_values",
+      "why": "negative and positive values",
+      "x": [
+        "-0x1.cp+1",
+        "-0x1p-2",
+        "0x0p+0",
+        "0x1.8p+0",
+        "0x1p+2",
+        "-0x1.0624dd2f1a9fcp-10"
+      ],
+      "p": [
+        "0x1.999999999999ap-5",
+        "0x1p-1",
+        "0x1.e666666666666p-1"
+      ],
+      "expected": [
+        "-0x1.58p+1",
+        "-0x1.0624dd2f1a9fcp-11",
+        "0x1.bp+1"
+      ]
+    },
+    {
+      "name": "grid_of_probabilities",
+      "why": "21 probabilities, 7 values",
+      "x": [
+        "0x1.3333333333333p-2",
+        "0x1.b333333333333p+0",
+        "0x1.199999999999ap+1",
+        "0x1.7333333333333p+1",
+        "0x1.8cccccccccccdp+1",
+        "0x1p+3",
+        "0x1.3p+3"
+      ],
+      "p": [
+        "0x0p+0",
+        "0x1.999999999999ap-5",
+        "0x1.999999999999ap-4",
+        "0x1.3333333333334p-3",
+        "0x1.999999999999ap-3",
+        "0x1p-2",
+        "0x1.3333333333334p-2",
+        "0x1.6666666666667p-2",
+        "0x1.999999999999ap-2",
+        "0x1.ccccccccccccdp-2",
+        "0x1p-1",
+        "0x1.199999999999ap-1",
+        "0x1.3333333333334p-1",
+        "0x1.4cccccccccccdp-1",
+        "0x1.6666666666667p-1",
+        "0x1.8p-1",
+        "0x1.999999999999ap-1",
+        "0x1.b333333333334p-1",
+        "0x1.ccccccccccccdp-1",
+        "0x1.e666666666667p-1",
+        "0x1p+0"
+      ],
+      "expected": [
+        "0x1.3333333333333p-2",
+        "0x1.70a3d70a3d70ap-1",
+        "0x1.23d70a3d70a3dp+0",
+        "0x1.8f5c28f5c28f7p+0",
+        "0x1.ccccccccccccdp+0",
+        "0x1.f333333333334p+0",
+        "0x1.0cccccccccccdp+1",
+        "0x1.228f5c28f5c2ap+1",
+        "0x1.3d70a3d70a3d8p+1",
+        "0x1.5851eb851eb85p+1",
+        "0x1.7333333333333p+1",
+        "0x1.7ae147ae147afp+1",
+        "0x1.828f5c28f5c29p+1",
+        "0x1.8a3d70a3d70a5p+1",
+        "0x1.051eb851eb853p+2",
+        "0x1.6333333333333p+2",
+        "0x1.c147ae147ae18p+2",
+        "0x1.04ccccccccccdp+3",
+        "0x1.1333333333334p+3",
+        "0x1.219999999999ap+3",
+        "0x1.3p+3"
+      ]
+    },
+    {
+      "name": "forms_differ",
+      "why": "two values and a probability at which x_lo + g (x_hi - x_lo) differs from (1 - g) x_lo + g x_hi in the last digit; the expected value is (1 - g) x_lo + g x_hi",
+      "x": [
+        "0x1.960c3328b7e17p-1",
+        "0x1.b983cfa7aefe7p-1"
+      ],
+      "p": [
+        "0x1.3333333333333p-2"
+      ],
+      "expected": [
+        "0x1.a0b0154eced08p-1"
+      ]
+    }
+  ]
+}

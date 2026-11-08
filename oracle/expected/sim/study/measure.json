@@ -1,0 +1,19 @@
+{
+  "rule": "SIM-ORA-03, OS-05",
+  "method": "double pipeline (R's exp, the reference z) against the 256-bit tables of each study",
+  "rows": 2994,
+  "max_error_vs_scale": {
+    "prop_no_lloq": 4.872942e-16,
+    "add_no_lloq": 4.872942e-16,
+    "prop_lloq": 4.872942e-16,
+    "add_lloq": 4.872942e-16,
+    "big_seed": 3.805514e-16,
+    "negative_keep": 4.872942e-16,
+    "negative_zero_lloq": 4.872942e-16,
+    "combined_replicates": 4.872942e-16,
+    "sx5_r19": 3.132843e-16
+  },
+  "max_over_all": 4.872942e-16,
+  "tol_exact_proposed": 1e-12,
+  "margin": 2052.148412
+}

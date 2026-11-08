@@ -1,0 +1,199 @@
+{
+  "rule": "SIM-ORA-04",
+  "rng": "philox4x32-10/as241/v1",
+  "RNGkind": "Mersenne-Twister/Inversion/Rejection",
+  "seed": "20261108",
+  "n_words": 1000000,
+  "false_alarm_per_check": "about 1e-6",
+  "note": "each bound is derived from the null distribution at a fixed seed; recorded = the reference statistic on the same words (must equal SX3); tol_stat is the tolerance for comparing the engine's own statistic with the recorded one; counts are exact",
+  "tol_stat": 1e-09,
+  "streams": {
+    "eta_subject1": {
+      "label": "1",
+      "replicate": 0,
+      "purpose": 1
+    },
+    "eps_subject1": {
+      "label": "1",
+      "replicate": 0,
+      "purpose": 2
+    },
+    "eta_subject2": {
+      "label": "2",
+      "replicate": 0,
+      "purpose": 1
+    },
+    "eta_subject1_replicate1": {
+      "label": "1",
+      "replicate": 1,
+      "purpose": 1
+    }
+  },
+  "uniform": {
+    "mean": {
+      "recorded": "0.50055769297746078",
+      "bound_around": 0.5,
+      "bound": 0.00144337567297406
+    },
+    "chisq100": {
+      "recorded": "99.682199999999995",
+      "lower": 45.8344239836962,
+      "upper": 180.792015325779,
+      "degrees_of_freedom": 99
+    },
+    "variance_recorded": "0.083261715677782261",
+    "min_recorded": "0x1.0aa2d7b3cp-19",
+    "max_recorded": "0x1.fffffa4820ac7p-1"
+  },
+  "normal": {
+    "mean": {
+      "recorded": "0.0018521809073000844",
+      "bound": 0.005
+    },
+    "variance": {
+      "recorded": "0.999918669980428",
+      "bound_around": 1,
+      "bound": 0.00707106781186548,
+      "divisor": "N - 1"
+    },
+    "skewness": {
+      "recorded": "0.00054077699982561084",
+      "bound": 0.0122474487139159
+    },
+    "excess_kurtosis": {
+      "recorded": "0.011712978495449278",
+      "bound": 0.0244948974278318
+    },
+    "max_abs_recorded": "5.0993430504722701"
+  },
+  "quantile_counts": [
+    {
+      "p": 0.001,
+      "threshold": "-0x1.8b8cbb720447p+1",
+      "count_below": 1010,
+      "interval": [
+        849,
+        1158
+      ]
+    },
+    {
+      "p": 0.025,
+      "threshold": "-0x1.f5c0331eeff83p+0",
+      "count_below": 24891,
+      "interval": [
+        24240,
+        25767
+      ]
+    },
+    {
+      "p": 0.1587,
+      "threshold": "-0x1.ffe7c3923eb8fp-1",
+      "count_below": 158075,
+      "interval": [
+        156915,
+        160490
+      ]
+    },
+    {
+      "p": 0.5,
+      "threshold": "0x0p+0",
+      "count_below": 498631,
+      "interval": [
+        497554,
+        502446
+      ]
+    },
+    {
+      "p": 0.84,
+      "threshold": "0x1.fd29956b4542ep-1",
+      "count_below": 840291,
+      "interval": [
+        838204,
+        841791
+      ]
+    },
+    {
+      "p": 0.975,
+      "threshold": "0x1.f5c0331eeff82p+0",
+      "count_below": 974834,
+      "interval": [
+        974233,
+        975760
+      ]
+    },
+    {
+      "p": 0.999,
+      "threshold": "0x1.8b8cbb720447p+1",
+      "count_below": 998928,
+      "interval": [
+        998842,
+        999151
+      ]
+    }
+  ],
+  "tails": {
+    "abs_gt_3": {
+      "count": 2784,
+      "interval": [
+        2450,
+        2957
+      ]
+    },
+    "abs_gt_4": {
+      "count": 61,
+      "interval": [
+        29,
+        106
+      ]
+    }
+  },
+  "min_distance_of_any_z_to_a_threshold": 2.46308103568923e-07,
+  "correlations": {
+    "bound": 0.005,
+    "eta_vs_eps_subject1": -0.00153845179834808,
+    "subject1_vs_subject2": -0.00121663146542265,
+    "replicate0_vs_1": 0.000933181262965367,
+    "lag1": -0.00210497238092593,
+    "lag2": -0.000379602547022015
+  },
+  "correlated_eta": {
+    "m": 100000,
+    "omega_lower_by_rows": [
+      "0.09",
+      "0.03",
+      "0.04"
+    ],
+    "first_words_of_each_eta_stream": 2,
+    "replicate": 0,
+    "mean_bound": [
+      0.00474341649025257,
+      0.00316227766016838
+    ],
+    "mean_recorded": [
+      0.000432298734925332,
+      0.000720002947031823
+    ],
+    "covariance_recorded": [
+      0.0907624472436209,
+      0.0303133837941756,
+      0.0400401929970554
+    ],
+    "covariance_target": [
+      0.09,
+      0.03,
+      0.04
+    ],
+    "covariance_bound": [
+      0.00201247124213118,
+      0.00106066547512046,
+      0.000894431663169412
+    ],
+    "correlation_recorded": 0.502843960539054
+  },
+  "measured_tol_stat": {
+    "sequential_vs_extended_sum_max_abs": 9.85878045867139e-14,
+    "ln_plus_minus_1ulp_max_abs": 1.33226762955019e-15,
+    "tol_stat": 1e-09,
+    "margin": 10143.2424039876
+  }
+}

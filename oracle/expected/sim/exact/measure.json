@@ -1,0 +1,31 @@
+{
+  "rule": "SIM-ORA-03, OS-05",
+  "method": "the double pipeline (decimals converted by Rmpfr to the nearest double, R's exp) against the 256-bit result",
+  "cases": 22,
+  "rows": 335,
+  "max_error_vs_scale": {
+    "eta": 1.508313e-16,
+    "P": 2.567161e-16,
+    "pred": 5.840815e-16,
+    "ipred": 9.475106e-16,
+    "sigma": 4.277675e-16,
+    "y_raw": 9.246492e-16,
+    "y": 9.246492e-16,
+    "dv": 9.246492e-16
+  },
+  "max_relative_error_plain": {
+    "eta": 2.15058e-16,
+    "P": 2.567161e-16,
+    "pred": 5.840815e-16,
+    "ipred": 9.475106e-16,
+    "sigma": 4.277675e-16,
+    "y_raw": 6.227145e-15,
+    "y": 6.227145e-15,
+    "dv": 6.227145e-15
+  },
+  "max_over_all": 9.475106e-16,
+  "tol_exact_proposed": 1e-12,
+  "margin": 1055.397134,
+  "min_gap_of_nontie_rows_to_lloq_relative_to_scale": 0.023157,
+  "note": "error vs scale: |double - 256 bit| / max(|256 bit|, scale), scale = sum |L_ij z_j| for eta and |ipred| + sigma |z| for the y family; plain: relative to the 256-bit value (eta, y can cancel, hence the scale)"
+}

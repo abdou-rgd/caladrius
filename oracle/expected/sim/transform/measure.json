@@ -1,0 +1,63 @@
+{
+  "rule": "SIM-ORA-02, OS-05",
+  "method": "relative error of the double implementation against the 256-bit inverse",
+  "RNGkind": "Mersenne-Twister/Inversion/Rejection",
+  "groups": {
+    "grid": {
+      "n": 215,
+      "max_rel_err": 6.313699e-16,
+      "max_rel_err_ln_plus_1ulp": 7.0078e-16,
+      "max_rel_err_ln_minus_1ulp": 4.955345e-16,
+      "max_rel_err_central": 3.427922e-16,
+      "max_rel_err_tail1": 6.313699e-16,
+      "max_rel_err_tail2": 3.075124e-16,
+      "at_max": "0x1.b10fcbdfa664p-7"
+    },
+    "generator_3000": {
+      "n": 3000,
+      "max_rel_err": 5.355895e-16,
+      "max_rel_err_ln_plus_1ulp": 6.167547e-16,
+      "max_rel_err_ln_minus_1ulp": 5.3013e-16,
+      "max_rel_err_central": 5.3013e-16,
+      "max_rel_err_tail1": 5.355895e-16,
+      "max_rel_err_tail2": null,
+      "at_max": "0x1.f85dcfb48e463p-1"
+    },
+    "tail_log_spaced_6000": {
+      "n": 6000,
+      "max_rel_err": 6.316791e-16,
+      "max_rel_err_ln_plus_1ulp": 6.723483e-16,
+      "max_rel_err_ln_minus_1ulp": 6.316791e-16,
+      "max_rel_err_central": null,
+      "max_rel_err_tail1": 6.316791e-16,
+      "max_rel_err_tail2": 3.608137e-16,
+      "at_max": "0x1.fffffde70e448p-1"
+    }
+  },
+  "edge_t5_with_ln_shifted_by_ulps": {
+    "-2": {
+      "max_rel_err": 2.322694e-16,
+      "branches": ["tail2", "tail2", "tail2", "tail2"]
+    },
+    "-1": {
+      "max_rel_err": 2.212828e-16,
+      "branches": ["tail1", "tail2", "tail1", "tail1"]
+    },
+    "0": {
+      "max_rel_err": 1.730743e-16,
+      "branches": ["tail1", "tail2", "tail1", "tail1"]
+    },
+    "1": {
+      "max_rel_err": 1.730743e-16,
+      "branches": ["tail1", "tail2", "tail1", "tail1"]
+    },
+    "2": {
+      "max_rel_err": 4.398785e-16,
+      "branches": ["tail1", "tail2", "tail1", "tail1"]
+    }
+  },
+  "max_rel_err_anything": 7.0078e-16,
+  "tol_z_proposed": 1e-14,
+  "margin": 14.269813,
+  "note": "the ln columns move the logarithm by one unit in the last place; the t = 5 edge shows the two branches agree there"
+}

@@ -1,0 +1,115 @@
+{
+  "name": "accurate",
+  "rule": "SIM-ORA-06; POP-ORA-04",
+  "pending": "T-154 (the population fit); the test is #[ignore]d until the fit exists",
+  "description": "the accurate design of POP-ORA-04 simulated by the simulator of specs/simulation.md instead of R: the call below, K = 200 replicates (replicates 0..199 of one call) of one seed",
+  "sealed_design_file": "oracle/expected/pop/sealed/accurate.json",
+  "sealed_design_sha256": "9bae634a910076d9e2e4a9dd3f12b7a44a6b3bdb5b2a5bd8967171970d4aa973",
+  "simulate": {
+    "op": "simulate",
+    "model": "pk1.oral_1",
+    "theta": {
+      "v": "50",
+      "cl": "5",
+      "ka": "1.5"
+    },
+    "random_effects": [
+      "cl",
+      "v",
+      "ka"
+    ],
+    "omega_shape": "diagonal",
+    "omega": [
+      "0.09",
+      "0.04",
+      "0.16"
+    ],
+    "error_model": "combined",
+    "xi": {
+      "a": "0.02",
+      "b": "0.1"
+    },
+    "design": {
+      "times": [
+        "0.25",
+        "0.5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "8",
+        "12"
+      ],
+      "dose": "100",
+      "m": 40
+    },
+    "seed": "20261108",
+    "replicates": 200,
+    "options": {
+      "negative": "keep"
+    }
+  },
+  "fit": {
+    "model": "pk1.oral_1",
+    "random_effects": [
+      "cl",
+      "v",
+      "ka"
+    ],
+    "error_model": "combined",
+    "truth": {
+      "typical_values": {
+        "v": "50",
+        "cl": "5",
+        "ka": "1.5"
+      },
+      "omega_diagonal": {
+        "cl": "0.09",
+        "v": "0.04",
+        "ka": "0.16"
+      },
+      "omega_full": [
+        [
+          "0.09",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0.04",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0.16"
+        ]
+      ],
+      "xi": {
+        "a": "0.02",
+        "b": "0.1"
+      }
+    },
+    "start_factors": {
+      "theta": 1.25,
+      "omega": 1.5,
+      "xi": 1.25,
+      "source": "the same factors as oracle_pop.rs sealed_start"
+    }
+  },
+  "aggregate_checks": {
+    "asserted": true,
+    "note": "asserted on the typical values (theta); recorded for Omega and xi",
+    "constants": {
+      "c_bias": 3,
+      "c_interval": 1.96,
+      "c_coverage": 3,
+      "nominal_coverage": 0.95
+    },
+    "bias": "for each typical value: |mean over replicates of the estimate - truth| <= c_bias * sd(estimates) / sqrt(K)",
+    "coverage": "for each typical value: share of replicates with truth in estimate +/- c_interval * se, |share - 0.95| <= c_coverage * sqrt(0.95 * 0.05 / K)",
+    "per_replicate": "deviations of each replicate are recorded by the test, never asserted",
+    "converged": "a replicate whose fit is not converged is counted and reported, and excluded from the aggregates"
+  },
+  "note": "the dataset of replicate k is the rows of the table `dataset` whose subject column starts with \"k:\" (SIM-OUT-02); per-replicate deviations are recorded and never asserted; only the aggregates are asserted, and only when aggregate_checks.asserted is true (as the sealed design says); the committed dataset file and its hash (SIM-ORA-06 i) are a card of the engine (T-159/T-154): the call is committed here before any engine commit"
+}

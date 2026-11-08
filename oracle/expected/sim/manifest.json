@@ -1,0 +1,189 @@
+{
+  "task": "T-158",
+  "spec": "specs/simulation.md SIM-ORA-01 to SIM-ORA-06",
+  "script": "oracle/scripts/sim_oracle.R",
+  "files": [
+    {
+      "path": "dist/sx3.json",
+      "sha256": "b11b2890bccb7b824ef803d20d20b81e46fb30153fbad194f103598d8538528d"
+    },
+    {
+      "path": "errors.json",
+      "sha256": "3b2742140d0c186b9ac25b4d4142434a5725e8df105f7b02d6649daa92504f73"
+    },
+    {
+      "path": "exact/all_error_parameters_zero.json",
+      "sha256": "78ebfb00ffdd79e36e23600a8cec8e534148801922a1d53e43facb71103d4f4b"
+    },
+    {
+      "path": "exact/extreme_z.json",
+      "sha256": "984ac139aae8371c67598a87e775b7f7e28960fd21425dc6084f284f282304c5"
+    },
+    {
+      "path": "exact/high_correlation.json",
+      "sha256": "2fa67aed555268349172e04a81ce2e16d7f98ea081fadeb25d259eee9bfbcabd"
+    },
+    {
+      "path": "exact/iv_infusion_before_during_after.json",
+      "sha256": "3594afe4fd365e8875e870a2555d3be0ac957c71856c65931217293fdb9d71ae"
+    },
+    {
+      "path": "exact/measure.json",
+      "sha256": "040a202da7be8edfe56b91bf6798cf3908e987a50722c06e80cf28f92e247779"
+    },
+    {
+      "path": "exact/negative_keep_and_blq.json",
+      "sha256": "3782394cb0dcffa15acabaf7745d20167342a0b54c544d44e12492aef20cd210"
+    },
+    {
+      "path": "exact/negative_zero_and_blq.json",
+      "sha256": "ac3040f23dc4b2c1b41afabb3dde616c95fb8cbfac86b07f3fde8cb75883bfde"
+    },
+    {
+      "path": "exact/oral_1_lag_fixed_tlag.json",
+      "sha256": "fdfe61eb565ba1b36307abbd9bc909b73c825f4d6b67f55107b48b6d8db8affb"
+    },
+    {
+      "path": "exact/oral_1_lag_proportional_zero_sigma.json",
+      "sha256": "22646e42882a1a2ac961771efbdda594fa7ffdfd8f46fcecfed6efbecd4c6ea3"
+    },
+    {
+      "path": "exact/oral_1_q3_block.json",
+      "sha256": "7119194e37f3999fdf4fb8873ec22543853d40a2954e701d20a1ab6e08326f15"
+    },
+    {
+      "path": "exact/pk2_iv_bolus_q3.json",
+      "sha256": "e55953fafa4b2dc9bbc7fb14efc599ddd8d72c0e187d7d1dd74e0064f7034984"
+    },
+    {
+      "path": "exact/predose_times.json",
+      "sha256": "3ce153a160c369fd43853f8e49259606b5d07988434e1912ca883256d592633a"
+    },
+    {
+      "path": "exact/single_effect_block.json",
+      "sha256": "e9223aea10a2d269037050229bd88919f9273af508996b1b7850e5651895a1ff"
+    },
+    {
+      "path": "exact/sx2_additive.json",
+      "sha256": "8b4f166f05c9d058fc4cb9875837270730366bf8c2c028fab707d689d02d2d71"
+    },
+    {
+      "path": "exact/sx2_proportional.json",
+      "sha256": "c55333184c83328fcde45b81f4b443664944ca243f750a37a6d770d43c1ae59c"
+    },
+    {
+      "path": "exact/sx4_blq.json",
+      "sha256": "29683d930417c87c15fa19e8067faab101fa20877a03317309b91e8d20df40ee"
+    },
+    {
+      "path": "exact/sx4_combined.json",
+      "sha256": "c988690c0969fd3044e3b1dc83b4fcd5ab8af50a8a4dbeacfb5bb35f75e5c15a"
+    },
+    {
+      "path": "exact/sx4_combined_sd.json",
+      "sha256": "188c20c6009034a10d15f02b987df4180a14eb9f54ad159ec259ec84fdc3a513"
+    },
+    {
+      "path": "exact/sx4_negative_keep.json",
+      "sha256": "ba1ee9bfb81d651ff9ac471eacb49c8b8b1247ba3fc4da2f17f80d2bf12c0ddf"
+    },
+    {
+      "path": "exact/sx4_negative_zero.json",
+      "sha256": "d1bc698a67f8e14955d962c61062f118238b4324c9d27f4554392e7ddf6dca6d"
+    },
+    {
+      "path": "exact/tie_at_lloq.json",
+      "sha256": "8fa1d2936dccc150f04a08eb48e1d20846809bf3c13d162b4a8ff2e7e9776408"
+    },
+    {
+      "path": "exact/tie_at_zero.json",
+      "sha256": "00e6b44e273414bceee1f454646595cb28d74077eacfde6d912e45b4ea887935"
+    },
+    {
+      "path": "exact/tie_at_zero_keep.json",
+      "sha256": "9ad304fc6e338e54fc5b2324d022640dbdac6a20bad94715c95bc1d294ca9981"
+    },
+    {
+      "path": "gen/kat.json",
+      "sha256": "12c8292d4ebbc0faa295c5a71e78bae7e3b3b3f19945d2707b5713a9057ac85f"
+    },
+    {
+      "path": "gen/streams.json",
+      "sha256": "44fa6f4a8d74142c334c5418dc597ff76d4735565d45b86c977a36ffb78ea384"
+    },
+    {
+      "path": "invariance/cases.json",
+      "sha256": "e8852f5b58e899d016f297760f9821c7e1a53b0538aa706b29aef1104e01ed0c"
+    },
+    {
+      "path": "quantile/cases.json",
+      "sha256": "57a86212f9e3aba3b9629e27c081ea719b167e0e74d3e0f3389f7937ffce9ae2"
+    },
+    {
+      "path": "roundtrip/accurate.json",
+      "sha256": "e1bbe88072e2746bc9e7d8a9a8dbf31b3bf782b7db6fa295cc6bf172b7044676"
+    },
+    {
+      "path": "roundtrip/limits.json",
+      "sha256": "22901bf74d9eeb9680949c0e2c52782bd07a2da2dc6afe4df72073df3665d9c0"
+    },
+    {
+      "path": "study/add_lloq.json",
+      "sha256": "6a5615eea03fe9b9d060d234465b3a5c1d6c8ad7b666bad630c2594ff0f911bd"
+    },
+    {
+      "path": "study/add_no_lloq.json",
+      "sha256": "098c1a11628edaa6f767863f3a50dd95747c0114700ef9ae41303f7c6b99c781"
+    },
+    {
+      "path": "study/big_seed.json",
+      "sha256": "f3bba1c2a753b321cd6b8c3d26bbaba19fba504fbf7ed5fca92c2cacc2ecfd4b"
+    },
+    {
+      "path": "study/combined_replicates.json",
+      "sha256": "eca06ce0d6b0fe65f7ffd9171a1f86e645425899e9a6119b76de4958852cc636"
+    },
+    {
+      "path": "study/measure.json",
+      "sha256": "7a1a194f097563aa06289b3cbfc6909b91871c0175c6ad7fa488d1a59250d704"
+    },
+    {
+      "path": "study/negative_keep.json",
+      "sha256": "94e59eece7972ae426151e682a1cf655ad35bea4e297c632524b304849382738"
+    },
+    {
+      "path": "study/negative_zero_lloq.json",
+      "sha256": "bdcfaa43253034aa2568fd735383818d126b9367048afdeb24e9871bc57718db"
+    },
+    {
+      "path": "study/prop_lloq.json",
+      "sha256": "28141c037576e8aeaffcc729ebce36cb2adafa8e2415a61041c13a9e0c55b5f6"
+    },
+    {
+      "path": "study/prop_no_lloq.json",
+      "sha256": "fb0260bf78a3ad0a08ade3b5b888ce4bea513bfde8f149d2201b6b4c19d2d596"
+    },
+    {
+      "path": "study/sx5_r19.json",
+      "sha256": "90a64c64c7b51f3bc2f3f0383ae8e5a932784cb8e43dfe1df18064370ce8ea0a"
+    },
+    {
+      "path": "transform/grid.json",
+      "sha256": "ab557312d032da52c630212fa17743b939f0e040615b0eab155d5efd10839528"
+    },
+    {
+      "path": "transform/measure.json",
+      "sha256": "429651abb45edbfd9774e868957699497dfcb910b260449918005c3ab219f441"
+    }
+  ],
+  "combined_sha256": "1e5d7362db4091181426c6e0cdf9f84d86ede5f80f271d30d43061105629d98d",
+  "versions": {
+    "R": "R version 4.5.2 (2025-10-31 ucrt)",
+    "Rmpfr": "1.1.3",
+    "gmp": "0.7.5.1",
+    "jsonlite": "2.0.0",
+    "digest": "0.6.39",
+    "RNGkind": "Mersenne-Twister/Inversion/Rejection",
+    "precision_bits": 256
+  }
+}

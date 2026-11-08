@@ -1,0 +1,7890 @@
+{
+  "rule": "SIM-REF-01..06, SX6",
+  "note": "requests are `simulate` requests of oracle_sim.rs; a control is the same request with the one change that removes the cause and must not be refused; words_basis: spec_sentence (the sentence is written in specs/simulation.md), rule_names_option (the rule says the error names the option), inferred (the spec fixes the code or the subject, not the sentence)",
+  "cases": [
+    {
+      "case": "missing_seed",
+      "rule": "SIM-REF-01; SX6",
+      "description": "no seed: the sentence of SIM-REF-01 (the range and the decimal-string advice)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "missing_seed",
+        "words": [
+          "a simulation needs a seed",
+          "give an integer from 0 to",
+          "18446744073709551615",
+          "9007199254740991",
+          "decimal string"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "seed = 20261108",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_negative",
+      "rule": "SIM-REF-01",
+      "description": "seed = -1: InvalidOption naming seed",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": -1,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "seed"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "seed = 1",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 1,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_fractional",
+      "rule": "SIM-REF-01",
+      "description": "seed = 1.5: InvalidOption naming seed",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 1.5,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "seed"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "seed = 1",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 1,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_not_a_number",
+      "rule": "SIM-REF-01",
+      "description": "seed = \"twenty\": not a number, not digits",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "twenty",
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "seed"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "seed = \"20261108\" (a decimal string)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": "20261108",
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_boolean",
+      "rule": "SIM-REF-01",
+      "description": "seed = true: not a number",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": true,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "seed"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "seed = 1",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 1,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_number_2_pow_53",
+      "rule": "SIM-REF-01",
+      "description": "a JSON number 9007199254740992 = 2^53 is above 2^53 - 1: must be written as a decimal string",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 9007199254740992,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "seed"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "the same value written as a decimal string",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": "9007199254740992",
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_string_2_pow_64",
+      "rule": "SIM-REF-01",
+      "description": "the decimal string 18446744073709551616 = 2^64 is not below 2^64",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "18446744073709551616",
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "seed"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "seed = \"18446744073709551615\" (the largest seed)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": "18446744073709551615",
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_string_negative",
+      "rule": "SIM-REF-01",
+      "description": "the decimal string \"-5\"",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "-5",
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "seed"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "seed = \"5\"",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": "5",
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "seed_string_small",
+      "rule": "SIM-REF-01",
+      "description": "a small seed written as a decimal string is accepted (and gives the same stream as the number 20261108: tested in the study cases)",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "20261108",
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "seed_string_above_2_53",
+      "rule": "SIM-REF-01",
+      "description": "a seed above 2^53 as a decimal string is accepted",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "9007199254740993",
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "seed_string_max_u64",
+      "rule": "SIM-REF-01",
+      "description": "the largest seed 2^64 - 1 as a decimal string is accepted",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": "18446744073709551615",
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "seed_zero",
+      "rule": "SIM-REF-01",
+      "description": "seed 0 is accepted",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 0,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "seed_number_max_safe",
+      "rule": "SIM-REF-01",
+      "description": "the JSON number 9007199254740991 = 2^53 - 1 is accepted",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 9007199254740991,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "omega_not_positive_definite",
+      "rule": "SIM-REF-02; SX6",
+      "description": "SX6: Omega lower triangle (0.09, 0.3, 0.04), correlation 5: L21 = 1 and the pivot of the second effect is 0.04 - 1 = -0.96",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.3,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "omega_not_positive_definite",
+        "words": [
+          "omega is not positive definite",
+          "Cholesky pivot of random effect v",
+          "-0.96"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "omega = (0.09, 0.03, 0.04)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "omega_zero_variance",
+      "rule": "SIM-REF-02",
+      "description": "a variance of 0 is a pivot of 0 and is refused, unlike the fit (an effect without variance is no random effect)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "diagonal",
+        "omega": [
+          0.09,
+          0
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "omega_not_positive_definite",
+        "words": [
+          "omega is not positive definite",
+          "random effect v"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "omega = (0.09, 0.04)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "diagonal",
+          "omega": [
+            0.09,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "omega_pivot_zero_in_double",
+      "rule": "SIM-REF-02",
+      "description": "positive definite in exact arithmetic but not in doubles: Omega22 = 1.00000000000000001 is the double 1, so the pivot 1 - 1*1 is 0",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          "1",
+          "1",
+          1.00000000000000001
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "omega_not_positive_definite",
+        "words": [
+          "omega is not positive definite",
+          "random effect v"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "Omega22 = 1.0000000000000002 (the next double above 1): the pivot is 2.2e-16 > 0",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            "1",
+            "1",
+            1.0000000000000002
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "SIM-REF-02: a matrix positive definite in exact arithmetic whose double Cholesky pivot is <= 0 is refused by the same rule"
+    },
+    {
+      "case": "omega_negative_variance",
+      "rule": "SIM-REF-02",
+      "description": "a negative variance: InvalidOption naming omega (the pivot test would catch it, the first message is clearer)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "diagonal",
+        "omega": [
+          0.09,
+          -0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "omega"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "omega = (0.09, 0.04)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "diagonal",
+          "omega": [
+            0.09,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "omega_block_too_few",
+      "rule": "SIM-REF-02",
+      "description": "a block Omega for q = 2 needs 3 numbers; 2 are given: the message names both counts",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "omega",
+          "2",
+          "3"
+        ],
+        "words_basis": "inferred"
+      },
+      "control": {
+        "change": "omega = (0.09, 0.03, 0.04)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "omega_diagonal_too_many",
+      "rule": "SIM-REF-02",
+      "description": "a diagonal Omega for q = 2 needs 2 numbers; 3 are given: the message names both counts",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "diagonal",
+        "omega": [
+          0.09,
+          0.04,
+          0.01
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "omega",
+          "3",
+          "2"
+        ],
+        "words_basis": "inferred"
+      },
+      "control": {
+        "change": "omega = (0.09, 0.04)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "diagonal",
+          "omega": [
+            0.09,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "omega_block_q1_three_numbers",
+      "rule": "SIM-REF-02",
+      "description": "a block Omega given for q = 1 with more than one number",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "omega"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "omega = (0.04)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "omega_non_finite",
+      "rule": "SIM-REF-02",
+      "description": "a non-finite entry of Omega (NaN, infinity): InvalidOption naming omega",
+      "expect": "refused",
+      "constructible": false,
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "omega"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "note": "not constructible: JSON has no NaN or infinity; the adapter's own parser is the place for this check"
+    },
+    {
+      "case": "negative_unknown_value",
+      "rule": "SIM-REF-03; SX6",
+      "description": "negative = \"clip\": unknown value of `negative`: use `keep` or `zero`",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "clip"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "negative",
+          "keep",
+          "zero"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "negative = \"zero\"",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "zero"
+          }
+        }
+      }
+    },
+    {
+      "case": "lloq_zero",
+      "rule": "SIM-REF-03; SX6",
+      "description": "lloq = 0: not > 0",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep",
+          "lloq": 0
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "lloq"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "lloq = 0.8",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep",
+            "lloq": 0.8
+          }
+        }
+      }
+    },
+    {
+      "case": "lloq_negative",
+      "rule": "SIM-REF-03",
+      "description": "lloq = -1",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep",
+          "lloq": -1
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "lloq"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "lloq = 0.8",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep",
+            "lloq": 0.8
+          }
+        }
+      }
+    },
+    {
+      "case": "lloq_text",
+      "rule": "SIM-REF-03",
+      "description": "lloq = \"low\": not a number",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep",
+          "lloq": "low"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "lloq"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "lloq = 0.8",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep",
+            "lloq": 0.8
+          }
+        }
+      }
+    },
+    {
+      "case": "unknown_option_name",
+      "rule": "SIM-REF-03; SIM-MOD-05",
+      "description": "an unknown option name",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep",
+          "nonsense": 1
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "nonsense"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "the option removed",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "error_model_unknown",
+      "rule": "SIM-REF-03",
+      "description": "error_model = \"gaussian\"",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "gaussian",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "error_model"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "error_model = \"proportional\"",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "error_model_missing",
+      "rule": "SIM-REF-03; SIM-MOD-05",
+      "description": "no error model, and no default",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "error_model"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "error_model and xi given",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "error_parameter_b_missing",
+      "rule": "SIM-REF-03",
+      "description": "proportional without b",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": [],
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "b"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "b = 0.1",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "error_parameter_combined_one_of_two",
+      "rule": "SIM-REF-03",
+      "description": "combined with a only: both are required",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined",
+        "xi": {
+          "a": 0.2
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "b"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "a and b given",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "combined",
+          "xi": {
+            "a": 0.2,
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "error_parameter_combined_sd_a_missing",
+      "rule": "SIM-REF-03",
+      "description": "combined_sd with b only",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "combined_sd",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "a"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "a and b given",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "combined_sd",
+          "xi": {
+            "a": 0.2,
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "error_parameter_negative",
+      "rule": "SIM-REF-03",
+      "description": "b = -0.1",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": -0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "b"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "b = 0.1",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "quantile_above_one",
+      "rule": "SIM-REF-03",
+      "description": "a quantiles entry outside [0, 1]",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep",
+          "quantiles": [
+            0.5,
+            1.5
+          ]
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "quantiles"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "quantiles = (0.5, 1)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep",
+            "quantiles": [
+              0.5,
+              1
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "replicates_zero",
+      "rule": "SIM-REF-03",
+      "description": "replicates = 0",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 0,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "replicates"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "replicates = 1",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 1,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "replicates_fractional",
+      "rule": "SIM-REF-03",
+      "description": "replicates = 2.5",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2.5,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "replicates"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "replicates = 2",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "random_effects_empty",
+      "rule": "SIM-REF-03; SIM-MOD-03",
+      "description": "random_effects empty: a simulation of residual error alone is not offered",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [],
+        "omega_shape": "block",
+        "omega": [],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "random_effects"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "random_effects = (cl), omega = (0.09)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl"
+          ],
+          "omega_shape": "diagonal",
+          "omega": [
+            0.09
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "random_effects_duplicate",
+      "rule": "SIM-REF-03",
+      "description": "a duplicate in random_effects",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "cl"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "random_effects",
+          "cl"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "random_effects = (cl, v)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "random_effect_on_missing_parameter",
+      "rule": "SIM-REF-03; POP-MOD-02",
+      "description": "a random effect on a parameter the model does not have (ka on pk1.iv_bolus)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "ka"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "ka"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "random_effects = (cl, v)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "random_effect_on_tlag",
+      "rule": "SIM-REF-03; SIM-MOD-03",
+      "description": "tlag carries no random effect in a simulation (decision of 2026-11-08, OS-03)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.oral_1_lag",
+        "theta": {
+          "cl": 5,
+          "v": 50,
+          "ka": 1.5,
+          "tlag": 0.5
+        },
+        "random_effects": [
+          "cl",
+          "tlag"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "tlag"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "random_effects = (cl, v), tlag stays in theta",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.oral_1_lag",
+          "theta": {
+            "cl": 5,
+            "v": 50,
+            "ka": 1.5,
+            "tlag": 0.5
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "random_effect_on_dur",
+      "rule": "SIM-REF-03; SIM-MOD-03",
+      "description": "dur carries no random effect in a simulation",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_infusion",
+        "theta": {
+          "cl": 5,
+          "v": 50,
+          "dur": 2
+        },
+        "random_effects": [
+          "cl",
+          "dur"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "dur"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "random_effects = (cl, v), dur stays in theta",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_infusion",
+          "theta": {
+            "cl": 5,
+            "v": 50,
+            "dur": 2
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "theta_zero_with_random_effect",
+      "rule": "SIM-REF-03; SIM-MOD-03",
+      "description": "theta <= 0 for a parameter with a random effect (v = 0)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 0
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "v"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "v = 50",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "theta_parameter_missing",
+      "rule": "SIM-REF-03",
+      "description": "a parameter of the model missing in theta",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "v"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "v = 50",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "theta_parameter_extra",
+      "rule": "SIM-REF-03",
+      "description": "a theta for a parameter the model does not have (ka on pk1.iv_bolus)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50,
+          "ka": 1.5
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "ka"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "ka removed",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "model_pk3_not_available",
+      "rule": "SIM-REF-03; SIM-MOD-02",
+      "description": "a pk3.* id is InvalidOption until section 14 of models.md is on the engine's branch",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk3.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "vc": 50,
+          "q2": 3,
+          "vp2": 40,
+          "q3": 1,
+          "vp3": 30
+        },
+        "random_effects": [
+          "cl",
+          "vc"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "model not available in this version"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "model = pk1.iv_bolus with its own theta and random effects (the request B)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "valid only while specs/models.md section 14 is not on the engine branch (SIM-MOD-02): when it is, this row must be removed with a note in the same commit; the id is assumed (the six pk3 routes follow the pk1 naming)"
+    },
+    {
+      "case": "model_unknown",
+      "rule": "SIM-REF-03",
+      "description": "an unknown model id",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.nonsense",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "model"
+        ],
+        "words_basis": "rule_names_option"
+      },
+      "control": {
+        "change": "model = pk1.iv_bolus",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "duplicate_times",
+      "rule": "SIM-REF-04; SIM-MOD-04",
+      "description": "two observations at the same time for one subject (subject 2: 1, 2, 2, 3)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                1,
+                2,
+                2,
+                3
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "duplicate_times",
+        "words": [
+          "subject 2"
+        ],
+        "words_basis": "inferred"
+      },
+      "control": {
+        "change": "times 1, 2, 3, 4",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  1,
+                  2,
+                  3,
+                  4
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "SIM-REF-04: the dataset's own sentence (DAT-ORD-01, today's text in the importer) with `in subject {S}`; the code is asserted, the words are the subject only"
+    },
+    {
+      "case": "time_not_increasing",
+      "rule": "SIM-REF-04; DAT-ERR-01",
+      "description": "time goes backwards for subject 2 (2 after 4)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                1,
+                4,
+                2,
+                8
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "time_not_increasing",
+        "words": [
+          "time goes back",
+          "subject 2"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "times 1, 2, 4, 8",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  1,
+                  2,
+                  4,
+                  8
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "subject_without_observation",
+      "rule": "SIM-REF-04; DAT-ERR-04",
+      "description": "subject 2 has a dose and no observation row",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": []
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "subject_without_observation",
+        "words": [
+          "subject 2",
+          "no observation"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "subject 2 has observation times",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  1,
+                  2
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "design_without_subject",
+      "rule": "SIM-REF-04",
+      "description": "a design with no subject",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": []
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "invalid_option",
+        "words": [
+          "subject"
+        ],
+        "words_basis": "inferred"
+      },
+      "control": {
+        "change": "one subject",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "the spec says the design is refused; the code and the sentence are not fixed (inferred: invalid_option, naming subject)"
+    },
+    {
+      "case": "two_dose_rows",
+      "rule": "SIM-REF-04; POP-DAT-01",
+      "description": "a subject with more than one dose row (multiple dosing is later)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "table": [
+            {
+              "subject": "1",
+              "time": 0,
+              "event": "dose",
+              "amt": 100
+            },
+            {
+              "subject": "1",
+              "time": 12,
+              "event": "dose",
+              "amt": 100
+            },
+            {
+              "subject": "1",
+              "time": 1,
+              "event": "obs"
+            },
+            {
+              "subject": "1",
+              "time": 13,
+              "event": "obs"
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": null,
+        "words": [
+          "subject 1",
+          "dose"
+        ],
+        "words_basis": "inferred"
+      },
+      "control": {
+        "change": "one dose row",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "table": [
+              {
+                "subject": "1",
+                "time": 0,
+                "event": "dose",
+                "amt": 100
+              },
+              {
+                "subject": "1",
+                "time": 1,
+                "event": "obs"
+              },
+              {
+                "subject": "1",
+                "time": 13,
+                "event": "obs"
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "the sentence is that of DAT-USE-02 (not in this card's reading); code not asserted"
+    },
+    {
+      "case": "dose_without_amount",
+      "rule": "SIM-REF-04; DAT-ERR-02",
+      "description": "a dose row without an amount",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "table": [
+            {
+              "subject": "1",
+              "time": 0,
+              "event": "dose"
+            },
+            {
+              "subject": "1",
+              "time": 1,
+              "event": "obs"
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "dose_without_amount",
+        "words": [
+          "subject 1",
+          "no amount"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "amt = 100",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "table": [
+              {
+                "subject": "1",
+                "time": 0,
+                "event": "dose",
+                "amt": 100
+              },
+              {
+                "subject": "1",
+                "time": 1,
+                "event": "obs"
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "amount_on_observation",
+      "rule": "SIM-REF-04; DAT-ERR-03",
+      "description": "an observation row with an amount",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "table": [
+            {
+              "subject": "1",
+              "time": 0,
+              "event": "dose",
+              "amt": 100
+            },
+            {
+              "subject": "1",
+              "time": 1,
+              "event": "obs",
+              "amt": 5
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "amount_on_observation",
+        "words": [
+          "subject 1",
+          "is an observation but has an amount"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "amount removed",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "table": [
+              {
+                "subject": "1",
+                "time": 0,
+                "event": "dose",
+                "amt": 100
+              },
+              {
+                "subject": "1",
+                "time": 1,
+                "event": "obs"
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      }
+    },
+    {
+      "case": "table_design_accepted",
+      "rule": "SIM-MOD-04",
+      "description": "a table design, dose then observations, two subjects",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "table": [
+            {
+              "subject": "1",
+              "time": 0,
+              "event": "dose",
+              "amt": 100
+            },
+            {
+              "subject": "1",
+              "time": 1,
+              "event": "obs"
+            },
+            {
+              "subject": "1",
+              "time": 2,
+              "event": "obs"
+            },
+            {
+              "subject": "2",
+              "time": 0,
+              "event": "dose",
+              "amt": 100
+            },
+            {
+              "subject": "2",
+              "time": 1,
+              "event": "obs"
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "table_dv_ignored",
+      "rule": "SIM-MOD-04 item 1",
+      "description": "the value cell of an observation row is ignored and counted in n_dv_ignored (2 of the 3 observation rows have a value)",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "table": [
+            {
+              "subject": "1",
+              "time": 0,
+              "event": "dose",
+              "amt": 100
+            },
+            {
+              "subject": "1",
+              "time": 1,
+              "event": "obs",
+              "dv": 3.5
+            },
+            {
+              "subject": "1",
+              "time": 2,
+              "event": "obs",
+              "dv": 1.25
+            },
+            {
+              "subject": "1",
+              "time": 4,
+              "event": "obs"
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "expect_counts": {
+        "n_dv_ignored": 2
+      }
+    },
+    {
+      "case": "design_without_table",
+      "rule": "SIM-MOD-04 item 5",
+      "description": "a list of times, a dose and m: the subjects are labelled \"1\", \"2\", ... \"m\" (the same stream as the explicit design: tested in the study cases)",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "times": [
+            0.5,
+            1,
+            2,
+            4,
+            8,
+            12
+          ],
+          "dose": 100,
+          "m": 3
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "dose_and_observation_same_time",
+      "rule": "SIM-MOD-04 item 3",
+      "description": "a dose and an observation at the same time are allowed",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0,
+                1,
+                2
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "predose_observation",
+      "rule": "SIM-MOD-04 item 4",
+      "description": "an observation before the dose is simulated (IPRED = 0)",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                -1,
+                1,
+                2
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "tlag_fixed_accepted",
+      "rule": "SIM-MOD-03",
+      "description": "tlag in theta with no random effect on it is accepted",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.oral_1_lag",
+        "theta": {
+          "cl": 5,
+          "v": 50,
+          "ka": 1.5,
+          "tlag": 0.5
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "random_effects_reversed_accepted",
+      "rule": "SIM-ORA-05 item 6",
+      "description": "random_effects (v, cl) with Omega reordered is accepted",
+      "expect": "accepted",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "v",
+          "cl"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.04,
+          0.03,
+          0.09
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      }
+    },
+    {
+      "case": "design_non_finite",
+      "rule": "SIM-REF-04",
+      "description": "a non-finite time or dose (MOD-GEN-04)",
+      "expect": "refused",
+      "constructible": false,
+      "error": {
+        "code": null,
+        "words": [
+          "time"
+        ],
+        "words_basis": "inferred"
+      },
+      "note": "not constructible: JSON has no NaN or infinity"
+    },
+    {
+      "case": "non_finite_value",
+      "rule": "SIM-REF-05; SX6",
+      "description": "the individual parameter overflows: Omega = 1e8 on cl, subject 3 has z_eta > 0.5 so eta > 5000 and exp(eta) is infinite",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl"
+        ],
+        "omega_shape": "diagonal",
+        "omega": [
+          100000000
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 1,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "non_finite_value",
+        "words": [
+          "in subject 3, replicate 0, with cl"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "omega = 0.09",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl"
+          ],
+          "omega_shape": "diagonal",
+          "omega": [
+            0.09
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 1,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "SX6 suggests Omega = 1e4 (omega = 100): that overflows only for z > 7.09 (never in practice, |z| <= 8.21 with probability about 1e-12), so the row uses 1e8; one subject and one replicate so that the cell that fails is unique"
+    },
+    {
+      "case": "size_limit_replicates",
+      "rule": "SIM-REF-06; SX6",
+      "description": "R = 16777217 replicates: one more than the replicate field holds",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "1",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "2",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 16777217,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "size_limit",
+        "words": [
+          "replicates 16777217 exceed 16777216"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "replicates = 1",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "1",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "3",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 1,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "the repaired request at the limit itself (R = 16777216) is a run of 16.7 million replicates: the control is the small run, and the limit value is asserted by the sentence"
+    },
+    {
+      "case": "label_key_collision",
+      "rule": "SIM-REF-06; SIM-RNG-03",
+      "description": "two different labels with the same 64-bit stream key: abe6fa9f1cdab0fa and 3df62dbc87d8de8f (first 8 bytes of SHA-256 = 5f0dd73b3f5913b6)",
+      "expect": "refused",
+      "constructible": true,
+      "request": {
+        "op": "simulate",
+        "model": "pk1.iv_bolus",
+        "theta": {
+          "cl": 5,
+          "v": 50
+        },
+        "random_effects": [
+          "cl",
+          "v"
+        ],
+        "omega_shape": "block",
+        "omega": [
+          0.09,
+          0.03,
+          0.04
+        ],
+        "error_model": "proportional",
+        "xi": {
+          "b": 0.1
+        },
+        "design": {
+          "subjects": [
+            {
+              "id": "abe6fa9f1cdab0fa",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            },
+            {
+              "id": "3df62dbc87d8de8f",
+              "dose": 100,
+              "time": [
+                0.5,
+                1,
+                2,
+                4,
+                8,
+                12
+              ]
+            }
+          ]
+        },
+        "seed": 20261108,
+        "replicates": 2,
+        "options": {
+          "negative": "keep"
+        }
+      },
+      "error": {
+        "code": "label_key_collision",
+        "words": [
+          "abe6fa9f1cdab0fa",
+          "3df62dbc87d8de8f",
+          "same 64-bit stream key"
+        ],
+        "words_basis": "spec_sentence"
+      },
+      "control": {
+        "change": "the second label renamed to \"2\" (a different 64-bit key)",
+        "request": {
+          "op": "simulate",
+          "model": "pk1.iv_bolus",
+          "theta": {
+            "cl": 5,
+            "v": 50
+          },
+          "random_effects": [
+            "cl",
+            "v"
+          ],
+          "omega_shape": "block",
+          "omega": [
+            0.09,
+            0.03,
+            0.04
+          ],
+          "error_model": "proportional",
+          "xi": {
+            "b": 0.1
+          },
+          "design": {
+            "subjects": [
+              {
+                "id": "abe6fa9f1cdab0fa",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              },
+              {
+                "id": "2",
+                "dose": 100,
+                "time": [
+                  0.5,
+                  1,
+                  2,
+                  4,
+                  8,
+                  12
+                ]
+              }
+            ]
+          },
+          "seed": 20261108,
+          "replicates": 2,
+          "options": {
+            "negative": "keep"
+          }
+        }
+      },
+      "note": "found by a parallel collision search on the first 8 bytes of SHA-256 (van Oorschot and Wiener, about 1e10 hash evaluations); both labels are 16 lowercase hexadecimal digits; checked in R with digest and in the testkit with its own SHA-256"
+    }
+  ]
+}
