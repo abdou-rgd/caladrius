@@ -157,11 +157,12 @@ pub(crate) fn definition(name: &str) -> Option<Value> {
             let ids: Vec<&str> = ModelId::ALL
                 .iter()
                 .chain(ModelId::TWO_COMPARTMENT.iter())
+                .chain(ModelId::THREE_COMPARTMENT.iter())
                 .map(ModelId::id)
                 .collect();
             described(
                 one_of_strings(&ids),
-                "Route and input. pk1: v and cl or k. pk2 (two compartments): one set of cl,vc,q,vp or k10,k12,k21,vc or a,b,alpha,beta (a, b need the dose).",
+                "Route and input. pk1: v and cl or k. pk2: one set of cl,vc,q,vp or k10,k12,k21,vc or a,b,alpha,beta. pk3: one set of cl,vc,q2,vp2,q3,vp3 or k10,k12,k21,k13,k31,vc or a,b,c,alpha,beta,gamma. The a,b(,c) sets need the dose.",
             )
         }
         "Weighting" => one_of_strings(&["uniform", "inv_y", "inv_y2", "inv_yhat", "inv_yhat2"]),
