@@ -187,3 +187,18 @@
   - An evaluation without `error_init` reports its error parameters in `xi_used`, with their source.
   - oracle_pop gives 207 pass. The 61 failures wait for T-154 (21) and T-155 (40).
   - Not merged into `main` before 2026-11-18.
+
+## 2026-11-08: T-159 done (the population simulator)
+
+`caladrius_fit::sim` is on `iter3/sim` (d0f17a7, 26bec5a, 2f5ac02, 006eeb7; not pushed). It includes:
+- Philox4x32-10 with integers only;
+- the AS 241 inverse;
+- Cholesky of Ω;
+- one pure cell per (replicate, subject);
+- refusals before any output.
+
+`oracle_sim` gives 173 passed, 0 failed, 2 ignored; the SIM-ORA-06 round trips wait for T-154. Two things stand in for the digest:
+- a pinned SHA-256 of the canonical text of an oracle-checked study;
+- a thread test in `apps/caladrius-cli`: 1, 3, 4, 7 and 128 threads give the same bits.
+
+Putting the simulator in the digest needs a `sim.run` engine command; that is the bolder step, proposed and not started. Fable reviewed it: approved with notes, then approved. Q-027 is opened on the AS 241 constants.
