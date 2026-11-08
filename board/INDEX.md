@@ -175,3 +175,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-167 | pk3 engine alignment round: N1 refusal code, adjacent-pole jacobian, the macro obligation | engine | to review | T-164, T-165 |
 | T-168 | Exact fit-level oracle for the balanced linear case (identity_linear, closed form, nlme ML) | oracle | done | T-166, T-152 |
 | T-169 | caladrius-fit minors left by T-149 and T-151 (error.rs:298, the stale 13c comments, the A2 test) | engine | done | T-149, T-151 |
+| T-170 | specs/simulation.md round 2 after the simulator (T-158 and T-159 review items) | reader | in progress | T-159 |
