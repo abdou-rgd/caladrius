@@ -63,6 +63,18 @@ impl Tolerance {
         abs: 0.0,
     };
 
+    /// The weight w_beta at adjacent poles (k21 and k31 neighbouring doubles, MOD-3C-22) against the
+    /// exact weight of `oracle/expected/models/pk3/` (group `scalar_abs`): ABSOLUTE error at most
+    /// 1e-12, whatever its condition number. A plain constant, not a variant of [`Tolerance`]: at
+    /// the adjacent poles the weight is tiny, so an engine that returns 0 passes and one that
+    /// returns a weight of 1e-8 does not.
+    ///
+    /// Provenance and reach: 1e-12 is the number of MOD-3C-22, taken from the specification, not
+    /// measured. The oracle's w_beta values in the `scalar_abs` cases are 1.5e-33 to 6e-33. The check
+    /// therefore passes ANY w_beta below 1e-12, a nonzero wrong one included; it rules out an
+    /// engine that returns a weight of the size the poles' gap would give by mistake, nothing finer.
+    pub const MODEL_WEIGHT_ADJACENT_ABS: f64 = 1e-12;
+
     /// Equality at the precision displayed in a reference export, with `decimals` decimal places.
     pub const fn displayed(decimals: u32) -> Tolerance {
         Tolerance::DisplayedDecimals { decimals }

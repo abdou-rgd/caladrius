@@ -660,11 +660,15 @@ mod tests {
         }
     }
 
-    /// The parameter sets the engine's schema describes: the names between `one set of` and the
-    /// closing parenthesis, split on `or` and on commas.
-    fn engine_sets(description: &str) -> Vec<Vec<String>> {
-        let after = description.split("one set of ").nth(1).unwrap_or_default();
-        let list = after.split(" (").next().unwrap_or_default();
+    /// The parameter sets the engine's schema describes for one route (`pk2` or `pk3`): the names
+    /// between `pkN: one set of ` and the end of the sentence, split on `or` and on commas.
+    fn engine_sets(description: &str, route: &str) -> Vec<Vec<String>> {
+        let marker = format!("{route}: one set of ");
+        let after = description
+            .split(marker.as_str())
+            .nth(1)
+            .unwrap_or_default();
+        let list = after.split(". ").next().unwrap_or_default();
         list.split(" or ")
             .map(|set| set.split(',').map(|n| n.trim().to_owned()).collect())
             .collect()
@@ -672,7 +676,6 @@ mod tests {
 
     #[test]
     fn the_models_match_the_engine_catalogue_and_its_parameters() {
-        // The catalogue of the engine lists the twelve ids, in the order of this table.
         let described = caladrius_engine::describe();
         let schema = described
             .iter()
@@ -685,17 +688,36 @@ mod tests {
             .iter()
             .filter_map(|v| v.as_str())
             .collect();
+        // pk3.* is in the engine but not in the UI yet (T-145); add it to MODELS when the UI gets its pk3 step.
+        // The catalogue of the engine lists the ids of this table, in its order, then the six pk3 ids.
         let ours: Vec<&str> = MODELS.iter().map(|m| m.id).collect();
-        assert_eq!(ids, ours);
+        let pk3 = [
+            "pk3.iv_bolus",
+            "pk3.iv_infusion",
+            "pk3.oral_1",
+            "pk3.oral_1_lag",
+            "pk3.oral_0",
+            "pk3.oral_0_lag",
+        ];
+        assert_eq!(ours.len(), 12);
+        assert_eq!(ids[..ours.len()], ours[..]);
+        assert_eq!(ids[ours.len()..], pk3);
         // The parameter sets of the two-compartment ids are the ones the schema describes.
         let description = schema["$defs"]["ModelId"]["description"]
             .as_str()
             .unwrap_or_default();
-        let sets = engine_sets(description);
+        let sets = engine_sets(description, "pk2");
         assert_eq!(sets.len(), ParameterSet::ALL.len(), "{description}");
         for (set, names) in ParameterSet::ALL.iter().zip(&sets) {
             assert_eq!(set.names(), names.as_slice(), "{set:?}");
         }
+        // The three-compartment sets are not in the UI: the schema must describe exactly these three.
+        let pk3_sets: Vec<Vec<&str>> = vec![
+            vec!["cl", "vc", "q2", "vp2", "q3", "vp3"],
+            vec!["k10", "k12", "k21", "k13", "k31", "vc"],
+            vec!["a", "b", "c", "alpha", "beta", "gamma"],
+        ];
+        assert_eq!(engine_sets(description, "pk3"), pk3_sets, "{description}");
         // The fitted parameters are the ones the engine accepts besides `dur`.
         for m in MODELS {
             match m.compartments {

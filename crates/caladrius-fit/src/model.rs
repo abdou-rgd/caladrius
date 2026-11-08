@@ -1,8 +1,8 @@
 //! What the fit needs from a model: predictions and, optionally, closed-form partial derivatives.
-//! Implemented for the one- and two-compartment models of `caladrius-models`. The closed forms of
+//! Implemented for the one-, two- and three-compartment models of `caladrius-models`. The closed forms of
 //! the one-compartment models are in `closed_forms` (by model id and parameterisation); those of
-//! the two-compartment models, in every parameter set, come from `caladrius_models::jacobian`
-//! (`specs/models.md` MOD-2C-17 to 19).
+//! the two- and three-compartment models, in every parameter set, come from `caladrius_models::jacobian`
+//! (`specs/models.md` MOD-2C-17 to 19, MOD-3C-19 to 23).
 
 use std::collections::BTreeMap;
 
@@ -195,20 +195,20 @@ impl FitModel for ModelId {
             (ModelId::Oral1Lag, ["k", "ka", "tlag", "v"]) => {
                 closed_forms::first_order_columns(dose, params, times, names, true)
             }
-            (model, _) if model.compartments() == 2 => {
-                two_compartment_columns(*model, dose, params, times, names)
+            (model, _) if matches!(model.compartments(), 2 | 3) => {
+                peripheral_columns(*model, dose, params, times, names)
             }
             _ => None,
         }
     }
 }
 
-/// The closed-form columns of a two-compartment model for the fitted `names` (fixed parameters
+/// The closed-form columns of a two- or three-compartment model for the fitted `names` (fixed parameters
 /// are values in `params`, not columns); `None` when the model refuses the parameters or a name has
 /// no column. The trait returns an `Option`, so the fit reports `AnalyticDerivativesUnavailable`,
 /// whose message for a `pk2.*` model names the parameter sets (the model error itself is reported
 /// earlier, by the first prediction, for the same parameters).
-fn two_compartment_columns(
+fn peripheral_columns(
     model: ModelId,
     dose: f64,
     params: &BTreeMap<String, f64>,
@@ -381,6 +381,98 @@ mod tests {
         }
         let e = crate::run(&input(&[])).unwrap_err();
         assert!(e.to_string().contains("two-compartment"), "{e}");
+    }
+
+    /// An analytic-derivative fit of exact three-compartment bolus data recovers the six
+    /// clearance-set parameters from given initial values; automatic initial estimates are
+    /// refused with a readable error.
+    #[test]
+    fn a_three_compartment_fit_recovers_exact_data() {
+        let truth = [
+            ("cl", 2.0),
+            ("vc", 10.0),
+            ("q2", 4.0),
+            ("vp2", 8.0),
+            ("q3", 0.5),
+            ("vp3", 20.0),
+        ];
+        let time = [
+            0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 24.0, 36.0, 48.0,
+            72.0, 96.0,
+        ];
+        let conc = ModelId::Pk3IvBolus
+            .predict(100.0, &named(&truth), &time)
+            .unwrap();
+        let input = |initial: &[(&str, f64)]| crate::FitInput {
+            model: ModelId::Pk3IvBolus,
+            dose: 100.0,
+            time: time.to_vec(),
+            conc: conc.clone(),
+            weighting: crate::Weighting::Uniform,
+            initial: named(initial),
+            options: crate::FitOptions {
+                derivatives: crate::Derivatives::Analytic,
+                convergence: 1e-12,
+                max_iterations: 500,
+                ..crate::FitOptions::default()
+            },
+        };
+        let r = crate::run(&input(&[
+            ("cl", 2.4),
+            ("vc", 9.0),
+            ("q2", 3.5),
+            ("vp2", 9.0),
+            ("q3", 0.6),
+            ("vp3", 17.0),
+        ]))
+        .unwrap();
+        for (name, x) in truth {
+            let got = r.get(&format!("estimate.{name}")).unwrap();
+            assert!((got - x).abs() <= 1e-6 * x, "{name}: {got} against {x}");
+        }
+        let e = crate::run(&input(&[])).unwrap_err();
+        assert!(e.to_string().contains("three-compartment"), "{e}");
+    }
+
+    /// The three-compartment columns agree with central differences of the predictions.
+    #[test]
+    fn three_compartment_derivatives_match_central_differences() {
+        let names: Vec<String> = ["cl", "vc", "q2", "vp2", "q3", "vp3", "ka"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let times = [0.25, 1.0, 3.0, 12.0, 48.0];
+        let params = named(&[
+            ("cl", 2.0),
+            ("vc", 10.0),
+            ("q2", 4.0),
+            ("vp2", 8.0),
+            ("q3", 0.5),
+            ("vp3", 20.0),
+            ("ka", 1.3),
+        ]);
+        let model = ModelId::Pk3Oral1;
+        let exact = model
+            .analytic_derivatives(100.0, &params, &times, &names)
+            .unwrap();
+        for (j, name) in names.iter().enumerate() {
+            let h = 1e-6 * params[name];
+            let mut up = params.clone();
+            let mut down = params.clone();
+            up.insert(name.clone(), params[name] + h);
+            down.insert(name.clone(), params[name] - h);
+            let fu = model.predict(100.0, &up, &times).unwrap();
+            let fd = model.predict(100.0, &down, &times).unwrap();
+            for i in 0..times.len() {
+                let numeric = (fu[i] - fd[i]) / (2.0 * h);
+                let a = exact[j][i];
+                assert!(
+                    (a - numeric).abs() <= 1e-6 * (1.0 + a.abs()),
+                    "{name} at t = {}: {a} against {numeric}",
+                    times[i]
+                );
+            }
+        }
     }
 
     /// Without closed-form derivatives the message of a two-compartment model names its parameter

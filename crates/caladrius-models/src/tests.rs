@@ -358,3 +358,47 @@ fn non_finite_values_in_errors_and_options_round_trip() {
         e
     );
 }
+
+#[test]
+fn short_numbers_in_messages_keep_the_round_trip_value() {
+    use crate::error::short;
+    for (x, text) in [
+        (0.0, "0"),
+        (1.5, "1.5"),
+        (-2.5, "-2.5"),
+        (0.0001, "0.0001"),
+        (1e-5, "1e-5"),
+        (1e-300, "1e-300"),
+        (2.5e300, "2.5e300"),
+        (1e16, "1e16"),
+        (123456789.125, "123456789.125"),
+        (f64::MAX, "1.7976931348623157e308"),
+        (5e-324, "5e-324"),
+    ] {
+        assert_eq!(short(x), text);
+        assert_eq!(short(x).parse::<f64>().ok(), Some(x), "{text}");
+    }
+    assert_eq!(short(f64::INFINITY), "inf");
+    assert_eq!(short(f64::NAN), "NaN");
+}
+
+#[test]
+fn overflow_messages_print_tiny_and_huge_times_short() {
+    // dose / V overflows at every time; the time is named in the message.
+    let p = [("v", 1e-300), ("k", 1.0)];
+    for t in [1e-300, 1e300, 0.5] {
+        let e = run(&input(ModelId::IvBolus, 1e10, &p, &[t])).unwrap_err();
+        let text = e.to_string();
+        assert!(matches!(e, ModelError::Overflow { .. }), "{text}");
+        assert!(text.len() < 300, "{} characters: {text}", text.len());
+        assert!(
+            text.contains(&format!("at time {}", crate::error::short(t))),
+            "{text}"
+        );
+        // The words the spec and the oracle require stay.
+        assert!(
+            text.contains("overflow") && text.contains("rescale"),
+            "{text}"
+        );
+    }
+}

@@ -21,7 +21,7 @@
 //! and the conformance table do not see it until the interface card wires it in
 //! (`cargo xtask conformance` needs `list_md_cases` and an evaluation of `caladrius-models`).
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
@@ -146,8 +146,13 @@ pub fn list_md_cases() -> Result<Vec<String>, OracleError> {
 
 /// Loads one case and checks that its files agree.
 pub fn load_md_case(name: &str) -> Result<MdCase, OracleError> {
-    let dir = md_dir();
-    let case = load_model_case_in(&dir, name)?;
+    load_md_case_in(&md_dir(), name)
+}
+
+/// Loads the multiple-dosing case `name` of `dir` (`<name>.options.json` and `<name>.csv`); the
+/// three-compartment oracle (`crate::pk3`) uses the same layout in its own directory.
+pub fn load_md_case_in(dir: &Path, name: &str) -> Result<MdCase, OracleError> {
+    let case = load_model_case_in(dir, name)?;
     let path = dir.join(format!("{name}.options.json"));
     let extra: Extra = json(&path)?;
     let here = path.display().to_string();

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Single-dose model: one compartment (`pk1.*`) or two compartments (`pk2.*`).
+/// Single-dose model: one (`pk1.*`), two (`pk2.*`) or three compartments (`pk3.*`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ModelId {
     /// `pk1.iv_bolus` (MOD-IVB-01): parameters `v` and `cl` or `k`.
@@ -41,6 +41,24 @@ pub enum ModelId {
     /// `pk2.oral_0_lag` (MOD-2C-12): a parameter set, `dur` and `tlag`.
     #[serde(rename = "pk2.oral_0_lag")]
     Pk2Oral0Lag,
+    /// `pk3.iv_bolus` (MOD-3C-10): one parameter set of MOD-3C-02.
+    #[serde(rename = "pk3.iv_bolus")]
+    Pk3IvBolus,
+    /// `pk3.iv_infusion` (MOD-3C-11): a parameter set and `dur`.
+    #[serde(rename = "pk3.iv_infusion")]
+    Pk3IvInfusion,
+    /// `pk3.oral_1` (MOD-3C-12): a parameter set and `ka`.
+    #[serde(rename = "pk3.oral_1")]
+    Pk3Oral1,
+    /// `pk3.oral_1_lag` (MOD-3C-13): a parameter set, `ka` and `tlag`.
+    #[serde(rename = "pk3.oral_1_lag")]
+    Pk3Oral1Lag,
+    /// `pk3.oral_0` (MOD-3C-14): a parameter set and `dur`.
+    #[serde(rename = "pk3.oral_0")]
+    Pk3Oral0,
+    /// `pk3.oral_0_lag` (MOD-3C-14): a parameter set, `dur` and `tlag`.
+    #[serde(rename = "pk3.oral_0_lag")]
+    Pk3Oral0Lag,
 }
 
 /// How the drug enters the central compartment.
@@ -73,6 +91,16 @@ impl ModelId {
         ModelId::Pk2Oral0Lag,
     ];
 
+    /// Every three-compartment model, in catalogue order (MOD-3C-25).
+    pub const THREE_COMPARTMENT: [ModelId; 6] = [
+        ModelId::Pk3IvBolus,
+        ModelId::Pk3IvInfusion,
+        ModelId::Pk3Oral1,
+        ModelId::Pk3Oral1Lag,
+        ModelId::Pk3Oral0,
+        ModelId::Pk3Oral0Lag,
+    ];
+
     /// The stable id, e.g. `pk1.oral_1`.
     pub fn id(&self) -> &'static str {
         match self {
@@ -88,20 +116,30 @@ impl ModelId {
             ModelId::Pk2Oral1Lag => "pk2.oral_1_lag",
             ModelId::Pk2Oral0 => "pk2.oral_0",
             ModelId::Pk2Oral0Lag => "pk2.oral_0_lag",
+            ModelId::Pk3IvBolus => "pk3.iv_bolus",
+            ModelId::Pk3IvInfusion => "pk3.iv_infusion",
+            ModelId::Pk3Oral1 => "pk3.oral_1",
+            ModelId::Pk3Oral1Lag => "pk3.oral_1_lag",
+            ModelId::Pk3Oral0 => "pk3.oral_0",
+            ModelId::Pk3Oral0Lag => "pk3.oral_0_lag",
         }
     }
 
-    /// The model with this stable id (one or two compartments).
+    /// The model with this stable id (one, two or three compartments).
     pub fn from_id(id: &str) -> Option<ModelId> {
         Self::ALL
             .into_iter()
             .chain(Self::TWO_COMPARTMENT)
+            .chain(Self::THREE_COMPARTMENT)
             .find(|m| m.id() == id)
     }
 
-    /// Number of compartments of the disposition (1 or 2); data, not an assumption (golden rule 5).
+    /// Number of compartments of the disposition (1, 2 or 3); data, not an assumption (golden
+    /// rule 5).
     pub fn compartments(&self) -> u8 {
-        if Self::TWO_COMPARTMENT.contains(self) {
+        if Self::THREE_COMPARTMENT.contains(self) {
+            3
+        } else if Self::TWO_COMPARTMENT.contains(self) {
             2
         } else {
             1
@@ -110,28 +148,40 @@ impl ModelId {
 
     pub(crate) fn input(&self) -> Input {
         match self {
-            ModelId::IvBolus | ModelId::Pk2IvBolus => Input::Bolus,
+            ModelId::IvBolus | ModelId::Pk2IvBolus | ModelId::Pk3IvBolus => Input::Bolus,
             ModelId::IvInfusion
             | ModelId::Oral0
             | ModelId::Oral0Lag
             | ModelId::Pk2IvInfusion
             | ModelId::Pk2Oral0
-            | ModelId::Pk2Oral0Lag => Input::ZeroOrder,
-            ModelId::Oral1 | ModelId::Oral1Lag | ModelId::Pk2Oral1 | ModelId::Pk2Oral1Lag => {
-                Input::FirstOrder
-            }
+            | ModelId::Pk2Oral0Lag
+            | ModelId::Pk3IvInfusion
+            | ModelId::Pk3Oral0
+            | ModelId::Pk3Oral0Lag => Input::ZeroOrder,
+            ModelId::Oral1
+            | ModelId::Oral1Lag
+            | ModelId::Pk2Oral1
+            | ModelId::Pk2Oral1Lag
+            | ModelId::Pk3Oral1
+            | ModelId::Pk3Oral1Lag => Input::FirstOrder,
         }
     }
 
     pub(crate) fn has_lag(&self) -> bool {
         matches!(
             self,
-            ModelId::Oral1Lag | ModelId::Oral0Lag | ModelId::Pk2Oral1Lag | ModelId::Pk2Oral0Lag
+            ModelId::Oral1Lag
+                | ModelId::Oral0Lag
+                | ModelId::Pk2Oral1Lag
+                | ModelId::Pk2Oral0Lag
+                | ModelId::Pk3Oral1Lag
+                | ModelId::Pk3Oral0Lag
         )
     }
 
     /// Parameter names this model accepts besides its disposition parameters (`v` and one of `cl`,
-    /// `k` for one compartment, MOD-VOC-01; one set of MOD-2C-02 for two compartments).
+    /// `k` for one compartment, MOD-VOC-01; one set of MOD-2C-02 or MOD-3C-02 for two or three
+    /// compartments).
     pub fn input_parameters(&self) -> &'static [&'static str] {
         match (self.input(), self.has_lag()) {
             (Input::Bolus, _) => &[],

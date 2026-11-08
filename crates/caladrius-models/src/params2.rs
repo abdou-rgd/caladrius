@@ -258,6 +258,7 @@ fn exponents(
 ) -> Result<Disposition, ModelError> {
     let degenerate = || ModelError::DegenerateExponents {
         model: id.to_string(),
+        detail: None,
     };
     let sum = k10 + k12 + k21;
     let diff = k10 - k21;

@@ -169,3 +169,14 @@ Same rules as before: the documentation of commercial programs was not used; onl
 **Not read.** Davidian and Giltinan (nonlinear models for repeated measurement data), Carroll and Ruppert (transformation and weighting in regression), the combined error formula of `saemix`, the nlmixr2 pages on residual error (the page `addingResidualError` returned 404; the `nlmixr2lib` page `addResErr` was not reached), the CRAN and `rdrr.io` pages of `gnls` and `varConstPower` (error 503; the installed help files were read instead), the PubMed record of S-46 (cookie wall), and a PDF by Bell and Schumitzky that came back as binary and was not used.
 
 **Incident to record (clean room).** A web search for this card returned a summary that mentioned the reference lists of a commercial program's documentation. Those pages were not opened and no rule cites that summary. The bibliographic data of S-47 come from a search summary and were not verified at the publisher. The relations of `FIT-ML-04` to `-13` were derived from the Gaussian density and checked by H24 to H30.
+
+## 14. Sources added for the three-compartment section of `specs/models.md` (card T-140, 2026-11-07)
+
+Same rules as before: vendor documentation was not used. S-36 (section 12 above) was read again by the reader for printed pages 37 to 40 only (figure 1.2, the parameter sets on p. 38, the cubic and its trigonometric roots and the bolus coefficients on p. 39, eq. 1.61 to 1.63 on p. 40); the pages of the other inputs are cited through the map of card T-046 (`MOD-LT-01`). Two references are listed at book or bibliographic level; the reader has not read them.
+
+| key | source | location | terms and how used |
+|---|---|---|---|
+| S-37 | Pólya G, Szegő G. Problems and Theorems in Analysis II (Springer), the part on the number of zeros and the rule of signs for sums of exponentials (the generalised Descartes rule, Laguerre). | Book level; chapter and problem numbers not checked. | Not read by the reader. Cited in `MOD-3C-17` for the statement that a sum of exponentials has at most as many real zeros as sign changes in its coefficients ordered by exponent; the use is the reader's own derivation, to be confirmed by the oracle (OM-24). |
+| S-38 | Abuhelwa AY, Foster DJR, Upton RN. ADVAN-style analytical solutions for common pharmacokinetic models. J Pharmacol Toxicol Methods 2015;73:42-48. | Bibliographic data from the card T-140, which names it as an allowed source. | Not read by the reader. Named as the paper that gives closed forms of the mammillary models; no rule of section 14 rests on it. If it contains a fact the section lacks (for example a stable arrangement of the roots), it is an open item for a later card. |
+
+**Use in `specs/models.md`.** Section 14 (`MOD-3C-01` to `MOD-3C-27`) rests on S-36 pp. 37-40, on the textbooks at book level (S-17, S-18) and on derivations (D) checked by the reader (H18 to H23). Nothing from a commercial manual was used.

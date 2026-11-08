@@ -12,6 +12,7 @@
 //! to 8) and two compartments (`pk2.*`, section 11).
 
 mod curves;
+mod dd;
 mod dosing;
 mod error;
 mod float;
@@ -20,9 +21,12 @@ mod kernel;
 mod model;
 mod params;
 mod params2;
+mod params3;
 mod regimen;
+mod roots3;
 mod steady;
 mod superpose;
+mod three;
 mod two;
 
 use std::collections::BTreeMap;
@@ -137,8 +141,10 @@ pub fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
     if input.has_regimen() {
         return dosing::run(input);
     }
-    if input.model.compartments() == 2 {
-        return two::run(input);
+    match input.model.compartments() {
+        2 => return two::run(input),
+        3 => return three::run(input),
+        _ => {}
     }
     let p = params::resolve(input.model, &input.params)?;
     let dose = input.dose;
@@ -197,10 +203,13 @@ pub fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
     let overflow = |what: String| Err(ModelError::Overflow { what });
     for (t, (c, a)) in input.times.iter().zip(conc.iter().zip(&auc)) {
         if !c.is_finite() {
-            return overflow(format!("the concentration at time {t}"));
+            return overflow(format!(
+                "the concentration at time {}",
+                crate::error::short(*t)
+            ));
         }
         if !a.is_finite() {
-            return overflow(format!("the AUC at time {t}"));
+            return overflow(format!("the AUC at time {}", crate::error::short(*t)));
         }
     }
     if let Some((name, _)) = secondary.iter().find(|(_, v)| !v.is_finite()) {

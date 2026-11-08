@@ -58,6 +58,7 @@ pub fn jacobian(input: &ModelInput, method: Derivatives) -> Result<Jacobian, Mod
     match method {
         Derivatives::Analytic if input.model == ModelId::IvBolus => Ok(bolus(input, base.conc())),
         Derivatives::Analytic if input.model.compartments() == 2 => crate::two::jacobian(input),
+        Derivatives::Analytic if input.model.compartments() == 3 => crate::three::jacobian(input),
         Derivatives::Analytic => forward(input, base.conc(), DEFAULT_INCREMENT),
         Derivatives::ForwardDifference { increment } => {
             if !(increment.is_finite() && increment > 0.0) {
@@ -85,7 +86,9 @@ fn forward(input: &ModelInput, base: &[f64], h: f64) -> Result<Jacobian, ModelEr
         if !(theta + step).is_finite() {
             return Err(ModelError::Overflow {
                 what: format!(
-                    "the forward-difference step of parameter `{name}` ({theta} + {step})"
+                    "the forward-difference step of parameter `{name}` ({} + {})",
+                    crate::error::short(theta),
+                    crate::error::short(step)
                 ),
             });
         }
@@ -95,7 +98,7 @@ fn forward(input: &ModelInput, base: &[f64], h: f64) -> Result<Jacobian, ModelEr
         let shifted = run(&moved).map_err(|e| ModelError::Overflow {
             what: format!(
                 "the forward-difference step of parameter `{name}` (to {}: {e})",
-                theta + step
+                crate::error::short(theta + step)
             ),
         })?;
         columns.push(

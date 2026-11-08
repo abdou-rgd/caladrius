@@ -14,7 +14,7 @@ use crate::model::{Input, ModelId};
 use crate::regimen::{DoseEvent, Regimen, is_regimen_parameter};
 use crate::steady::{Steady, bisect};
 use crate::superpose::superpose;
-use crate::{ModelError, ModelInput, ModelOutput, params, params2};
+use crate::{ModelError, ModelInput, ModelOutput, params, params2, params3};
 
 /// The disposition as kernel terms: C = Σ weight·Φ(rate)/volume, and the input parameters.
 pub(crate) struct Terms {
@@ -35,7 +35,26 @@ impl Terms {
         dose: f64,
     ) -> Result<Terms, ModelError> {
         let input = model.input();
-        if model.compartments() == 2 {
+        if model.compartments() == 3 {
+            let p = params3::resolve(model, params, dose)?;
+            // The weight of the middle exponent is 0 at the exact tie (MOD-3C-22): no term.
+            let modes = p
+                .lambda()
+                .into_iter()
+                .zip(p.weight())
+                .filter(|(_, w)| *w > 0.0)
+                .map(|(rate, w)| (w, rate))
+                .collect();
+            Ok(Terms {
+                input,
+                modes,
+                volume: p.vc,
+                cl: p.cl,
+                ka: p.ka,
+                dur: p.dur,
+                tlag: p.tlag,
+            })
+        } else if model.compartments() == 2 {
             let p = params2::resolve(model, params, dose)?;
             Ok(Terms {
                 input,
@@ -210,10 +229,13 @@ pub(crate) fn run(input: &ModelInput) -> Result<ModelOutput, ModelError> {
     let overflow = |what: String| Err(ModelError::Overflow { what });
     for (t, (c, a)) in input.times.iter().zip(conc.iter().zip(&auc)) {
         if !c.is_finite() {
-            return overflow(format!("the concentration at time {t}"));
+            return overflow(format!(
+                "the concentration at time {}",
+                crate::error::short(*t)
+            ));
         }
         if !a.is_finite() {
-            return overflow(format!("the AUC at time {t}"));
+            return overflow(format!("the AUC at time {}", crate::error::short(*t)));
         }
     }
     if let Some((name, _)) = secondary.iter().find(|(_, v)| !v.is_finite()) {

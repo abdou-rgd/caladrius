@@ -330,7 +330,7 @@ fn initial_property() -> (&'static str, Value) {
         "initial",
         crate::schema::described(
             json!({ "type": "object", "additionalProperties": number() }),
-            "Initial estimates by parameter name; the fitted parameters are exactly those named. Empty: generated from the data (not for pk2: give every parameter).",
+            "Initial estimates by parameter name; the fitted parameters are exactly those named. Empty: generated from the data (not for pk2, pk3: give every parameter).",
         ),
     )
 }
@@ -338,7 +338,7 @@ fn initial_property() -> (&'static str, Value) {
 pub(crate) const FIT_RUN: CommandDef = CommandDef {
     id: "fit.run",
     title: "Fit a model to a profile",
-    description: "Weighted least-squares fit (Gauss-Newton with the Levenberg and Hartley modification) of a one- or two-compartment model to the profile of one subject; stores the result in an analysis object. The result has the status (converged or why not), estimates with standard error, CV% and confidence intervals, diagnostics, observed and predicted values, the smooth curve, the trace, and quality flags. A fit that cannot start is an error and stores nothing. A worksheet with several subjects needs `subject` (one label); without it the fit is refused with `subject_required`. `subject` = all fits every subject on its own, with the same model and options and the initial estimates generated per subject (`initial` and `dose`, when given, apply to each; on an event table a `dose` that differs from the dose row wins, with a note): a request that is wrong for every subject (an unknown parameter in `initial`, an option out of its domain) is refused as a whole and stores nothing; the result is a list in `subjects`, one fit per subject in order of appearance, and a subject that cannot be fitted is that subject's result with its error (a subject that the data check refused carries the sentence of its check) while the others run. `all` is not a job: it has no progress and no cancel. If a subject of the worksheet is really labelled `all`, it is that subject that is fitted, and a note in its result says so. For an infusion model (pk1.iv_infusion, pk2.iv_infusion) on an event table, `dur` is held at the duration of the subject's dose row unless `options.fixed.dur` or `initial.dur` says otherwise (a note says when the file's duration is not used, also for a model that does not read it from the file). Each result carries the declared covariates of its subject, copied and used nowhere else.",
+    description: "Weighted least-squares fit (Gauss-Newton with the Levenberg and Hartley modification) of a one-, two- or three-compartment model to the profile of one subject; stores the result in an analysis object. The result has the status (converged or why not), estimates with standard error, CV% and confidence intervals, diagnostics, observed and predicted values, the smooth curve, the trace, and quality flags. A fit that cannot start is an error and stores nothing. A worksheet with several subjects needs `subject` (one label); without it the fit is refused with `subject_required`. `subject` = all fits every subject on its own, with the same model and options and the initial estimates generated per subject (`initial` and `dose`, when given, apply to each; on an event table a `dose` that differs from the dose row wins, with a note): a request that is wrong for every subject (an unknown parameter in `initial`, an option out of its domain) is refused as a whole and stores nothing; the result is a list in `subjects`, one fit per subject in order of appearance, and a subject that cannot be fitted is that subject's result with its error (a subject that the data check refused carries the sentence of its check) while the others run. `all` is not a job: it has no progress and no cancel. If a subject of the worksheet is really labelled `all`, it is that subject that is fitted, and a note in its result says so. For an infusion model (pk1.iv_infusion, pk2.iv_infusion) on an event table, `dur` is held at the duration of the subject's dose row unless `options.fixed.dur` or `initial.dur` says otherwise (a note says when the file's duration is not used, also for a model that does not read it from the file). Each result carries the declared covariates of its subject, copied and used nowhere else.",
     mutates: true,
     params: || {
         let mut props = spec_properties();
@@ -397,7 +397,7 @@ fn fit_initial_estimates(engine: &mut Engine, params: Value) -> Result<Value, Co
 pub(crate) const FIT_INITIAL_ESTIMATES: CommandDef = CommandDef {
     id: "fit.initial_estimates",
     title: "Initial estimates from the data",
-    description: "Estimates the starting values of a model's parameters from one subject's profile (log-linear regression, curve stripping, terminal phase). Reads only: nothing is stored. A zero-order input model needs its duration among `fixed`. Refused for pk2: give the initial values.",
+    description: "Estimates the starting values of a model's parameters from one subject's profile (log-linear regression, curve stripping, terminal phase). Reads only: nothing is stored. A zero-order input model needs its duration among `fixed`. Refused for pk2 and pk3: give the initial values.",
     mutates: false,
     params: || {
         root(
@@ -551,7 +551,7 @@ fn model_simulate(engine: &mut Engine, params: Value) -> Result<Value, CommandEr
 pub(crate) const MODEL_SIMULATE: CommandDef = CommandDef {
     id: "model.simulate",
     title: "Evaluate a model on a time grid",
-    description: "Concentration and AUC of a one- or two-compartment model at the given times (a list, or a regular grid), and its secondary parameters (half-life, clearance, AUC to infinity, MRT, predicted Cmax and Tmax...). Nothing is stored unless `store` is true (with `analysis`, that simulation is updated instead of a new one being created), so it can be called at every change of a parameter for a live curve.",
+    description: "Concentration and AUC of a one-, two- or three-compartment model at the given times (a list, or a regular grid), and its secondary parameters (half-life, clearance, AUC to infinity, MRT, predicted Cmax and Tmax...). Nothing is stored unless `store` is true (with `analysis`, that simulation is updated instead of a new one being created), so it can be called at every change of a parameter for a live curve.",
     mutates: false,
     params: || {
         root(
@@ -564,7 +564,7 @@ pub(crate) const MODEL_SIMULATE: CommandDef = CommandDef {
                         "params",
                         crate::schema::described(
                             json!({ "type": "object", "additionalProperties": number() }),
-                            "Parameters by name: pk1 `v` and one of `cl`, `k`; pk2 one set (see model); `ka`, `dur`, `tlag` as needed. Optional regimen: `tau` (steady state, times since the last dose), `tau` and `n_doses` (times since the first dose), or a schedule `dose_time[i]`, `dose_amount[i]`, `dose_dur[i]`.",
+                            "Parameters by name: pk1 `v` and one of `cl`, `k`; pk2, pk3 one set (see model); `ka`, `dur`, `tlag` as needed. Optional regimen: `tau` (steady state, times since the last dose), `tau` and `n_doses` (times since the first dose), or a schedule `dose_time[i]`, `dose_amount[i]`, `dose_dur[i]`.",
                         ),
                     ),
                     ("times", array_of(number())),

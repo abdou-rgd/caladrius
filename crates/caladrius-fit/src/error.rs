@@ -254,6 +254,10 @@ impl fmt::Display for FitError {
                 f,
                 "closed-form derivatives of {model} are not available for these parameters (a fitted name is not a parameter of the model, or the model refuses the values); give one complete set (cl, vc, q, vp; k10, k12, k21, vc; or a, b, alpha, beta) with the input parameters of the model, or use forward differences"
             ),
+            Self::AnalyticDerivativesUnavailable { model } if model.starts_with("pk3.") => write!(
+                f,
+                "closed-form derivatives of {model} are not available for these parameters (a fitted name is not a parameter of the model, or the model refuses the values); give one complete set (cl, vc, q2, vp2, q3, vp3; k10, k12, k21, k13, k31, vc; or a, b, c, alpha, beta, gamma) with the input parameters of the model, or use forward differences"
+            ),
             Self::AnalyticDerivativesUnavailable { model } => write!(
                 f,
                 "closed-form derivatives are available in the (v, k) parameterisation only (v, k and the input parameters of the model), not for {model} with these parameters; use forward differences or give `k` instead of `cl`"
@@ -312,4 +316,28 @@ impl std::error::Error for FitError {}
 
 fn is_false(b: &bool) -> bool {
     !*b
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A three-compartment id names the complete sets of MOD-3C-02 to 05, not the (v, k) advice of
+    /// one compartment nor the sets of two.
+    #[test]
+    fn the_message_without_closed_forms_of_a_three_compartment_model_names_its_sets() {
+        let text = FitError::AnalyticDerivativesUnavailable {
+            model: "pk3.oral_1_lag".to_string(),
+        }
+        .to_string();
+        for word in [
+            "pk3.oral_1_lag",
+            "cl, vc, q2, vp2, q3, vp3",
+            "k10, k12, k21, k13, k31, vc",
+            "a, b, c, alpha, beta, gamma",
+        ] {
+            assert!(text.contains(word), "{word} missing from {text}");
+        }
+        assert!(!text.contains("(v, k)") && !text.contains("`k`"), "{text}");
+    }
 }
