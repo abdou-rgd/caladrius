@@ -95,7 +95,7 @@ fn check(name: &str, value: f64, zero_allowed: bool) -> Result<f64, ModelError> 
 
 /// A derived quantity must be a finite normal number > 0 (MOD-3C-06 item 3): a subnormal value has
 /// lost bits (and the products and quotients taken from it more still), so it is refused as an
-/// underflow like zero. This function belongs to pk3: pk1 and pk2 have their own.
+/// underflow like zero. This function belongs to pk3: pk2 has its own, pk1 needs none.
 fn derived(name: &str, from: &str, value: f64) -> Result<f64, ModelError> {
     if value.is_finite() && value >= f64::MIN_POSITIVE {
         Ok(value)
@@ -365,7 +365,7 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     let vc = derived("vc", "dose / (a + b + c)", dose / total)?;
     let weight = [a / total, b / total, c / total];
     let lambda = [alpha, beta, gamma];
-    let (n1, n0, gap, dd) = macro_roots([a, b, c], weight, lambda);
+    let (n1, n0, gap, dd) = macro_roots([a, b, c], weight, lambda)?;
     let n1 = derived("n1", "sum of w x (S - lambda)", n1)?;
     let n0 = derived("n0", "sum of w x lambda x lambda", n0)?;
     let triple = normal_product("alpha x beta x gamma", "alpha x beta x gamma", &lambda)?;
@@ -477,9 +477,11 @@ struct MacroDd {
 }
 
 /// The power of two 2^-e with 2^e <= t < 2^(e+1), built from the exponent bits of `t` (1 when `t`
-/// is zero, subnormal or not finite; `from_macro` refuses such a T before this point): multiplying the macro coefficients by it is exact and
-/// brings T = a + b + c near 1, so that the double-double quantities below (of the order of T,
-/// T·n1 and T³) neither underflow nor overflow whatever the absolute size of the coefficients.
+/// is zero, subnormal or not finite): multiplying the macro coefficients by it is exact and brings
+/// T = a + b + c near 1, so that the double-double quantities below (of the order of T, T·n1 and
+/// T³) neither underflow nor overflow whatever the absolute size of the coefficients. `from_macro`
+/// refuses a T that is not a normal number first: the `field == 0` branch is reached only by a
+/// direct call.
 fn unit_scale(t: f64) -> f64 {
     let field = (t.to_bits() >> 52) & 0x7ff;
     if field == 0 || field == 0x7ff {
@@ -493,47 +495,58 @@ fn unit_scale(t: f64) -> f64 {
 /// N0 = Σ ai·λj·λk and T are carried in double-double, and Δ·T² = N1² − 4·N0·T is formed in
 /// double-double, where the plain double loses its digits when the poles are close (with
 /// τ = gap/n1 the loss is of the order of 2⁻⁵²/τ² in Δ). Falls back on plain doubles (and `None`)
-/// when an operand is too large for the split of the product.
+/// when an operand is too large for the split of the product; refuses N1 or N0 below 2⁻⁹⁶⁹ as an
+/// underflow.
 fn macro_roots(
     coefficient: [f64; 3],
     weight: [f64; 3],
     lambda: [f64; 3],
-) -> (f64, f64, f64, Option<MacroDd>) {
+) -> Result<(f64, f64, f64, Option<MacroDd>), ModelError> {
     let [alpha, beta, gamma] = lambda;
     let scale = unit_scale(coefficient[0] + coefficient[1] + coefficient[2]);
     let scaled = coefficient.map(|x| x * scale);
     let [a, b, c] = scaled;
     let total = Dd::sum(a, b).add_f(c);
-    let sum = Dd::sum(alpha, beta).add_f(gamma);
-    let term = |w: f64, minus: f64, j: f64, k: f64| {
-        (sum.add_f(-minus).mul_f(w), Dd::product(j, k).mul_f(w))
-    };
-    let (x0, y0) = term(a, alpha, beta, gamma);
-    let (x1, y1) = term(b, beta, alpha, gamma);
-    let (x2, y2) = term(c, gamma, alpha, beta);
+    // S − λi is the exact sum of the two other exponents (never S minus one of them, which would
+    // keep only 53 bits of β + γ when both are far below ulp(α)).
+    let term = |w: f64, j: f64, k: f64| (Dd::sum(j, k).mul_f(w), Dd::product(j, k).mul_f(w));
+    let (x0, y0) = term(a, beta, gamma);
+    let (x1, y1) = term(b, alpha, gamma);
+    let (x2, y2) = term(c, alpha, beta);
     let n1_num = x0.add(x1).add(x2);
     let n0_num = y0.add(y1).add(y2);
     let delta = n1_num.mul(n1_num).sub(n0_num.mul(total).times_four());
     let mid = n1_num.sub(total.mul_f(2.0 * beta));
-    // The double-double quantities are of degree 2 in the exponents; below FLOOR their low parts are
-    // subnormal and no longer carry the digits asked of them, so the plain doubles are used (and the
-    // derived quantities refuse what is not a normal number).
-    let floor = f64::from_bits(123 << 52);
     if total.is_finite()
-        && n1_num.hi.abs() >= floor
-        && n0_num.hi.abs() >= floor
         && n1_num.is_finite()
         && n0_num.is_finite()
         && delta.is_finite()
         && mid.is_finite()
     {
         let t = total.value();
+        // The low part of a double-double is about hi·2⁻⁵³: it is subnormal, and the digits asked
+        // of the discriminant are gone, when |hi| < 2⁻⁹⁶⁹ (2⁻¹⁰²² · 2⁵³). N1 and N0 are of degree 1
+        // and 2 in the exponents; plain doubles would lose the digits silently there, so a set
+        // whose N1 or N0 is below that floor is an underflow.
+        let floor = f64::from_bits(54 << 52);
+        for (name, from, quantity) in [
+            ("n1", "sum of w x (S - lambda)", n1_num),
+            ("n0", "sum of w x lambda x lambda", n0_num),
+        ] {
+            if quantity.hi.abs() < floor {
+                return Err(ModelError::DerivedOutOfRange {
+                    name: name.to_string(),
+                    from: from.to_string(),
+                    value: quantity.value() / t,
+                });
+            }
+        }
         let gap = if delta.value() > 0.0 {
             libm::sqrt(delta.value()) / t
         } else {
             0.0
         };
-        return (
+        return Ok((
             n1_num.value() / t,
             n0_num.value() / t,
             gap,
@@ -543,12 +556,12 @@ fn macro_roots(
                 delta,
                 mid: mid.value(),
             }),
-        );
+        ));
     }
     let [wa, wb, wc] = weight;
     let n1 = wa * (beta + gamma) + wb * (alpha + gamma) + wc * (alpha + beta);
     let n0 = wa * beta * gamma + wb * alpha * gamma + wc * alpha * beta;
-    (n1, n0, libm::sqrt((n1 * n1 - 4.0 * n0).max(0.0)), None)
+    Ok((n1, n0, libm::sqrt((n1 * n1 - 4.0 * n0).max(0.0)), None))
 }
 
 /// λi − k21 and λi − k31 for each exponent, signed, accurate to a few units in the last place
@@ -775,7 +788,7 @@ mod tests {
             [
                 ("a", 0.7),
                 ("b", 0.2),
-                ("c", 0.1),
+                ("c", 1e-18),
                 ("alpha", alpha),
                 ("beta", beta),
                 ("gamma", gamma),
@@ -984,6 +997,98 @@ mod tests {
         ] {
             assert!((g / 1e-95 - u).abs() <= 1e-12 * u, "{g} against {u}");
         }
+    }
+
+    /// Micro constants k10 = 0.9, k12 = k13 = 0.5 with the poles k21 = `pole` and k31 at relative
+    /// distance `tau` (k21 and k31 = pole·(1 − τ)/(1 + τ)), vc = 8.
+    fn small_poles(pole: f64, tau: f64) -> [(&'static str, f64); 6] {
+        [
+            ("k10", 0.9),
+            ("k12", 0.5),
+            ("k21", pole),
+            ("k13", 0.5),
+            ("k31", pole * (1.0 - tau) / (1.0 + tau)),
+            ("vc", 8.0),
+        ]
+    }
+
+    /// The macro set of `micro` resolves to its k21 and k31 within 1e-12 (k21 and k31 have a
+    /// condition number of about 2: MOD-3C-08 zone (ii)) and its couplings within 1e-9.
+    fn assert_round_trip(label: &str, micro: [(&str, f64); 6]) {
+        let m = macro_of(micro);
+        let d = resolve(ModelId::Pk3IvBolus, &given(&m), 100.0)
+            .unwrap_or_else(|e| panic!("{label}: {e}"));
+        for (name, got, tolerance) in [
+            ("k21", d.k21, 1e-12),
+            ("k31", d.k31, 1e-12),
+            ("k12", d.k12, 1e-9),
+            ("k13", d.k13, 1e-9),
+        ] {
+            let want = micro.iter().find(|(n, _)| *n == name).unwrap().1;
+            assert!(
+                (got - want).abs() <= tolerance * want,
+                "{label}: {name} {got} against {want}"
+            );
+        }
+    }
+
+    /// With two poles far below the third exponent, S − α is the sum of the two small exponents: its
+    /// rounding residual must be kept (the loss is amplified by 1/τ² in the discriminant).
+    #[test]
+    fn small_close_poles_keep_the_rounding_residual_of_their_sum() {
+        let tau = 1.1 * libm::pow(2.0, -20.0);
+        assert_round_trip("poles 2^-100", small_poles(libm::pow(2.0, -100.0), tau));
+    }
+
+    /// Poles near 2^-460 give N0 near 2^-920, where the double-double quantities still carry their
+    /// low parts (they are subnormal only below 2^-969): the answer keeps its digits.
+    #[test]
+    fn poles_at_two_to_the_minus_460_keep_their_digits() {
+        let tau = 1.1 * libm::pow(2.0, -10.0);
+        assert_round_trip("poles 2^-460", small_poles(libm::pow(2.0, -460.0), tau));
+    }
+
+    /// Below the range of the double-double (N0 under 2^-969) the macro set is refused as an
+    /// underflow of n0, not answered in plain doubles.
+    #[test]
+    fn poles_below_the_range_of_the_double_double_are_an_underflow() {
+        let tau = 1.1 * libm::pow(2.0, -10.0);
+        let m = macro_of(small_poles(libm::pow(2.0, -500.0), tau));
+        let e = resolve(ModelId::Pk3IvBolus, &given(&m), 100.0).unwrap_err();
+        assert!(
+            matches!(&e, ModelError::DerivedOutOfRange { name, .. } if name == "n0"),
+            "{e}"
+        );
+    }
+
+    /// The order of the checks: the magnitude of the exponents (a product that is not a normal number)
+    /// is judged before the zone (i) of MOD-3C-08. The same set (a root within 2^-55 of a pole) is a
+    /// `DegenerateExponents` at the scale of the model and an underflow of the product of the
+    /// exponents when they are all multiplied by 2^-345.
+    #[test]
+    fn the_magnitude_of_the_exponents_is_judged_before_the_zone_of_the_root() {
+        let with = |f: f64| {
+            resolve(
+                ModelId::Pk3IvBolus,
+                &given(&[
+                    ("a", 0.7),
+                    ("b", 0.3),
+                    ("c", 1e-18),
+                    ("alpha", 3.0 * f),
+                    ("beta", 0.5 * f),
+                    ("gamma", 0.05 * f),
+                ]),
+                100.0,
+            )
+            .unwrap_err()
+        };
+        let e = with(1.0);
+        assert!(matches!(e, ModelError::DegenerateExponents { .. }), "{e}");
+        let e = with(libm::pow(2.0, -345.0));
+        assert!(
+            matches!(&e, ModelError::DerivedOutOfRange { name, .. } if name == "alpha x beta x gamma"),
+            "{e}"
+        );
     }
 
     fn given_owned(pairs: &[(&str, f64)]) -> BTreeMap<String, f64> {
