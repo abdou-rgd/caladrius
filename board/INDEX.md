@@ -172,6 +172,6 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | done | T-142 |
 | T-165 | pk3 oracle round 5: the F1 case, flags measured, pole claims asserted, round 4 nits | oracle | done | T-164 |
 | T-166 | Spec sync for the population fit: the Q-025 decisions and the questions of T-152 into specs/population.md | reader | done | T-152 |
-| T-167 | pk3 engine alignment round: N1 refusal code, adjacent-pole jacobian, the macro obligation | engine | in progress | T-164, T-165 |
+| T-167 | pk3 engine alignment round: N1 refusal code, adjacent-pole jacobian, the macro obligation | engine | to review | T-164, T-165 |
 | T-168 | Exact fit-level oracle for the balanced linear case (identity_linear, closed form, nlme ML) | oracle | done | T-166, T-152 |
 | T-169 | caladrius-fit minors left by T-149 and T-151 (error.rs:298, the stale 13c comments, the A2 test) | engine | done | T-149, T-151 |
