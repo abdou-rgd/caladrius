@@ -184,4 +184,5 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-176 | The published fit.run schema says what the ML fit takes and returns (objective, error_model, error_init, information, exact_fit) | engine | todo | T-172 |
 | T-177 | How agents are run: AGENTS.md imported by CLAUDE.md, subagents do not commit, Onizuka removed | orchestrator | done | |
 | T-178 | No fixed cap on parallel subagents; the fallback read of AGENTS.md removed | orchestrator | done | T-177 |
+| T-179 | The orchestrator runs at high effort, not max | orchestrator | done | |
 | T-160 | specs/vpc.md, the visual predictive check (brick 4, if time allows) | reader | done | T-157, T-170, T-162 |

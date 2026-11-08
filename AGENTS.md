@@ -110,7 +110,7 @@ The main session is the **orchestrator**: it plans the iteration (section 9), wr
 
 | Role | Model, effort | Does | Does not | Why this model |
 |---|---|---|---|---|
-| `orchestrator` | Opus, max | plans, writes cards, delegates, integrates, verifies, keeps the board | write code, read large files | it holds the longest context, so not the dearest model |
+| `orchestrator` | Opus, high | plans, writes cards, delegates, integrates, verifies, keeps the board | write code, read large files | it holds the longest context, so not the dearest model |
 | `engine` | Opus, high | `caladrius-nca`, `caladrius-models`, `caladrius-fit`: everything that produces a number | UI | long agentic coding where a wrong digit matters |
 | `reader` | Sonnet, high | `specs/` from textbooks, papers, PKNCA and other open tools | code | careful reading against a clear card |
 | `oracle` | Sonnet, high | `oracle/`, `caladrius-testkit`, R scripts, tests that fail first | fix the engine to make a test pass | a clear card, and another model than the engine it checks |
