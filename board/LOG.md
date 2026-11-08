@@ -177,3 +177,8 @@
   - The orchestrator re-ran the generator on a copy, and the output is byte-identical.
   - The pr5_tlag control defect of `errors.json` is fixed.
   - Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-165 (oracle, Sonnet high; review on Sonnet, a test-layer fix round): pk3 oracle round 5 on branch `iter3/pk3` (7d8e4d2, 77bcdce).
+  - It adds the F1 adjacent-pole cases as value cases, `textbook_double_ok` measured on 191 cases, pole sides asserted on the engine's answer, the T-164 zone rows and 32 N1 rows.
+  - The orchestrator re-ran the generator on a copy, and the output is byte-identical.
+  - The reviewer showed that the four zone (ii) edge rows are owed by the engine (a stable double algorithm reaches 1e-16), so they go to T-167. The conditioning sentence of MOD-3C-08 is refuted and goes to the next round of `models.md`.
+  - Not merged into `main` before 2026-11-18.
