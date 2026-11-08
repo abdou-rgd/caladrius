@@ -182,3 +182,8 @@
   - The orchestrator re-ran the generator on a copy, and the output is byte-identical.
   - The reviewer showed that the four zone (ii) edge rows are owed by the engine (a stable double algorithm reaches 1e-16), so they go to T-167. The conditioning sentence of MOD-3C-08 is refuted and goes to the next round of `models.md`.
   - Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-153 (engine, Opus high; Fable review, a fix round, a Fable re-check): the population objective at fixed parameters (FOCEI, FOCE, FO), the conditional modes and the early refusals, in `caladrius_fit::pop`, on branch `iter3/pop-engine` (db752e8, 7122cf8, 78054d6), merged into `iter3/pop` (5ce17bd).
+  - The reviewer's mpmath recomputation agrees with the oracle to 20 digits, and the engine is within about 1e-14.
+  - An evaluation without `error_init` reports its error parameters in `xi_used`, with their source.
+  - oracle_pop gives 207 pass. The 61 failures wait for T-154 (21) and T-155 (40).
+  - Not merged into `main` before 2026-11-18.
