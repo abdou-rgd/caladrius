@@ -61,8 +61,9 @@ pub use pk2::{
 };
 pub use pop::{
     POP_FORMS, POP_SEALED_DESIGNS, PopControl, PopErrorCase, PopExactCase, PopExpectedError,
-    PopModel, PopOfvCase, PopSealed, PopSubject, list_pop_exact_cases, list_pop_ofv_cases,
-    load_pop_errors, load_pop_exact_case, load_pop_ofv_case, load_pop_sealed,
+    PopFitBasis, PopFitCase, PopFitDesign, PopFitExpected, PopFitStart, PopModel, PopOfvCase,
+    PopSealed, PopSubject, list_pop_exact_cases, list_pop_fit_cases, list_pop_ofv_cases,
+    load_pop_errors, load_pop_exact_case, load_pop_fit_case, load_pop_ofv_case, load_pop_sealed,
     load_pop_sealed_replicate, pop_data_dir, pop_dir, sha256_hex, verify_pop_sealed,
 };
 pub use step3::{

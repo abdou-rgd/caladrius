@@ -56,6 +56,14 @@ const POP_OFV_CASES: &[&str] = &[
     "theoph_combined_sd",
     "theoph_proportional",
 ];
+const POP_FIT_EXACT_CASES: &[&str] = &[
+    "fit_q1_boundary",
+    "fit_q1_h38",
+    "fit_q2_block",
+    "fit_q2_block_boundary",
+    "fit_q2_diag",
+    "fit_q2_diag_boundary",
+];
 const POP_REFUSALS: &[&str] = &[
     "pr1_lag_fixed_at_first_time",
     "pr1_lag_leading_zero_combined",
@@ -148,6 +156,14 @@ ofv_case_tests!(
     theoph_combined,
     theoph_combined_sd,
     theoph_proportional,
+);
+fit_exact_case_tests!(
+    fit_q1_boundary,
+    fit_q1_h38,
+    fit_q2_block,
+    fit_q2_block_boundary,
+    fit_q2_diag,
+    fit_q2_diag_boundary,
 );
 refusal_tests!(
     pr1_lag_fixed_at_first_time,

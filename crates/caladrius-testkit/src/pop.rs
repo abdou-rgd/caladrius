@@ -75,10 +75,12 @@ impl AbsoluteTolerance {
     ///
     /// The slope is per component of eta. With q random effects the first-order worst case adds up to q times the
     /// slope per subject: with the largest slope for every subject, every component off by exactly the constant in
-    /// the worst direction, and q = 3 (`theoph_proportional`), the sum is 3 x 37.4 x 12 x 1e-10 = 1.3e-7, which is
-    /// 1.3 times `POP_OFV`. That case does not occur in practice (the slope is a maximum over subjects and
-    /// components, the components err with different signs, and a polished inner solve is at about 1e-13), so the
-    /// constant keeps a power of ten of margin for q = 1 and q = 2 and a factor 0.7 in the pessimistic q = 3 case.
+    /// the worst direction, and q = 3 (`theoph_proportional`), the sum is 3 x 37.4 x 12 x 1e-10 = 1.3e-7. That is
+    /// 1.3 times `POP_OFV`, so the margin in that pessimistic q = 3 case is below 1 (`POP_OFV` divided by 1.3e-7 is
+    /// 0.77): the error in the total could exceed `POP_OFV` by a factor 1.3.
+    /// That case does not occur in practice (the slope is a maximum over subjects and components, the components
+    /// err with different signs, and a polished inner solve is at about 1e-13), so the constant keeps a power of
+    /// ten of margin for q = 1 and q = 2.
     /// The cost is that a flat objective in eta needs the inner solver polished to the floor (POP-INN-02).
     pub const POP_ETA: AbsoluteTolerance = AbsoluteTolerance { abs: 1e-10 };
     /// IPRED, IWRES and the three CWRES forms (PRED does not depend on eta): concentration-scale or standardised
@@ -320,6 +322,162 @@ pub struct PopOfvCase {
     pub checks: Value,
 }
 
+/// The design of a fit case (`oracle/expected/pop/fit_exact/`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct PopFitDesign {
+    /// `q1`, `diag` or `block`.
+    pub shape: String,
+    /// `diagonal` or `block`: the value of the request key `omega_shape` (the start matrices of a block case
+    /// may have zero off-diagonal elements, so the shape cannot be read from them).
+    pub omega_shape: String,
+    pub m: usize,
+    pub n_per_subject: usize,
+    pub n_observations: usize,
+    pub times: Vec<String>,
+    pub z_powers: Vec<u32>,
+    /// The seed, the rule and the generating values, as written by the script.
+    pub generator: Value,
+}
+
+/// One start of a fit: a name and the model block (typical values, Omega and xi) given to the engine.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PopFitStart {
+    pub name: String,
+    pub model: PopModel,
+}
+
+/// The exact estimates of a fit case (256 bits, 50 digits).
+#[derive(Debug, Clone, Deserialize)]
+pub struct PopFitExpected {
+    /// `interior` or `boundary`.
+    pub kind: String,
+    /// `closed_form`, `newton` or `newton_rank_one`.
+    pub method: String,
+    pub theta1: String,
+    pub theta2: String,
+    /// Omega, q by q (a diagonal Omega has "0" off the diagonal).
+    pub omega: Vec<Vec<String>>,
+    /// The error standard deviation (`xi.a`, user units) and its square.
+    pub sigma: String,
+    pub sigma2: String,
+    /// The OFV at the maximum, convention `full` and `no_2pi`; `n_ln_2pi` is their difference.
+    pub ofv_full: String,
+    pub ofv_no_2pi: String,
+    pub n_ln_2pi: String,
+    /// What is held on its bound (empty for an interior maximum).
+    pub at_bound: Vec<String>,
+    /// The sign conditions of a constrained maximum (gradient of the OFV with respect to a parameter on its bound,
+    /// or `G l = 0` and the trace of `G` for the rank-one boundary of a block).
+    #[serde(default)]
+    pub sign_conditions: Vec<Value>,
+}
+
+/// The curvature basis of the tolerances: the diagonal of the inverse of R, the Hessian of the OFV, per parameter.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PopFitBasis {
+    /// `all_parameters` or `free_block`.
+    pub basis: String,
+    /// The labels of the answer (`theta1`, `omega_full[1][0]`, `xi.a`, ...), in the order of `rinv_diag`.
+    pub parameters: Vec<String>,
+    pub rinv_diag: Vec<f64>,
+}
+
+/// A case of the exact fit-level oracle (`oracle/expected/pop/fit_exact/`, card T-168).
+#[derive(Debug, Clone, Deserialize)]
+pub struct PopFitCase {
+    pub id: String,
+    pub family: String,
+    pub description: String,
+    pub precision_bits: u32,
+    pub digits: u32,
+    pub design: PopFitDesign,
+    /// The model block at the generating values (the first start).
+    pub model: PopModel,
+    pub starts: Vec<PopFitStart>,
+    pub subjects: Vec<PopSubject>,
+    pub expected: PopFitExpected,
+    /// How the point was obtained and checked (stationarity, polish).
+    pub exact_reference: Value,
+    pub tolerance_basis: PopFitBasis,
+    /// Recorded, not asserted: the three covariance kinds of POP-COV-01 as standard errors.
+    pub standard_errors: Value,
+    /// The three references and their disagreements.
+    pub references: Value,
+    pub versions: Value,
+}
+
+impl PopFitCase {
+    /// The labels of the answer in the order of the parameter vector (`theta1`, `theta2`, the elements of Omega that
+    /// are parameters, `xi.a`).
+    pub fn labels(&self) -> Vec<String> {
+        let mut v = vec!["theta1".to_owned(), "theta2".to_owned()];
+        match self.design.shape.as_str() {
+            "q1" => v.push("omega_full[0][0]".to_owned()),
+            "diag" => {
+                v.push("omega_full[0][0]".to_owned());
+                v.push("omega_full[1][1]".to_owned());
+            }
+            _ => {
+                v.push("omega_full[0][0]".to_owned());
+                v.push("omega_full[1][0]".to_owned());
+                v.push("omega_full[1][1]".to_owned());
+            }
+        }
+        v.push("xi.a".to_owned());
+        v
+    }
+
+    /// The exact value of a labelled parameter as a double.
+    pub fn expected_value(&self, label: &str) -> Result<f64, OracleError> {
+        let e = &self.expected;
+        let text = match label {
+            "theta1" => &e.theta1,
+            "theta2" => &e.theta2,
+            "xi.a" => &e.sigma,
+            "omega_full[0][0]" => &e.omega[0][0],
+            "omega_full[1][0]" | "omega_full[0][1]" => &e.omega[1][0],
+            "omega_full[1][1]" => &e.omega[1][1],
+            other => {
+                return Err(OracleError::Inconsistent {
+                    path: self.id.clone(),
+                    message: format!("unknown parameter label `{other}`"),
+                });
+            }
+        };
+        num(&self.id, label, text)
+    }
+
+    /// The bound on the error of a labelled parameter that an OFV excess of at most `ofv_tolerance` implies: the
+    /// OFV excess of an error `d` is `d^T R d / 2`, so `|d_j| <= sqrt(2 * eps * (R^-1)_jj)` (`R` the Hessian of the
+    /// OFV, `tolerance_basis`). A variance on its bound has its own bound, see [`Self::bound_gradient`].
+    pub fn curvature_bound(
+        &self,
+        label: &str,
+        ofv_tolerance: AbsoluteTolerance,
+    ) -> Result<f64, OracleError> {
+        let b = &self.tolerance_basis;
+        match b.parameters.iter().position(|p| p == label) {
+            Some(i) => Ok((2.0 * ofv_tolerance.abs * b.rinv_diag[i]).sqrt()),
+            None => Err(OracleError::Inconsistent {
+                path: self.id.clone(),
+                message: format!("no curvature for `{label}`"),
+            }),
+        }
+    }
+
+    /// For a variance held on its bound at 0 (`q1`, `diag`): the gradient of the OFV with respect to the variance
+    /// `label`, positive. An OFV excess of at most `eps` then allows the variance at most `eps / gradient` (the
+    /// first-order term of the excess alone is `gradient * variance`, and the other terms are not negative).
+    pub fn bound_gradient(&self, label: &str) -> Option<f64> {
+        self.expected
+            .sign_conditions
+            .iter()
+            .find(|c| c.get("parameter").and_then(Value::as_str) == Some(label))
+            .and_then(|c| c.get("gradient"))
+            .and_then(Value::as_f64)
+    }
+}
+
 fn exact_dir() -> PathBuf {
     pop_dir().join("exact")
 }
@@ -352,6 +510,20 @@ pub fn list_pop_exact_cases() -> Result<Vec<String>, OracleError> {
 /// One exact case.
 pub fn load_pop_exact_case(id: &str) -> Result<PopExactCase, OracleError> {
     json(&exact_dir().join(format!("{id}.json")))
+}
+
+fn fit_exact_dir() -> PathBuf {
+    pop_dir().join("fit_exact")
+}
+
+/// Names of the exact fit cases (`oracle/expected/pop/fit_exact/`), sorted.
+pub fn list_pop_fit_cases() -> Result<Vec<String>, OracleError> {
+    case_names(&fit_exact_dir())
+}
+
+/// One exact fit case.
+pub fn load_pop_fit_case(id: &str) -> Result<PopFitCase, OracleError> {
+    json(&fit_exact_dir().join(format!("{id}.json")))
 }
 
 /// Names of the `ofv` cases, sorted.

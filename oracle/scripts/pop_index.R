@@ -1,6 +1,6 @@
 # Caladrius population-fit oracle, card T-152 item 7: the generated list of cases for the Rust tests.
 #
-# Reads the case files already on disk (oracle/expected/pop/{exact,ofv}/*.json, errors.json, sealed/*.json) and
+# Reads the case files already on disk (oracle/expected/pop/{exact,ofv,fit_exact}/*.json, errors.json, sealed/*.json) and
 # writes crates/caladrius-fit/tests/oracle_pop.cases, the lists and the macro calls that oracle_pop.rs includes.
 # Nothing is computed: the file is an index. Names are sorted in byte order (C locale), as the Rust loaders sort
 # them, so the guard of oracle_pop.rs compares equal lists.
@@ -9,6 +9,9 @@
 # methods foce_i and fo; "pred0" cases (the variance held at the population prediction) are the exact cases of the
 # method foce; "mode" cases (the variance held at the mode) are not an engine method, they identify the objective
 # forms against each other and are checked in caladrius-testkit.
+#
+# The fit_exact cases (card T-168, oracle/scripts/pop_fit_exact.R) are fits, not evaluations: each is given to the
+# engine as a request that asks for the maximum, from the generating values and from a far start.
 #
 # Run: Rscript oracle/scripts/pop_index.R
 suppressMessages(library(jsonlite))
@@ -24,12 +27,13 @@ ids <- function(dir) {
 exact_ids <- ids(file.path(EXP, "exact"))
 frozen <- vapply(exact_ids, function(id) fromJSON(file.path(EXP, "exact", paste0(id, ".json")), simplifyVector = FALSE)$frozen_sigma, "")
 ofv_ids <- ids(file.path(EXP, "ofv"))
+fit_ids <- ids(file.path(EXP, "fit_exact"))
 rows <- fromJSON(file.path(EXP, "errors.json"), simplifyVector = FALSE)$cases
 constructible <- vapply(rows, function(r) if (is.null(r$constructible)) TRUE else isTRUE(r$constructible), TRUE)
 expect <- vapply(rows, function(r) r$expect, "")
 names_ <- vapply(rows, function(r) r$case, "")
 sealed_ids <- sort(sub("\\.json$", "", list.files(file.path(EXP, "sealed"), pattern = "\\.json$")), method = "radix")
-stopifnot(all(frozen %in% c("none", "pred0", "mode")), length(exact_ids) > 0, length(ofv_ids) > 0, length(rows) > 0, length(sealed_ids) > 0, !anyDuplicated(names_))
+stopifnot(all(frozen %in% c("none", "pred0", "mode")), length(exact_ids) > 0, length(ofv_ids) > 0, length(fit_ids) > 0, length(rows) > 0, length(sealed_ids) > 0, !anyDuplicated(names_))
 
 const_list <- function(name, x) c(sprintf("const %s: &[&str] = &[", name), sprintf("    \"%s\",", sort(x, method = "radix")), "];")
 macro_call <- function(name, x) c(sprintf("%s!(", name), sprintf("    %s,", sort(x, method = "radix")), ");")
@@ -40,6 +44,7 @@ lines <- c(
   const_list("POP_EXACT_FOCE_CASES", exact_ids[frozen == "pred0"]),
   const_list("POP_EXACT_IDENTITY_CASES", exact_ids[frozen == "mode"]),
   const_list("POP_OFV_CASES", ofv_ids),
+  const_list("POP_FIT_EXACT_CASES", fit_ids),
   const_list("POP_REFUSALS", names_[expect == "refused" & constructible]),
   const_list("POP_ACCEPTED", names_[expect == "accepted" & constructible]),
   const_list("POP_SENTENCE_ONLY", names_[!constructible]),
@@ -47,11 +52,12 @@ lines <- c(
   macro_call("exact_case_tests", exact_ids[frozen == "none"]),
   macro_call("exact_foce_case_tests", exact_ids[frozen == "pred0"]),
   macro_call("ofv_case_tests", ofv_ids),
+  macro_call("fit_exact_case_tests", fit_ids),
   macro_call("refusal_tests", names_[expect == "refused" & constructible]),
   macro_call("accepted_tests", names_[expect == "accepted" & constructible]),
   macro_call("sealed_tests", sealed_ids))
 con <- file(OUT, open = "wb"); writeLines(lines, con, sep = "\n", useBytes = TRUE); close(con)
-cat("pop_index: ", length(exact_ids), " exact (", sum(frozen == "none"), " engine, ", sum(frozen == "pred0"), " foce, ", sum(frozen == "mode"), " identity), ", length(ofv_ids), " ofv, ",
+cat("pop_index: ", length(exact_ids), " exact (", sum(frozen == "none"), " engine, ", sum(frozen == "pred0"), " foce, ", sum(frozen == "mode"), " identity), ", length(ofv_ids), " ofv, ", length(fit_ids), " fit_exact, ",
     sum(expect == "refused" & constructible), " refused, ", sum(expect == "accepted" & constructible), " accepted, ",
     sum(!constructible), " sentence-only, ", length(sealed_ids), " sealed; sha256 ",
     digest::digest(file = OUT, algo = "sha256", serialize = FALSE), "\n", sep = "")

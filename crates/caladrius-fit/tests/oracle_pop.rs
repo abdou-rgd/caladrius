@@ -15,6 +15,9 @@
 //! * `oracle/expected/pop/ofv/`: the objective at fixed parameters in double precision, with the
 //!   diagnostics (PRED, IPRED, IWRES, CWRES in three forms, shrinkage with both divisors, AIC and BIC with k),
 //!   for three models by four error models, on seeded synthetic data, Theoph and Indometh.
+//! * `oracle/expected/pop/fit_exact/`: the exact maximum of the balanced linear case (card T-168), with three
+//!   references that agree (`oracle/scripts/pop_fit_exact.R`): q = 1, q = 2 with a diagonal Omega and with a block,
+//!   interior and on the boundary; the engine is asked for the fit from two starts (`POP_FIT_EXACT_CASES`).
 //! * `oracle/expected/pop/errors.json`: refusals as rows (POP-INN-03, PX4), each refused row with a control.
 //! * `oracle/expected/pop/sealed/` and `oracle/data/pop/sealed/`: the sealed simulate-then-fit data
 //!   (POP-ORA-04): 200 replicates per design, committed before any engine code; only aggregates are asserted.
@@ -87,10 +90,11 @@
 use std::fmt;
 
 use caladrius_testkit::{
-    AbsoluteTolerance, POP_FORMS, POP_SEALED_DESIGNS, PopErrorCase, PopExactCase, PopModel,
-    PopOfvCase, PopSealed, PopSubject, list_pop_exact_cases, list_pop_ofv_cases, load_pop_errors,
-    load_pop_exact_case, load_pop_ofv_case, load_pop_sealed, load_pop_sealed_replicate,
-    pop_data_dir, verify_pop_sealed,
+    AbsoluteTolerance, POP_FORMS, POP_SEALED_DESIGNS, PopErrorCase, PopExactCase, PopFitCase,
+    PopFitStart, PopModel, PopOfvCase, PopSealed, PopSubject, list_pop_exact_cases,
+    list_pop_fit_cases, list_pop_ofv_cases, load_pop_errors, load_pop_exact_case,
+    load_pop_fit_case, load_pop_ofv_case, load_pop_sealed, load_pop_sealed_replicate, pop_data_dir,
+    verify_pop_sealed,
 };
 use serde_json::{Value, json};
 
@@ -533,10 +537,15 @@ fn check_refused(name: &str) {
     if let Some(code) = &expected.code {
         assert_eq!(&error.code, code, "{name}: the code of the refusal");
     }
+    // the words are compared without regard to case, as `oracle_fit_ml.rs` does: the pr1_* rows name the word
+    // `exclude`, and the sentence of FIT-ML-13c that POP-INN-03 item 1 reuses says "Exclude those observations"
+    // (decision taken meanwhile, 2026-11-08, reversible by Abdou). The words that must NOT appear (subject labels
+    // such as `S1`) stay case-sensitive: a lowercase `s1` could occur inside another word.
+    let lower = error.message.to_lowercase();
     for word in &expected.words {
         assert!(
-            error.message.contains(word.as_str()),
-            "{name}: the message must contain `{word}`: {}",
+            lower.contains(&word.to_lowercase()),
+            "{name}: the message must contain `{word}` (any case): {}",
             error.message
         );
     }
@@ -861,6 +870,186 @@ macro_rules! sealed_tests {
     };
 }
 
+// ---------------------------------------------------------------- exact fits (card T-168)
+
+/// The fit-level oracle: `oracle/expected/pop/fit_exact/`, the exact maximum of the balanced linear case
+/// (`identity_linear`, additive error), where `foce_i` = `foce` = `fo` = the exact marginal likelihood. The
+/// maximum is known in closed form (q = 1, q = 2 block) or by Newton's method on exact derivatives (the diagonal
+/// case and the rank-one boundary of the block), at 256 bits, and three references agree on it
+/// (`oracle/scripts/pop_fit_exact.R`). The engine is given the data from the generating values and from a far
+/// start, with the method `foce_i`, and its answer is compared with the exact one:
+///
+/// * **each parameter** within the error that an OFV excess of `POP_OFV` allows: the OFV excess of an error `d`
+///   is `d^T R d / 2` (`R` the Hessian of the OFV at the maximum), so `|d_j| <= sqrt(2 * POP_OFV * (R^-1)_jj)`,
+///   with the diagonal of `R^-1` stored in the case (`tolerance_basis`). The bound does not depend on how the
+///   engine stops, and it is as tight as the OFV tolerance already in force: no new constant is introduced;
+/// * **the objective at the maximum** within `POP_OFV` (the engine cannot be better than the maximum, and it
+///   must be as good as `POP_OFV` says);
+/// * **a variance on its bound** (q = 1 or diagonal Omega, the between-subject sum of squares too small): the
+///   OFV rises at the rate `gradient` per unit of the variance (stored), so a variance of at most
+///   `POP_OFV / gradient` is within the OFV tolerance; the engine, which works on the log scale of Omega, cannot
+///   reach 0 and must report the collapse (flag `omega_collapse`, POP-EST-04) or `at_bound`;
+/// * **the rank-one boundary of the block** (Omega is singular at the maximum, POP-EST-04 has no flag for it):
+///   the objective, theta and sigma are compared; the status and the flags are not asserted;
+/// * **an interior maximum**: status `converged`, and no `few_subjects` / `few_observations` flag (the designs
+///   have more subjects and observations than parameters, POP-COV-03, POP-INN-03);
+/// * **the standard errors** (the three kinds of POP-COV-01, exact) are printed next to the engine's, never
+///   asserted (OP-04, OP-11 are open).
+fn fit_case(name: &str) -> PopFitCase {
+    load_pop_fit_case(name).expect("the fit case loads")
+}
+
+fn fit_start<'a>(case: &'a PopFitCase, start: &str) -> &'a PopFitStart {
+    case.starts
+        .iter()
+        .find(|s| s.name == start)
+        .unwrap_or_else(|| panic!("{}: no start named `{start}`", case.id))
+}
+
+/// The request that asks for the maximum (no `evaluate_only`) from a start. The shape of Omega is given by the
+/// case: the start of a block case may have zero off-diagonal elements.
+fn fit_request(case: &PopFitCase, start: &PopFitStart, convention: &str) -> Value {
+    let mut request = model_request(&start.model, &case.subjects, "foce_i", convention, false);
+    request["omega_shape"] = json!(case.design.omega_shape);
+    request
+}
+
+/// The indices of a label such as `omega_full[1][0]`.
+fn omega_indices(label: &str) -> (usize, usize) {
+    let idx: Vec<usize> = label
+        .trim_start_matches("omega_full")
+        .split(['[', ']'])
+        .filter(|t| !t.is_empty())
+        .map(|t| t.parse().expect("an index"))
+        .collect();
+    (idx[0], idx[1])
+}
+
+/// A labelled quantity of the answer, in `block` (`estimate` or `se`), if the answer has it as a number.
+fn labelled(answer: &Value, block: &str, label: &str) -> Option<f64> {
+    let b = &answer[block];
+    match label {
+        "theta1" | "theta2" => b[label].as_f64(),
+        "xi.a" => b["xi"]["a"].as_f64(),
+        other => {
+            let (i, j) = omega_indices(other);
+            b["omega_full"][i][j].as_f64()
+        }
+    }
+}
+
+fn answer_flags(answer: &Value) -> Vec<&str> {
+    answer["covariance"]["flags"]
+        .as_array()
+        .map(|a| a.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default()
+}
+
+fn check_fit(name: &str, start: &str, convention: &str) {
+    let case = fit_case(name);
+    let request = fit_request(&case, fit_start(&case, start), convention);
+    let answer = population_fit(&request)
+        .unwrap_or_else(|e| panic!("{name} from `{start}`: the engine refuses a valid fit: {e}"));
+    let mut p = Problems::new();
+    for label in case.labels() {
+        let expected = case.expected_value(&label).expect("an exact value");
+        let actual = labelled(&answer, "estimate", &label)
+            .unwrap_or_else(|| panic!("{name}: the answer has no `{label}` in `estimate`"));
+        let abs = if let Some(gradient) = case.bound_gradient(&label) {
+            AbsoluteTolerance::POP_OFV.abs / gradient
+        } else if case.tolerance_basis.parameters.contains(&label) {
+            case.curvature_bound(&label, AbsoluteTolerance::POP_OFV)
+                .expect("a curvature")
+        } else {
+            eprintln!(
+                "{name}: `{label}` is not asserted (a singular Omega), exact {expected:e}, engine {actual:e}"
+            );
+            continue;
+        };
+        p.check(
+            &format!("{name} {label}"),
+            actual,
+            expected,
+            AbsoluteTolerance { abs },
+        );
+    }
+    let exact_ofv = f(if convention == "full" {
+        &case.expected.ofv_full
+    } else {
+        &case.expected.ofv_no_2pi
+    });
+    p.check(
+        &format!("{name} ofv ({convention})"),
+        number(&answer["ofv"], "ofv"),
+        exact_ofv,
+        AbsoluteTolerance::POP_OFV,
+    );
+    assert_eq!(
+        answer["ofv_convention"].as_str(),
+        Some(convention),
+        "{name}: ofv_convention"
+    );
+    let flags = answer_flags(&answer);
+    let status = answer["status"].as_str().unwrap_or("");
+    if case.expected.kind == "interior" {
+        assert_eq!(status, "converged", "{name} from `{start}`: status");
+        for bad in ["few_subjects", "few_observations"] {
+            assert!(
+                !flags.contains(&bad),
+                "{name}: the flag `{bad}` is raised, and the design has more subjects and observations than parameters: {flags:?}"
+            );
+        }
+    } else if case.design.shape != "block" {
+        assert!(
+            flags.contains(&"omega_collapse") || status == "at_bound",
+            "{name} from `{start}`: a variance at 0 must be reported (POP-EST-04: `omega_collapse` or `at_bound`), status `{status}`, flags {flags:?}"
+        );
+    }
+    print_fit_standard_errors(&case, &answer);
+    p.finish(name);
+}
+
+/// The exact standard errors of the three kinds next to the engine's (recorded, not asserted).
+fn print_fit_standard_errors(case: &PopFitCase, answer: &Value) {
+    let se = &case.standard_errors;
+    let labels: Vec<&str> = se["parameters"]
+        .as_array()
+        .map(|a| a.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    for (i, label) in labels.iter().enumerate() {
+        let kind = |k: &str| {
+            se[k][i]
+                .as_f64()
+                .map_or("NC".to_owned(), |v| format!("{v:.6e}"))
+        };
+        let engine = labelled(answer, "se", label).map_or("NC".to_owned(), |v| format!("{v:.6e}"));
+        eprintln!(
+            "{}: se {label}: exact r {} s {} sandwich {}; engine {engine}",
+            case.id,
+            kind("r"),
+            kind("s"),
+            kind("sandwich")
+        );
+    }
+}
+
+macro_rules! fit_exact_case_tests {
+    ($($case:ident),* $(,)?) => {
+        $(
+            mod $case {
+                use super::*;
+                const NAME: &str = stringify!($case);
+                #[test]
+                fn fit_from_the_generating_values() { check_fit(NAME, "generating_values", "full"); }
+                #[test]
+                fn fit_from_a_far_start() { check_fit(NAME, "far", "full"); }
+                #[test]
+                fn fit_with_the_ofv_without_2pi() { check_fit(NAME, "generating_values", "no_2pi"); }
+            }
+        )*
+    };
+}
+
 // ---------------------------------------------------------------- the generated list of cases
 
 include!("oracle_pop.cases");
@@ -889,6 +1078,11 @@ fn every_case_row_and_design_has_tests() {
         list_pop_ofv_cases().unwrap(),
         strings(POP_OFV_CASES),
         "the ofv cases on disk and the cases tested differ"
+    );
+    assert_eq!(
+        list_pop_fit_cases().unwrap(),
+        strings(POP_FIT_EXACT_CASES),
+        "the exact fit cases on disk and the cases tested differ"
     );
     let rows = load_pop_errors().unwrap();
     let on_disk = |expect: &str, constructible: bool| -> Vec<String> {
@@ -996,6 +1190,24 @@ fn the_reference_is_complete_for_the_tests() {
             "{name}"
         );
     }
+    for name in POP_EXACT_FOCE_CASES {
+        let case = exact_case(name, "pred0");
+        assert_eq!(
+            case.subjects.len(),
+            case.expected.per_subject.len(),
+            "{name}"
+        );
+        assert!(
+            case.expected.total_full.contains_key("linearised"),
+            "{name}"
+        );
+        let request = model_request(&case.model, &case.subjects, "foce", "full", true);
+        assert_eq!(
+            request["subjects"].as_array().unwrap().len(),
+            case.subjects.len(),
+            "{name}"
+        );
+    }
     for name in POP_EXACT_ENGINE_CASES {
         let case = exact_case(name, "none");
         assert_eq!(
@@ -1012,6 +1224,32 @@ fn the_reference_is_complete_for_the_tests() {
             Some(case.model.name.as_str()),
             "{name}"
         );
+    }
+    for name in POP_FIT_EXACT_CASES {
+        let case = fit_case(name);
+        assert_eq!(case.family, "d_fit_exact", "{name}");
+        assert_eq!(case.subjects.len(), case.design.m, "{name}");
+        assert!(case.starts.len() >= 2, "{name}: two starts");
+        for start in &case.starts {
+            let request = fit_request(&case, start, "full");
+            assert_eq!(
+                request["subjects"].as_array().unwrap().len(),
+                case.subjects.len(),
+                "{name}"
+            );
+            assert_eq!(
+                request["omega_shape"].as_str(),
+                Some(case.design.omega_shape.as_str()),
+                "{name}"
+            );
+            assert!(
+                request["options"]["evaluate_only"] == json!(false),
+                "{name}"
+            );
+        }
+        for label in case.labels() {
+            case.expected_value(&label).expect("an exact value");
+        }
     }
     for row in load_pop_errors().unwrap() {
         if row.constructible {

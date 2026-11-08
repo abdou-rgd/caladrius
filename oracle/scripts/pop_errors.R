@@ -171,10 +171,14 @@ inv("pr5_omega_not_pd_block", "a block starting Omega that is not positive defin
     control = list(change = "covariance 0.01", request = mod(base, omega_shape = "block", omega = list(arr(c(0.04, 0.01)), arr(c(0.01, 0.04))))))
 inv("pr5_duplicate_random_effect", "random_effects lists the same parameter twice (added after review)", mod(base, random_effects = arr(c("cl", "cl")), omega = omega_diag(0.09, 0.04)), c("cl"),
     control = list(change = "cl, v", request = base))
-tl <- mod(lag_base, random_effects = arr(c("cl", "tlag")), omega = omega_diag(0.09, 0.04))
+# additive error: the combined error with this lagged model is itself refused by rule 1 (the zero sample of S2, as in the rows
+# pr1_lag_leading_zero_*), so the row and its control would both be refused for that reason; with the additive error the only
+# thing that differs between the row and its control is the random effect on tlag
+lag_add <- mod(lag_base, error_model = "additive")
+tl <- mod(lag_add, random_effects = arr(c("cl", "tlag")), omega = omega_diag(0.09, 0.04))
 inv("pr5_random_effect_on_tlag_px4", "a random effect on tlag (PX4)", tl,
     c("random effect on `tlag`", "not available in this version", "give `tlag` as a shared typical value"), basis = "spec_sentence", rule = "POP-INN-03.5; POP-MOD-02; PX4",
-    control = list(change = "tlag as a shared typical value", request = lag_base))
+    control = list(change = "tlag as a shared typical value", request = lag_add))
 inv("pr5_random_effect_on_dur", "a random effect on dur (the zero-order duration, same reason as tlag)",
     mod(request("pk1.oral_0", list(v = 10, cl = 2, dur = 2), c("cl", "dur"), omega_diag(0.09, 0.04), "combined", subjects = ok3), random_effects = arr(c("cl", "dur"))),
     c("random effect on `dur`", "not available in this version", "give `dur` as a shared typical value"), basis = "spec_sentence", rule = "POP-INN-03.5; POP-MOD-02",

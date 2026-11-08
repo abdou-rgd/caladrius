@@ -5246,7 +5246,7 @@
             0.04
           ]
         ],
-        "error_model": "combined",
+        "error_model": "additive",
         "options": {},
         "subjects": [
           {
@@ -5356,7 +5356,7 @@
               0.04
             ]
           ],
-          "error_model": "combined",
+          "error_model": "additive",
           "options": {},
           "subjects": [
             {
