@@ -163,6 +163,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | done | T-149, T-150 |
 | T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | done | T-162 |
 | T-153 | The population objective at fixed parameters (FOCEI, FOCE, FO), the conditional modes, early refusals | engine | in progress | T-152, T-166 |
+| T-154 | The population estimation (BFGS on φ, two-stage start), the covariance (sandwich, r, s), shrinkage and criteria | engine | todo | T-153, T-168 |
 | T-157 | specs/simulation.md, population simulation (brick 4) | reader | done | T-162 |
 | T-158 | Oracle for the population simulation (Philox words, AS 241, exact part, distribution, refusals) | oracle | in progress | T-157 |
 | T-159 | The population simulator in the engine (caladrius-fit::sim) | engine | todo | T-157, T-158 |
