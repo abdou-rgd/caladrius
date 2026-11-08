@@ -42,7 +42,7 @@
 //!                                         n_zero_sigma, n_negative, n_blq } ], n_zero_sigma, n_negative, n_blq }
 //! { "op": "simulate", model, theta, random_effects, omega_shape, omega, error_model, xi,
 //!   "design": { subjects | times+dose+m | table }, seed, replicates,
-//!   "options": { negative: "keep"|"zero"|"reject", lloq, quantiles, threads } }
+//!   "options": { negative: "keep"|"zero", lloq, quantiles, threads } }
 //!      -> { "subjects": [ {rep,id,eta,p} ], "observations": [ {rep,id,obs,time,pred,ipred,sigma,eps,y_raw,y,
 //!           cens,dv} ], "counts": {..}, "summary": [ {id,obs,time,y:[..],ipred:[..],blq_fraction} ],
 //!           "dataset": [ {subject,label,time,event,amt,dv,cens} ] }
@@ -51,7 +51,8 @@
 //!
 //! A refusal is a `SimError { code, message }` (serialised code `invalid_option`, `non_finite_value`, ...). A
 //! request with `options.threads` must be answered identically for every value of `threads` (SIM-DET-01), and
-//! the answer does not echo it.
+//! the answer does not echo it. `threads` is not an option of SIM-MOD-05 and SIM-DET-01 puts threads outside the
+//! library: it is an adapter-level knob, and the T-159 adapter must strip it before the request reaches the engine.
 //!
 //! # Tolerances
 //!
