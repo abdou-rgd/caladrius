@@ -19,6 +19,8 @@ ctrlc = "3.5.2"
 [dev-dependencies]
 # The integration test checks the binary's output against the public oracle.
 caladrius-testkit = { path = "../../crates/caladrius-testkit" }
+# The thread test of the simulator (SIM-DET-01): the library has no thread, the caller brings them.
+caladrius-fit = { path = "../../crates/caladrius-fit" }
 
 [lints]
 workspace = true

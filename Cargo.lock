@@ -560,6 +560,7 @@ name = "caladrius-cli"
 version = "0.3.2"
 dependencies = [
  "caladrius-engine",
+ "caladrius-fit",
  "caladrius-testkit",
  "ctrlc",
  "serde_json",

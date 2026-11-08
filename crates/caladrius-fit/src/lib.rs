@@ -23,6 +23,7 @@ mod ml_result;
 mod model;
 mod objective;
 mod result;
+pub mod sim;
 mod stats;
 mod stepper;
 

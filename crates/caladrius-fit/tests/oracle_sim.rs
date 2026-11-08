@@ -73,8 +73,316 @@ use serde_json::{Map, Value, json};
 /// into the engine, building its input from `request` and returning the answer in the shape described in the
 /// header of this file.
 fn simulation(request: &Value) -> Result<Value, SimError> {
-    let _ = request;
-    Err(SimError::new("not_built", "simulation not built"))
+    use caladrius_fit::sim as eng;
+    use std::collections::BTreeMap;
+
+    fn invalid(message: impl Into<String>) -> SimError {
+        SimError::new("invalid_option", message)
+    }
+    fn lift(e: eng::SimError) -> SimError {
+        SimError::new(e.code.as_str(), e.message)
+    }
+    // A number that cannot be read becomes NaN, so that the engine's own check names the field.
+    fn num(v: &Value) -> f64 {
+        sim::number(v).unwrap_or(f64::NAN)
+    }
+    fn u32s<const N: usize>(v: &Value, what: &str) -> Result<[u32; N], SimError> {
+        let list = v
+            .as_array()
+            .filter(|a| a.len() == N)
+            .ok_or_else(|| invalid(format!("{what} takes {N} integers")))?;
+        let mut out = [0u32; N];
+        for (slot, x) in out.iter_mut().zip(list) {
+            *slot = x
+                .as_u64()
+                .and_then(|n| u32::try_from(n).ok())
+                .ok_or_else(|| invalid(format!("{what} takes 32-bit integers")))?;
+        }
+        Ok(out)
+    }
+    // The seed: a number below 2^53, or a decimal string. Absent or null is left to the engine (`missing_seed`).
+    fn seed_of(v: Option<&Value>) -> Result<Option<eng::Seed>, SimError> {
+        match v {
+            None | Some(Value::Null) => Ok(None),
+            Some(Value::Number(n)) => eng::Seed::from_number(n.as_f64().unwrap_or(f64::NAN))
+                .map(Some)
+                .map_err(lift),
+            Some(Value::String(s)) => eng::Seed::from_text(s).map(Some).map_err(lift),
+            Some(other) => Err(invalid(format!("seed {other} is not an integer"))),
+        }
+    }
+    fn design_of(design: Option<&Value>) -> Result<eng::Design, SimError> {
+        let d = design.ok_or_else(|| invalid("design is missing"))?;
+        if let Some(list) = d.get("subjects").and_then(Value::as_array) {
+            let mut out = Vec::new();
+            for s in list {
+                out.push(eng::DesignSubject {
+                    label: s["id"].as_str().unwrap_or_default().to_owned(),
+                    dose: num(&s["dose"]),
+                    dose_time: 0.0,
+                    times: sim::numbers(&s["time"])
+                        .ok_or_else(|| invalid("time takes a list of numbers"))?,
+                });
+            }
+            Ok(eng::Design::Subjects(out))
+        } else if d.get("times").is_some() {
+            Ok(eng::Design::Grid {
+                times: sim::numbers(&d["times"])
+                    .ok_or_else(|| invalid("times takes a list of numbers"))?,
+                dose: num(&d["dose"]),
+                m: d["m"]
+                    .as_u64()
+                    .filter(|m| *m >= 1)
+                    .ok_or_else(|| invalid("m must be an integer from 1"))?,
+            })
+        } else if let Some(rows) = d.get("table").and_then(Value::as_array) {
+            Ok(eng::Design::Table(
+                rows.iter()
+                    .map(|row| eng::TableRow {
+                        subject: row["subject"].as_str().unwrap_or_default().to_owned(),
+                        time: num(&row["time"]),
+                        kind: if row["event"].as_str() == Some("dose") {
+                            eng::RowKind::Dose
+                        } else {
+                            eng::RowKind::Observation
+                        },
+                        amt: row.get("amt").filter(|a| !a.is_null()).map(num),
+                        dv_given: row.get("dv").is_some_and(|a| !a.is_null()),
+                    })
+                    .collect(),
+            ))
+        } else {
+            Err(invalid(
+                "design takes subjects, a table, or times with a dose and m",
+            ))
+        }
+    }
+    // Everything of a request but the design, the seed and the replicates (SIM-MOD-05).
+    fn input_of(
+        r: &Value,
+        design: eng::Design,
+        seed: Option<eng::Seed>,
+        replicates: u64,
+    ) -> Result<eng::SimInput, SimError> {
+        let empty = Map::new();
+        let options = r
+            .get("options")
+            .and_then(Value::as_object)
+            .unwrap_or(&empty);
+        for key in options.keys() {
+            // `threads` is not an option of SIM-MOD-05: it is stripped here, before the engine (SIM-DET-01).
+            if !["negative", "lloq", "quantiles", "threads"].contains(&key.as_str()) {
+                return Err(invalid(format!("unknown option {key}")));
+            }
+        }
+        let negative = match options.get("negative") {
+            None | Some(Value::Null) => eng::NegativeRule::Keep,
+            Some(Value::String(s)) => eng::NegativeRule::from_name(s).map_err(lift)?,
+            Some(other) => {
+                return Err(invalid(format!(
+                    "option negative {other} is not known: use `keep` or `zero`"
+                )));
+            }
+        };
+        let lloq = match options.get("lloq") {
+            None | Some(Value::Null) => None,
+            Some(v) => Some(num(v)),
+        };
+        let quantiles = match options.get("quantiles") {
+            None | Some(Value::Null) => None,
+            Some(v) => Some(
+                sim::numbers(v)
+                    .ok_or_else(|| invalid("option quantiles takes a list of numbers"))?,
+            ),
+        };
+        let xi = r.get("xi").and_then(Value::as_object).unwrap_or(&empty);
+        let xi_value = |name: &str| xi.get(name).map(num);
+        let random_effects = r["random_effects"]
+            .as_array()
+            .ok_or_else(|| invalid("random_effects is missing"))?
+            .iter()
+            .map(|x| {
+                x.as_str()
+                    .map(str::to_owned)
+                    .ok_or_else(|| invalid("random_effects takes names"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let theta: BTreeMap<String, f64> = r["theta"]
+            .as_object()
+            .ok_or_else(|| invalid("theta is missing"))?
+            .iter()
+            .map(|(k, v)| (k.clone(), num(v)))
+            .collect();
+        Ok(eng::SimInput {
+            model: r["model"]
+                .as_str()
+                .ok_or_else(|| invalid("model is missing"))?
+                .to_owned(),
+            theta,
+            random_effects,
+            omega_shape: eng::OmegaShape::from_name(
+                r["omega_shape"]
+                    .as_str()
+                    .ok_or_else(|| invalid("omega_shape is missing: diagonal or block"))?,
+            )
+            .map_err(lift)?,
+            omega: sim::numbers(&r["omega"])
+                .ok_or_else(|| invalid("omega takes a list of numbers"))?,
+            error_model: eng::ErrorKind::from_name(r["error_model"].as_str().ok_or_else(|| {
+                invalid(
+                    "error_model is missing: choose additive, proportional, combined or combined_sd",
+                )
+            })?)
+            .map_err(lift)?,
+            a: xi_value("a"),
+            b: xi_value("b"),
+            design,
+            seed,
+            replicates,
+            negative,
+            lloq,
+            quantiles,
+        })
+    }
+
+    match request.get("op").and_then(Value::as_str) {
+        Some("philox") => {
+            let counter = u32s::<4>(&request["counter"], "counter")?;
+            let key = u32s::<2>(&request["key"], "key")?;
+            Ok(json!({ "out": eng::philox4x32_10(counter, key) }))
+        }
+        Some("stream") => {
+            let seed = seed_of(request.get("seed"))?
+                .ok_or_else(|| SimError::new("missing_seed", "a stream needs a seed"))?;
+            let replicate = request["replicate"]
+                .as_u64()
+                .and_then(|r| u32::try_from(r).ok())
+                .filter(|r| *r < 1 << 24)
+                .ok_or_else(|| invalid("replicate takes an integer below 16777216"))?;
+            let (purpose_number, purpose) = match request["purpose"].as_u64() {
+                Some(1) => (1u32, eng::Purpose::Eta),
+                Some(2) => (2u32, eng::Purpose::Epsilon),
+                _ => return Err(invalid("purpose is 1 (eta) or 2 (epsilon)")),
+            };
+            let label = request["label"].as_str().unwrap_or("");
+            let key = eng::LabelKey::of(label);
+            let stream = eng::Stream::new(seed, replicate, purpose, key);
+            let indices: Vec<u64> = if let Some(list) = request.get("n").and_then(Value::as_array) {
+                list.iter().filter_map(Value::as_u64).collect()
+            } else {
+                (0..request["count"].as_u64().unwrap_or(0)).collect()
+            };
+            let words = indices
+                .iter()
+                .map(|&n| {
+                    stream
+                        .word(n)
+                        .ok_or_else(|| invalid(format!("word {n} is beyond the stream")))
+                })
+                .collect::<Result<Vec<u64>, _>>()?;
+            let u: Vec<f64> = words.iter().map(|&w| eng::uniform(w)).collect();
+            let z: Vec<f64> = u.iter().map(|&x| eng::as241(x)).collect();
+            let mut answer = json!({
+                "key": [seed.0 as u32, (seed.0 >> 32) as u32],
+                "c1": (purpose_number << 24) | replicate,
+                "label_hash": key.hex(),
+                "u": u,
+                "z": z,
+            });
+            if request.get("n").is_some() {
+                answer["words"] = json!(
+                    words
+                        .iter()
+                        .map(|w| format!("{w:016x}"))
+                        .collect::<Vec<_>>()
+                );
+            }
+            Ok(answer)
+        }
+        Some("transform") => {
+            let u =
+                sim::numbers(&request["u"]).ok_or_else(|| invalid("u takes a list of numbers"))?;
+            Ok(json!({ "z": u.iter().map(|&x| eng::as241(x)).collect::<Vec<_>>() }))
+        }
+        Some("quantile") => {
+            let x =
+                sim::numbers(&request["x"]).ok_or_else(|| invalid("x takes a list of numbers"))?;
+            let p =
+                sim::numbers(&request["p"]).ok_or_else(|| invalid("p takes a list of numbers"))?;
+            let q: Option<Vec<f64>> = p.iter().map(|&pp| eng::quantile7(&x, pp)).collect();
+            Ok(json!({ "q": q.ok_or_else(|| invalid("quantiles"))? }))
+        }
+        Some("exact") => {
+            let dose = num(&request["dose"]);
+            let list = request["subjects"]
+                .as_array()
+                .ok_or_else(|| invalid("subjects"))?;
+            let mut subjects = Vec::new();
+            for s in list {
+                subjects.push(eng::DesignSubject {
+                    label: s["id"].as_str().unwrap_or_default().to_owned(),
+                    dose,
+                    dose_time: 0.0,
+                    times: sim::numbers(&s["time"]).ok_or_else(|| invalid("time"))?,
+                });
+            }
+            let input = input_of(
+                request,
+                eng::Design::Subjects(subjects),
+                Some(eng::Seed(0)),
+                1,
+            )?;
+            let study = eng::Study::for_draws(&input).map_err(lift)?;
+            let (mut nz, mut nn, mut nb) = (0, 0, 0);
+            let mut out = Vec::new();
+            for (i, s) in list.iter().enumerate() {
+                let z_eta = sim::numbers(&s["z_eta"]).ok_or_else(|| invalid("z_eta"))?;
+                let z_eps = sim::numbers(&s["z_eps"]).ok_or_else(|| invalid("z_eps"))?;
+                let cell = study.cell_with_draws(0, i, &z_eta, &z_eps).map_err(lift)?;
+                nz += cell.n_zero_sigma;
+                nn += cell.n_negative;
+                nb += cell.n_blq;
+                out.push(json!({
+                    "id": s["id"],
+                    "eta": cell.eta,
+                    "p": cell.p,
+                    "pred": study.pred(i),
+                    "ipred": cell.ipred,
+                    "sigma": cell.sigma,
+                    "y_raw": cell.y_raw,
+                    "y": cell.y,
+                    "cens": cell.cens,
+                    "dv": cell.dv,
+                    "n_zero_sigma": cell.n_zero_sigma,
+                    "n_negative": cell.n_negative,
+                    "n_blq": cell.n_blq,
+                }));
+            }
+            Ok(json!({
+                "l": study.factor_rows(),
+                "subjects": out,
+                "n_zero_sigma": nz,
+                "n_negative": nn,
+                "n_blq": nb,
+            }))
+        }
+        Some("simulate") => {
+            let replicates = match request.get("replicates") {
+                None | Some(Value::Null) => 1,
+                Some(v) => {
+                    let x = sim::number(v).filter(|x| x.fract() == 0.0 && *x >= 1.0);
+                    x.ok_or_else(|| invalid(format!("replicates {v} must be an integer from 1")))?
+                        as u64
+                }
+            };
+            let seed = seed_of(request.get("seed"))?;
+            let design = design_of(request.get("design"))?;
+            let input = input_of(request, design, seed, replicates)?;
+            let result = eng::simulate(&input).map_err(lift)?;
+            serde_json::to_value(&result).map_err(|e| invalid(e.to_string()))
+        }
+        other => Err(invalid(format!("op {other:?} is not one of the oracle's"))),
+    }
 }
 
 /// The population fit, for the round trip (SIM-ORA-06). Today: not built (T-154). The request is the one of
