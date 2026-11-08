@@ -42,7 +42,7 @@ pub use plot::{
     PlotSource, PlotSpec, SeriesRole, SeriesStyle,
 };
 pub use project::{FORMAT_VERSION, Project};
-pub use subject::{ObservationCounts, Purpose, SubjectData};
+pub use subject::{ObservationCounts, Purpose, SubjectData, SubjectRefusal};
 pub use units::{AcceptedUnits, UnitWarning, accepted_units, derived_units, unit_warnings};
 pub use worksheet::{
     Column, ColumnData, ColumnRole, Profile, SINGLE_SUBJECT, Worksheet, WorksheetId,

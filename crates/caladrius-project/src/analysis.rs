@@ -153,6 +153,10 @@ impl<T> Outcome<T> {
     }
 }
 
+fn is_zero(n: &usize) -> bool {
+    *n == 0
+}
+
 /// The NCA of one subject.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NcaSubjectResult {
@@ -168,6 +172,10 @@ pub struct NcaSubjectResult {
     /// (DAT-USE-03). Absent when none is declared.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub covariates: BTreeMap<String, Option<CovariateValue>>,
+    /// Observation rows left out because they come before the dose (event layout); the notes say
+    /// for which subject. Absent when none.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub n_before_dose: usize,
     /// What was decided for the subject that the person should know: the rows before the dose that
     /// were left out, an infusion duration given twice. Absent when there is nothing to say.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -195,6 +203,10 @@ pub struct FitRun {
     /// (DAT-USE-03). Absent when none is declared.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub covariates: BTreeMap<String, Option<CovariateValue>>,
+    /// Observation rows left out because they come before the dose (event layout); the notes say
+    /// for which subject. Absent when none.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub n_before_dose: usize,
     /// What was decided for the subject that the person should know (see [`NcaSubjectResult`]).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub notes: Vec<String>,

@@ -678,6 +678,21 @@ pub(crate) fn check_table(table: &ImportedTable) -> Vec<ReadingCheck> {
     check_times(table, None)
 }
 
+/// The sentence of the reading's check for a time that goes back (DAT-ERR-04); `of` is the text
+/// ` of subject X`, or nothing. The dataset gives the same sentence to the subject it touches.
+pub(crate) fn time_goes_back_message(row: usize, of: &str, time: f64, before: f64) -> String {
+    format!(
+        "time goes back at row {row}{of} ({time} after {before}); a profile is listed in time order"
+    )
+}
+
+/// The sentence of the reading's check for an observation time that repeats (DAT-ERR-04).
+pub(crate) fn duplicate_time_message(row: usize, of: &str, time: f64) -> String {
+    format!(
+        "time {time} appears twice at row {row}{of}; duplicated times are an error for an NCA (keep one row, or give them to different subjects)"
+    )
+}
+
 /// [`check_table`] where `observations`, when given, says for each row whether it is an observation
 /// row (the event layout): only those rows are compared for repeated times, so that a dose and an
 /// observation can share a time (DAT-ORD-01). Times going back are checked over every row.
@@ -722,11 +737,7 @@ fn check_times(table: &ImportedTable, observations: Option<&[bool]>) -> Vec<Read
         for pair in rows.windows(2) {
             if let [(_, a), (row, b)] = pair {
                 if b < a && backwards.is_none() {
-                    backwards = Some(format!(
-                        "time goes back at row {}{} ({b} after {a}); a profile is listed in time order",
-                        row + 1,
-                        of(key)
-                    ));
+                    backwards = Some(time_goes_back_message(row + 1, &of(key), *b, *a));
                 }
             }
         }
@@ -737,11 +748,7 @@ fn check_times(table: &ImportedTable, observations: Option<&[bool]>) -> Vec<Read
         for pair in observed.windows(2) {
             if let [(_, a), (row, b)] = pair {
                 if b == a && repeated.is_none() {
-                    repeated = Some(format!(
-                        "time {b} appears twice at row {}{}; duplicated times are an error for an NCA (keep one row, or give them to different subjects)",
-                        row + 1,
-                        of(key)
-                    ));
+                    repeated = Some(duplicate_time_message(row + 1, &of(key), *b));
                 }
             }
         }

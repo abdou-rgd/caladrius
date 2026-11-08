@@ -7,8 +7,8 @@ use caladrius_fit::FitInput;
 use caladrius_models::{ModelId, ModelInput};
 use caladrius_nca::{NcaInput, Route};
 use caladrius_project::{
-    ALL_SUBJECTS, AnalysisResult, AnalysisSpec, CovariateValue, Dataset, FitRun, FitSpec, NcaSpec,
-    NcaSubjectResult, Outcome, Profile, Project, Purpose, SimulationRun, SimulationSpec,
+    ALL_SUBJECTS, AnalysisResult, AnalysisSpec, CovariateValue, Dataset, FitRun, FitSpec, Layout,
+    NcaSpec, NcaSubjectResult, Outcome, Profile, Project, Purpose, SimulationRun, SimulationSpec,
     SubjectData, Worksheet, WorksheetId,
 };
 
@@ -40,6 +40,32 @@ fn route_from_text(text: &str) -> Result<Route, String> {
         other => Err(format!(
             "the route `{other}` is not recognised; use extravascular or iv_bolus, or give the route in the analysis"
         )),
+    }
+}
+
+/// Whether a route column text names an intravenous infusion.
+fn says_infusion(text: &str) -> bool {
+    matches!(
+        text.trim().to_ascii_lowercase().as_str(),
+        "iv_infusion" | "infusion" | "iv infusion"
+    )
+}
+
+/// The dose of the analysis wins over the dose row of an event table, and a note says so when they
+/// differ. The profile layout keeps its old rule without a note (DAT-LEG-02).
+fn dose_note(
+    layout: Layout,
+    option: Option<f64>,
+    file: Option<f64>,
+    subject: &str,
+    notes: &mut Vec<String>,
+) {
+    if let (Layout::Event, Some(given), Some(row)) = (layout, option, file) {
+        if given != row {
+            notes.push(format!(
+                "subject {subject}: the dose {given} of the analysis is used; the dose row gives {row}"
+            ));
+        }
     }
 }
 
@@ -77,11 +103,20 @@ fn nca_route(
             Ok(route)
         }
         (Some(route), None) => Ok(route),
-        (None, Some(duration)) => match text.map(route_from_text) {
-            Some(Ok(Route::Extravascular)) => Err(format!(
-                "the dose row of subject {subject} is an infusion but the route column says extravascular; give the route in the analysis"
-            )),
-            _ => Ok(Route::IvInfusion { duration }),
+        // A dose row that is an infusion and a route column that says something else, or that
+        // cannot be read, contradict each other: the person decides (DAT-USE-01).
+        (None, Some(duration)) => match text {
+            None => Ok(Route::IvInfusion { duration }),
+            Some(text) => match route_from_text(text) {
+                Ok(_) => Err(format!(
+                    "the dose row of subject {subject} is an infusion but the route column says {}; make them agree, or give the route in the analysis",
+                    text.trim().to_ascii_lowercase()
+                )),
+                Err(_) if says_infusion(text) => Ok(Route::IvInfusion { duration }),
+                Err(message) => Err(format!(
+                    "the dose row of subject {subject} is an infusion, but {message}"
+                )),
+            },
         },
         (None, None) => match text {
             Some(text) => route_from_text(text),
@@ -95,22 +130,27 @@ fn nca_route(
 
 fn nca_subject(ws: &Worksheet, ds: &Dataset, subject: &str, spec: &NcaSpec) -> NcaSubjectResult {
     let covariates = covariates_of(ds, subject);
-    let fail = |message: String, dose: Option<f64>, route: Option<Route>, notes: Vec<String>| {
-        NcaSubjectResult {
-            subject: subject.to_owned(),
-            dose,
-            route,
-            outcome: Outcome::Error(message),
-            covariates: covariates.clone(),
-            notes,
-        }
+    let fail = |message: String,
+                dose: Option<f64>,
+                route: Option<Route>,
+                n_before_dose: usize,
+                notes: Vec<String>| NcaSubjectResult {
+        subject: subject.to_owned(),
+        dose,
+        route,
+        outcome: Outcome::Error(message),
+        covariates: covariates.clone(),
+        n_before_dose,
+        notes,
     };
     let data = match ws.subject_data(ds, Some(subject), Purpose::Nca) {
         Ok(d) => d,
-        Err(e) => return fail(e.message, None, None, Vec::new()),
+        Err(e) => return fail(e.message, None, None, 0, Vec::new()),
     };
+    let n_before_dose = data.n_before_dose;
     let mut notes = data.notes;
     let profile = data.profile;
+    dose_note(ds.layout, spec.dose, profile.dose, subject, &mut notes);
     let dose = spec.dose.or(profile.dose);
     let route = match nca_route(
         spec,
@@ -120,7 +160,7 @@ fn nca_subject(ws: &Worksheet, ds: &Dataset, subject: &str, spec: &NcaSpec) -> N
         &mut notes,
     ) {
         Ok(r) => r,
-        Err(message) => return fail(message, dose, None, notes),
+        Err(message) => return fail(message, dose, None, n_before_dose, notes),
     };
     let input = NcaInput {
         time: profile.time,
@@ -140,6 +180,7 @@ fn nca_subject(ws: &Worksheet, ds: &Dataset, subject: &str, spec: &NcaSpec) -> N
         route: Some(route),
         outcome,
         covariates,
+        n_before_dose,
         notes,
     }
 }
@@ -190,6 +231,7 @@ pub(crate) struct FitData {
     /// The duration of the dose row, when it is an infusion (event layout).
     pub(crate) duration: Option<f64>,
     pub(crate) covariates: BTreeMap<String, Option<CovariateValue>>,
+    pub(crate) n_before_dose: usize,
     pub(crate) notes: Vec<String>,
 }
 
@@ -224,8 +266,10 @@ pub(crate) fn fit_data_in(
         infusion_duration,
         counts,
         covariates,
-        notes,
+        n_before_dose,
+        mut notes,
     } = ws.subject_data(ds, subject, Purpose::Fit)?;
+    dose_note(ds.layout, dose, sheet_dose, &subject, &mut notes);
     let dose = dose.or(sheet_dose).ok_or_else(|| {
         CommandError::new(
             "dose_required",
@@ -263,6 +307,7 @@ pub(crate) fn fit_data_in(
         n_blq: counts.n_blq,
         duration: infusion_duration,
         covariates,
+        n_before_dose,
         notes,
     })
 }
@@ -277,6 +322,7 @@ pub(crate) struct FitMeta {
     pub(crate) n_missing: usize,
     pub(crate) n_blq: usize,
     pub(crate) covariates: BTreeMap<String, Option<CovariateValue>>,
+    pub(crate) n_before_dose: usize,
     pub(crate) notes: Vec<String>,
 }
 
@@ -288,7 +334,8 @@ fn takes_dose_duration(model: ModelId) -> bool {
 }
 
 /// Holds `dur` at the duration of the dose row (DAT-USE-02) unless the person has fixed or fitted
-/// it. A different fixed value is used, and a note says so.
+/// it. A model that does not take its duration from the dose, a different fixed value and a `dur`
+/// among the initial estimates each get a note, since the file's duration is then not used.
 pub(crate) fn file_duration(
     model: ModelId,
     data_duration: Option<f64>,
@@ -297,16 +344,25 @@ pub(crate) fn file_duration(
     initial: &BTreeMap<String, f64>,
     notes: &mut Vec<String>,
 ) {
-    let Some(file) = data_duration.filter(|_| takes_dose_duration(model)) else {
+    let Some(file) = data_duration else {
         return;
     };
-    match fixed.get("dur") {
-        Some(given) if *given != file => notes.push(format!(
+    if !takes_dose_duration(model) {
+        notes.push(format!(
+            "subject {subject}: the dose row is an infusion of duration {file}, which model {} does not read from the file; the duration of the dose row is not used",
+            model.id()
+        ));
+        return;
+    }
+    match (fixed.get("dur"), initial.get("dur")) {
+        (Some(given), _) if *given != file => notes.push(format!(
             "subject {subject}: the duration `dur` {given} of the options is used; the dose row gives {file}"
         )),
-        Some(_) => {}
-        None if initial.contains_key("dur") => {}
-        None => {
+        (Some(_), _) => {}
+        (None, Some(start)) => notes.push(format!(
+            "subject {subject}: `dur` is among the initial estimates ({start}), so it is fitted from there; the dose row gives {file}"
+        )),
+        (None, None) => {
             fixed.insert("dur".to_owned(), file);
         }
     }
@@ -320,15 +376,45 @@ pub(crate) fn start_fit(
 ) -> Result<(caladrius_fit::FitRun<ModelId>, FitMeta), CommandError> {
     let ws = project.worksheet(spec.worksheet)?;
     let ds = ws.dataset();
-    let data = fit_data_in(ws, &ds, spec.subject.as_deref(), spec.dose)?;
-    start_data(spec, data)
+    let mut data = fit_data_in(ws, &ds, spec.subject.as_deref(), spec.dose)?;
+    if spec.subject.as_deref() == Some(ALL_SUBJECTS) {
+        // `all` is the label of a subject of this worksheet, and it names that subject.
+        data.notes.push(format!(
+            "`all` is the label of a subject of worksheet `{}`, so it names that subject and not every subject",
+            ws.name()
+        ));
+    }
+    start_data(spec, data).map_err(|failure| failure.error)
+}
+
+/// Why a fit could not start, with what was known of the subject.
+pub(crate) struct StartFailure {
+    error: CommandError,
+    /// True when the request itself is wrong (the model, the options, the initial estimates given),
+    /// not the data of this subject: every subject would be refused the same way.
+    request_level: bool,
+    meta: FitMeta,
+}
+
+/// Whether a fit error comes from the request and not from the data of one subject.
+fn is_request_error(error: &caladrius_fit::FitError, initial_given: bool) -> bool {
+    use caladrius_fit::FitError as E;
+    match error {
+        E::NoParameters
+        | E::InvalidOption { .. }
+        | E::AnalyticDerivativesUnavailable { .. }
+        | E::RegimenDerivativesUnavailable { .. } => true,
+        // Estimates the person gave are the same for every subject; generated ones are not.
+        E::InitialEstimates { .. } | E::InitialOutsideBounds { .. } => initial_given,
+        _ => false,
+    }
 }
 
 /// Starts the fit of a subject whose observations were read.
 fn start_data(
     spec: &FitSpec,
     data: FitData,
-) -> Result<(caladrius_fit::FitRun<ModelId>, FitMeta), CommandError> {
+) -> Result<(caladrius_fit::FitRun<ModelId>, FitMeta), Box<StartFailure>> {
     let mut options = spec.options.clone();
     let mut notes = data.notes;
     file_duration(
@@ -346,6 +432,7 @@ fn start_data(
         n_missing: data.n_missing,
         n_blq: data.n_blq,
         covariates: data.covariates,
+        n_before_dose: data.n_before_dose,
         notes,
     };
     let input = FitInput {
@@ -357,9 +444,14 @@ fn start_data(
         initial: spec.initial.clone(),
         options,
     };
-    let run =
-        caladrius_fit::start(&input).map_err(|e| CommandError::new("fit_error", e.to_string()))?;
-    Ok((run, meta))
+    match caladrius_fit::start(&input) {
+        Ok(run) => Ok((run, meta)),
+        Err(e) => Err(Box::new(StartFailure {
+            request_level: is_request_error(&e, !spec.initial.is_empty()),
+            error: CommandError::new("fit_error", e.to_string()),
+            meta,
+        })),
+    }
 }
 
 /// The result of a fit that ended, as the project stores it.
@@ -376,6 +468,7 @@ fn fit_run_of(meta: FitMeta, result: caladrius_fit::FitResult) -> FitRun {
         n_blq: meta.n_blq,
         outcome: Outcome::Ok(result),
         covariates: meta.covariates,
+        n_before_dose: meta.n_before_dose,
         notes: meta.notes,
     }
 }
@@ -391,7 +484,8 @@ pub(crate) fn wants_all_subjects(
         && project
             .worksheet(worksheet)
             .map(|ws| !ws.subjects().iter().any(|s| s == ALL_SUBJECTS))
-            .unwrap_or(true)
+            // An unknown worksheet is not a request for every subject: the run says it is unknown.
+            .unwrap_or(false)
 }
 
 fn run_fit(project: &Project, spec: &FitSpec) -> Result<AnalysisResult, CommandError> {
@@ -430,14 +524,21 @@ pub(crate) fn run_fit_all(
             ),
         ));
     }
+    // A request that is wrong for every subject (an unknown parameter in `initial`, an option out
+    // of its domain) is refused as a whole, as the fit of one subject refuses it, and stores nothing.
     let subjects = labels
         .iter()
         .map(|label| fit_one_of_all(ws, &ds, label, spec))
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(AnalysisResult::Fits { subjects })
 }
 
-fn fit_one_of_all(ws: &Worksheet, ds: &Dataset, label: &str, spec: &FitSpec) -> FitRun {
+fn fit_one_of_all(
+    ws: &Worksheet,
+    ds: &Dataset,
+    label: &str,
+    spec: &FitSpec,
+) -> Result<FitRun, CommandError> {
     let failed = |message: String, meta: Option<&FitMeta>| FitRun {
         subject: label.to_owned(),
         dose: meta.map(|m| m.dose),
@@ -446,17 +547,19 @@ fn fit_one_of_all(ws: &Worksheet, ds: &Dataset, label: &str, spec: &FitSpec) -> 
         n_blq: meta.map_or(0, |m| m.n_blq),
         outcome: Outcome::Error(message),
         covariates: covariates_of(ds, label),
+        n_before_dose: meta.map_or(0, |m| m.n_before_dose),
         notes: meta.map_or_else(Vec::new, |m| m.notes.clone()),
     };
     let data = match fit_data_in(ws, ds, Some(label), spec.dose) {
         Ok(d) => d,
-        Err(e) => return failed(e.message, None),
+        Err(e) => return Ok(failed(e.message, None)),
     };
     let (run, meta) = match start_data(spec, data) {
         Ok(started) => started,
-        Err(e) => return failed(e.message, None),
+        Err(failure) if failure.request_level => return Err(failure.error),
+        Err(failure) => return Ok(failed(failure.error.message, Some(&failure.meta))),
     };
-    match run.run(&mut crate::job::NeverCancel) {
+    Ok(match run.run(&mut crate::job::NeverCancel) {
         caladrius_fit::Outcome::Done(result) => fit_run_of(meta, result),
         caladrius_fit::Outcome::Cancelled {
             after_iteration, ..
@@ -464,7 +567,7 @@ fn fit_one_of_all(ws: &Worksheet, ds: &Dataset, label: &str, spec: &FitSpec) -> 
             format!("fit cancelled after iteration {after_iteration}"),
             Some(&meta),
         ),
-    }
+    })
 }
 
 fn run_simulation(spec: &SimulationSpec) -> Result<AnalysisResult, CommandError> {

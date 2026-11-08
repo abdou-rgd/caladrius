@@ -354,10 +354,43 @@ fn fit_run_with_subject_all_fits_every_subject_and_a_single_fit_equals_its_entry
 }
 
 #[test]
+fn csv_of_subject_all_says_how_to_get_the_table_of_one_subject() {
+    let data: PathBuf = oracle_dir().join("data/indometh.csv");
+    let data = data.to_str().unwrap();
+    for table in [None, Some("fit.parameters")] {
+        let mut args = vec![
+            "fit.run",
+            "--csv",
+            data,
+            "--param",
+            "subject=all",
+            "--param",
+            "model=pk1.iv_bolus",
+            "--format",
+            "csv",
+        ];
+        if let Some(table) = table {
+            args.extend(["--table", table]);
+        }
+        let out = cli(&args);
+        assert_eq!(out.status.code(), Some(1), "{table:?}");
+        let message = stderr(&out);
+        assert!(
+            message.contains("one fit per subject")
+                && message.contains("subject")
+                && (message.contains("--param subject=LABEL")
+                    || message.contains("`subject` set to that subject")),
+            "{table:?}: {message}"
+        );
+    }
+}
+
+#[test]
 fn the_help_says_what_subject_all_does() {
     let help = cli(&["help"]);
     assert!(help.status.success());
     let text = stdout(&help);
     assert!(text.contains("subject=all"), "{text}");
     assert!(text.contains("one independent fit per subject"), "{text}");
+    assert!(text.contains("really labelled `all`"), "{text}");
 }

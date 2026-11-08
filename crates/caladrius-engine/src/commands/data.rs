@@ -278,19 +278,31 @@ fn describe(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
             )
         })
         .collect();
-    respond(&json!({
+    let mut answer = json!({
         "worksheet": summary(ws),
         "preview": {
             "columns": ws.columns().iter().map(|c| c.name.clone()).collect::<Vec<_>>(),
             "rows": preview,
         },
-    }))
+    });
+    // The subjects an analysis refuses because of the data, with the sentence of the check
+    // (DAT-ERR-08). Absent when there are none, so a table without a problem answers as before.
+    let refused = ws.refused_subjects(&ws.dataset());
+    if !refused.is_empty() {
+        answer["refused"] = Value::Array(
+            refused
+                .iter()
+                .map(|r| json!({ "subject": r.subject, "code": r.code, "message": r.message }))
+                .collect(),
+        );
+    }
+    respond(&answer)
 }
 
 pub(crate) const DESCRIBE: CommandDef = CommandDef {
     id: "data.describe",
     title: "Describe a worksheet",
-    description: "Columns with role, unit, type, missing count and range; subjects (the labels of the subject column, in order of appearance: a table with several subjects is analysed by `nca.run` for all of them and by `fit.run` with `subject` = all); unit warnings (dose, concentration and time checked together); the derived units (AUC, clearance, volume); and the first rows. The subjects that an analysis would refuse are named by that analysis, not here.",
+    description: "Columns with role, unit, type, missing count and range; subjects (the labels of the subject column, in order of appearance: a table with several subjects is analysed by `nca.run` for all of them and by `fit.run` with `subject` = all); unit warnings (dose, concentration and time checked together); the derived units (AUC, clearance, volume); and the first rows. `refused` (only when there is one) lists the subjects that an analysis refuses because of their data, each with the code and the sentence of the check; the other subjects run. A subject with more than one dose row is refused by the analysis itself, which says so.",
     mutates: false,
     params: || {
         root(
@@ -322,6 +334,17 @@ pub(crate) const DESCRIBE: CommandDef = CommandDef {
                             ],
                             &["columns", "rows"],
                         ),
+                    ),
+                    (
+                        "refused",
+                        array_of(object(
+                            vec![
+                                ("subject", string()),
+                                ("code", string()),
+                                ("message", string()),
+                            ],
+                            &["subject", "code", "message"],
+                        )),
                     ),
                 ],
                 &["worksheet", "preview"],

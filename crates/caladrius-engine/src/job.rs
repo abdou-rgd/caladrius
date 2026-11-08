@@ -212,6 +212,7 @@ impl Engine {
     /// that are not valid are recorded as a failed `fit.run`, as `execute` records them. While the
     /// job runs, a second `begin` and every command that changes the project are refused with a
     /// sentence naming it (read-only commands still run); nothing is recorded for a refusal.
+    /// `subject` = all is not a job and is refused with `subject_all_not_a_job`, also without an entry.
     pub fn begin(&mut self, id: &str, params: Value) -> Result<Job, CommandError> {
         let received = params.clone();
         match self.begin_job(id, params) {
@@ -220,7 +221,8 @@ impl Engine {
                 // A refusal because of the running job is not a run of the command. Nothing
                 // changed the project since `begin_job` started, so the hash is still the one
                 // the fit would have read.
-                if e.code != "job_running" && id == FIT_RUN {
+                // Nor is the refusal of `subject` = all, which is not a job at all.
+                if e.code != "job_running" && e.code != "subject_all_not_a_job" && id == FIT_RUN {
                     let input = self.input_hash_of(id, &received);
                     self.record(id, received, input, &Err(e.clone()), true);
                 }

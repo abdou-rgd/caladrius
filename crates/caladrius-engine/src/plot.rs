@@ -39,7 +39,7 @@ pub(crate) fn draw(project: &Project, spec: &PlotSpec) -> Result<PlotRun, Comman
                     return Err(CommandError::new(
                         "ambiguous_subject",
                         format!(
-                            "fit {analysis} holds one fit per subject; plot one subject: run fit.run with `subject` set to one subject"
+                            "fit {analysis} holds one fit per subject; plot one subject: run fit.run with `subject` set to that subject, then plot that analysis"
                         ),
                     ));
                 }

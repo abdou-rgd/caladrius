@@ -126,7 +126,8 @@ options for a command:
                       subject's result with its error while the others run. Without it a
                       worksheet with several subjects needs one named (`subject_required`).
                       nca.run without `subject` already analyses every subject. There is no
-                      progress and no cancel for `all`: it is not a job
+                      progress and no cancel for `all`: it is not a job. A subject that is
+                      really labelled `all` is the one named, and a note in its result says so
   --no-seal           print the answer as it is. By default it carries the seal of the command:
                       a `seal` member in JSON, a first line `# caladrius engine=... seal=...` in
                       CSV (data.import skips that line; for other programs read with
@@ -416,6 +417,14 @@ fn csv_of(
         .get("id")
         .cloned()
         .or_else(|| params.get("analysis").cloned());
+    if table.is_none()
+        && default_table.is_none()
+        && result.get("kind").and_then(Value::as_str) == Some("fits")
+    {
+        return fail(
+            "fit.run with subject=all holds one fit per subject and has no single table; use --format json for every subject's result, or run fit.run with `--param subject=LABEL` and print that subject's table",
+        );
+    }
     let Some(table) = table.or(default_table) else {
         return fail(
             "this command has no table; use --format json, or --table NAME to export one (see `export.table`)",

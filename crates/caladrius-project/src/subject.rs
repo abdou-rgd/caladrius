@@ -57,9 +57,34 @@ pub struct SubjectData {
     /// The declared covariates of the subject, to be copied into its result and used nowhere else
     /// (DAT-USE-03).
     pub covariates: BTreeMap<String, Option<CovariateValue>>,
+    /// The observation rows left out because they come before the dose (event layout); a note says
+    /// which subject. Not part of `counts`.
+    pub n_before_dose: usize,
     /// What was decided for the subject that the person should know (rows left out before the
     /// dose).
     pub notes: Vec<String>,
+}
+
+/// A subject that the checks of the data refuse, with the sentence of the check (DAT-ERR-08).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SubjectRefusal {
+    /// The subject label.
+    pub subject: String,
+    /// The code of the check.
+    pub code: String,
+    /// Its sentence for this subject.
+    pub message: String,
+}
+
+/// Whether the refusal `code` of a subject applies in `layout`. In the event layout every check of
+/// the dataset does. The profile layout keeps the reading it had (DAT-LEG-02): its time order and
+/// repeated times are not refused (a file that loaded before gives the same result), its two doses
+/// are refused by [`Worksheet::profile`], and a covariate that varies is refused here.
+fn refusal_applies(layout: Layout, code: &str) -> bool {
+    match layout {
+        Layout::Event => true,
+        Layout::Profile => code == "covariate_varies",
+    }
 }
 
 impl Worksheet {
@@ -104,6 +129,33 @@ impl Worksheet {
         }
     }
 
+    /// The subjects that the checks of the data refuse, in order of appearance, each with the
+    /// sentence an analysis of it gives (DAT-ERR-08). A subject with several dose rows is not listed:
+    /// that refusal is the analysis's own.
+    pub fn refused_subjects(&self, dataset: &Dataset) -> Vec<SubjectRefusal> {
+        let layout = dataset.layout;
+        dataset
+            .subjects
+            .iter()
+            .filter_map(|record| {
+                let code = record.refusal.as_deref()?;
+                // The profile layout refuses a second dose with the code `dose_varies`.
+                let doses = layout == Layout::Profile && code == "different_doses";
+                if !(doses || refusal_applies(layout, code)) {
+                    return None;
+                }
+                Some(SubjectRefusal {
+                    subject: record.id.clone(),
+                    code: if doses { "dose_varies" } else { code }.to_owned(),
+                    message: record
+                        .refusal_message
+                        .clone()
+                        .unwrap_or_else(|| format!("subject {} is refused: {code}", record.id)),
+                })
+            })
+            .collect()
+    }
+
     fn profile_data(&self, dataset: &Dataset, subject: Option<&str>) -> Result<SubjectData> {
         let profile = self.profile(subject)?;
         let record = dataset
@@ -119,6 +171,19 @@ impl Worksheet {
                     ),
                 )
             })?;
+        // DAT-ERR-04 to 06 and 08: a subject whose declared covariate takes several values is
+        // refused, as in the event layout, once `profile` has had its say.
+        if let Some(code) = record
+            .refusal
+            .as_deref()
+            .filter(|c| refusal_applies(Layout::Profile, c))
+        {
+            let message = record
+                .refusal_message
+                .clone()
+                .unwrap_or_else(|| format!("subject {} is refused: {code}", profile.subject));
+            return Err(ProjectError::new(code, message));
+        }
         Ok(SubjectData {
             counts: ObservationCounts {
                 n_used: record.n_observed,
@@ -127,6 +192,7 @@ impl Worksheet {
             },
             covariates: record.covariates.clone(),
             infusion_duration: None,
+            n_before_dose: 0,
             notes: Vec::new(),
             profile,
         })
@@ -291,6 +357,7 @@ impl Worksheet {
                 .and_then(|d| d.duration),
             counts,
             covariates: record.covariates.clone(),
+            n_before_dose: before_dose,
             notes,
         })
     }

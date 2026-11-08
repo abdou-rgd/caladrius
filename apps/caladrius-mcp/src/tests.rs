@@ -1001,6 +1001,7 @@ fn fit_run_with_subject_all_fits_every_subject_and_the_help_says_so() {
         help.contains("\"all\" for one independent fit per subject"),
         "{help}"
     );
+    assert!(help.contains("really labelled \"all\""), "{help}");
     let csv = "subject,time,conc,dose\n\
 a,0,10,100\na,1,6,100\na,2,3.7,100\na,4,1.4,100\na,8,0.2,100\n\
 b,0,12,100\nb,1,7,100\nb,2,4.4,100\nb,4,1.7,100\nb,8,0.3,100\n";

@@ -357,7 +357,7 @@ pub(crate) fn analysis_table(name: &str, analysis: &Analysis) -> Result<Table, C
         (_, AnalysisResult::Fits { .. }) => Err(CommandError::new(
             "ambiguous_subject",
             format!(
-                "analysis {} holds one fit per subject; export one subject: run fit.run with `subject` set to one subject",
+                "analysis {} holds one fit per subject and has no single table; for the table of one subject, run fit.run with `subject` set to that subject and export that analysis (the JSON of this analysis has every subject's result)",
                 analysis.id()
             ),
         )),

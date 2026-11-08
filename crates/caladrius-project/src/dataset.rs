@@ -522,14 +522,10 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
         };
         if let Some((row, b, a)) = acc.time_goes_back {
             acc.refusal = Some("time_not_increasing".to_owned());
-            acc.refusal_message = Some(format!(
-                "time goes back at row {row}{of} ({b} after {a}); a profile is listed in time order"
-            ));
+            acc.refusal_message = Some(crate::csv::time_goes_back_message(row, &of, b, a));
         } else if let Some((row, b)) = acc.time_repeats {
             acc.refusal = Some("duplicate_times".to_owned());
-            acc.refusal_message = Some(format!(
-                "time {b} appears twice at row {row}{of}; duplicated times are an error for an NCA (keep one row, or give them to different subjects)"
-            ));
+            acc.refusal_message = Some(crate::csv::duplicate_time_message(row, &of, b));
         }
     }
 

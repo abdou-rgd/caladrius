@@ -240,6 +240,8 @@ fn a_dose_time_shifts_the_time_axis_and_rows_before_the_dose_are_left_out() {
     assert_eq!(new.len(), 1);
     assert_eq!(old[0]["outcome"], new[0]["outcome"]);
     assert_eq!(old[0]["dose"], new[0]["dose"]);
+    assert_eq!(new[0]["n_before_dose"], 2);
+    assert!(old[0].get("n_before_dose").is_none());
     let notes = new[0]["notes"]
         .as_array()
         .expect("a note about the rows before the dose");
@@ -636,18 +638,16 @@ fn an_affected_subject_is_refused_with_the_sentence_of_its_check_and_the_others_
                 "{name}: subject {id}"
             );
             let message = got["outcome"]["error"].as_str().unwrap();
-            // The first subject the problem names carries the sentence of the check as it is.
-            if case["error"]["subject"].as_str() == Some(id.as_str()) {
-                assert_eq!(message, check.message, "{name}: subject {id}");
-            }
+            // Every case of the oracle names one affected subject, and that subject is the one
+            // the check names first: its sentence is the check's, as it is.
+            assert_eq!(affected.len(), 1, "{name}: one affected subject");
+            assert_eq!(message, check.message, "{name}: subject {id}");
             for word in case["error"]["words"].as_array().unwrap() {
                 let word = word.as_str().unwrap().to_lowercase();
-                if case["error"]["subject"].as_str() == Some(id.as_str()) {
-                    assert!(
-                        message.to_lowercase().contains(&word),
-                        "{name}: `{word}` is not in `{message}`"
-                    );
-                }
+                assert!(
+                    message.to_lowercase().contains(&word),
+                    "{name}: `{word}` is not in `{message}`"
+                );
             }
         }
 
@@ -728,4 +728,635 @@ fn a_fit_of_every_subject_refuses_the_affected_subject_like_the_nca_does() {
             );
         }
     }
+}
+
+// ---- T-163, second round: the cases the first round left to chance -------------------------------
+
+/// The result of `fit.run` with `params` on `csv` (worksheet 1), as the engine answers it.
+fn fit_answer(csv: &str, covariates: &[&str], params: Value) -> Value {
+    let mut e = engine_with(csv, covariates);
+    let mut params = params;
+    params["worksheet"] = json!(1);
+    ok(&mut e, "fit.run", params)["result"].clone()
+}
+
+/// The entries of a `Fits` result, without the sentences that only the view adds.
+fn entries(result: &Value) -> Vec<Value> {
+    assert_eq!(result["kind"], "fits", "{result}");
+    result["subjects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| without(s.clone(), &["flag_messages", "status_message"]))
+        .collect()
+}
+
+/// `event_indometh.csv` with the dose at time `offset` and, when asked, one observation of each
+/// subject before it (time 1, below every shifted dose time used here). The times are dyadic
+/// fractions, so adding the offset and taking it away again is exact.
+fn indometh_dosed_at(offset: f64, with_pre_dose_row: bool) -> String {
+    let source = read_file("data/population/event_indometh.csv");
+    let mut out = String::from("ID,TIME,DV,AMT,EVID\n");
+    let mut last = String::new();
+    for line in source.lines().skip(1).filter(|l| !l.trim().is_empty()) {
+        let cells: Vec<&str> = line.split(',').collect();
+        if cells[0] != last {
+            last = cells[0].to_owned();
+            if with_pre_dose_row {
+                out.push_str(&format!("{},1,0.5,,0\n", cells[0]));
+            }
+        }
+        let time: f64 = cells[1].parse().unwrap();
+        out.push_str(&format!(
+            "{},{},{},{},{}\n",
+            cells[0],
+            time + offset,
+            cells[2],
+            cells[3],
+            cells[4]
+        ));
+    }
+    out
+}
+
+/// `event_indometh.csv` with one more column, `name`, holding `cell` on the dose rows.
+fn indometh_with_column(name: &str, cell: &str) -> String {
+    let source = read_file("data/population/event_indometh.csv");
+    let mut out = String::new();
+    for (i, line) in source
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim().is_empty())
+    {
+        let cells: Vec<&str> = line.split(',').collect();
+        let extra = if i == 0 {
+            name
+        } else if cells[4] == "1" {
+            cell
+        } else {
+            ""
+        };
+        out.push_str(&format!("{line},{extra}\n"));
+    }
+    out
+}
+
+#[test]
+fn a_fit_on_the_event_layout_with_a_dose_at_a_later_time_equals_the_fit_at_time_zero() {
+    let at_zero = read_file("data/population/event_indometh.csv");
+    let later = indometh_dosed_at(6.0, true);
+    let model = "pk1.iv_bolus";
+
+    // One subject named alone.
+    let a = fit_answer(&at_zero, &[], json!({ "subject": "1", "model": model }));
+    let b = fit_answer(&later, &[], json!({ "subject": "1", "model": model }));
+    assert_eq!(a["outcome"], b["outcome"]);
+    for key in ["dose", "n_observations", "n_missing", "n_blq"] {
+        assert_eq!(a[key], b[key], "{key}");
+    }
+    assert!(a.get("n_before_dose").is_none() && a.get("notes").is_none());
+    assert_eq!(b["n_before_dose"], 1);
+    let note = b["notes"][0].as_str().unwrap();
+    assert!(
+        note.contains("subject 1") && note.contains("before the dose") && note.contains("time 6"),
+        "{note}"
+    );
+
+    // Every subject, with the maximum-likelihood objective too (the same data, the same fits).
+    for options in [
+        json!({}),
+        json!({ "objective": "ml", "error_model": "additive" }),
+    ] {
+        let p = json!({ "subject": "all", "model": model, "options": options });
+        let a = entries(&fit_answer(&at_zero, &[], p.clone()));
+        let b = entries(&fit_answer(&later, &[], p));
+        assert_eq!(a.len(), 6);
+        for (x, y) in a.iter().zip(&b) {
+            assert_eq!(x["outcome"], y["outcome"], "subject {}", x["subject"]);
+            assert_eq!(y["n_before_dose"], 1);
+            assert_eq!(x["n_observations"], y["n_observations"]);
+        }
+    }
+}
+
+#[test]
+fn the_nca_counts_the_rows_before_the_dose() {
+    let later = indometh_dosed_at(6.0, true);
+    let mut e = engine_with(&later, &[]);
+    let subjects = nca_subjects(&mut e, json!({ "route": "iv_bolus" }));
+    assert_eq!(subjects.len(), 6);
+    for s in &subjects {
+        assert_eq!(s["n_before_dose"], 1, "{s}");
+        assert!(s["notes"][0].as_str().unwrap().contains("before_dose"));
+    }
+}
+
+#[test]
+fn an_infusion_is_fitted_with_the_duration_of_its_dose_row_from_dur_or_from_rate() {
+    let model = "pk1.iv_infusion";
+    // The reference: the same profiles in the profile layout, `dur` fixed by hand.
+    let profile = read_file("data/indometh.csv");
+    let by_hand = |dur: f64| {
+        entries(&fit_answer(
+            &profile,
+            &[],
+            json!({ "subject": "all", "model": model, "options": { "fixed": { "dur": dur } } }),
+        ))
+    };
+    let want = by_hand(2.0);
+    assert_eq!(want.len(), 6);
+    let want_three = by_hand(3.0);
+
+    // `dur` on the dose row, and the rate that gives the same duration (25 mg at 12.5 mg/h).
+    for (column, cell) in [("DUR", "2"), ("RATE", "12.5")] {
+        let table = indometh_with_column(column, cell);
+        let got = entries(&fit_answer(
+            &table,
+            &[],
+            json!({ "subject": "all", "model": model }),
+        ));
+        assert_eq!(got.len(), 6, "{column}");
+        for (g, w) in got.iter().zip(&want) {
+            assert_eq!(
+                g["outcome"], w["outcome"],
+                "{column}: subject {}",
+                g["subject"]
+            );
+            assert!(g.get("notes").is_none(), "{column}: {g}");
+        }
+    }
+
+    // A duration fixed in the options wins over the file's, and a note says so.
+    let table = indometh_with_column("DUR", "2");
+    let got = entries(&fit_answer(
+        &table,
+        &[],
+        json!({ "subject": "all", "model": model, "options": { "fixed": { "dur": 3.0 } } }),
+    ));
+    for (g, w) in got.iter().zip(&want_three) {
+        assert_eq!(g["outcome"], w["outcome"], "subject {}", g["subject"]);
+        let note = g["notes"][0].as_str().unwrap();
+        assert!(
+            note.contains("`dur` 3") && note.contains("dose row gives 2"),
+            "{note}"
+        );
+    }
+
+    // A `dur` among the initial estimates is fitted from there: the file's value is not held, and
+    // a note says so.
+    let mut e = engine_with(&table, &[]);
+    let initial = ok(
+        &mut e,
+        "fit.initial_estimates",
+        json!({ "worksheet": 1, "subject": "1", "model": model }),
+    )["initial"]
+        .clone();
+    let mut start = initial.as_object().unwrap().clone();
+    start.insert("dur".to_owned(), json!(2.5));
+    let fitted = ok(
+        &mut e,
+        "fit.run",
+        json!({ "worksheet": 1, "subject": "1", "model": model, "initial": start }),
+    )["result"]
+        .clone();
+    let note = fitted["notes"][0].as_str().unwrap();
+    assert!(
+        note.contains("`dur` is among the initial estimates (2.5)")
+            && note.contains("dose row gives 2"),
+        "{note}"
+    );
+}
+
+#[test]
+fn a_model_that_does_not_read_the_duration_from_the_file_says_so() {
+    let table = indometh_with_column("DUR", "2");
+    let plain = read_file("data/population/event_indometh.csv");
+    let model = "pk1.iv_bolus";
+    let got = entries(&fit_answer(
+        &table,
+        &[],
+        json!({ "subject": "all", "model": model }),
+    ));
+    let want = entries(&fit_answer(
+        &plain,
+        &[],
+        json!({ "subject": "all", "model": model }),
+    ));
+    for (g, w) in got.iter().zip(&want) {
+        assert_eq!(g["outcome"], w["outcome"], "subject {}", g["subject"]);
+        let note = g["notes"][0].as_str().unwrap();
+        assert!(
+            note.contains("infusion of duration 2")
+                && note.contains("pk1.iv_bolus does not read from the file"),
+            "{note}"
+        );
+    }
+}
+
+#[test]
+fn the_dose_of_the_analysis_wins_over_the_dose_row_of_an_event_table_with_a_note() {
+    let plain = read_file("data/population/event_indometh.csv");
+    let model = "pk1.iv_bolus";
+    // The dose row says 25; the analysis says 30.
+    let got = fit_answer(
+        &plain,
+        &[],
+        json!({ "subject": "1", "model": model, "dose": 30.0 }),
+    );
+    assert_eq!(got["dose"], 30.0);
+    let note = got["notes"][0].as_str().unwrap();
+    assert!(
+        note.contains("the dose 30 of the analysis is used") && note.contains("dose row gives 25"),
+        "{note}"
+    );
+    // The same dose as the row's gives no note.
+    let same = fit_answer(
+        &plain,
+        &[],
+        json!({ "subject": "1", "model": model, "dose": 25.0 }),
+    );
+    assert!(same.get("notes").is_none());
+    // The NCA, the same way.
+    let mut e = engine_with(&plain, &[]);
+    let subjects = nca_subjects(&mut e, json!({ "route": "iv_bolus", "dose": 30.0 }));
+    assert_eq!(subjects[0]["dose"], 30.0);
+    assert!(
+        subjects[0]["notes"][0]
+            .as_str()
+            .unwrap()
+            .contains("dose row gives 25")
+    );
+    // The profile layout keeps its old rule, without a note: the dose of the analysis wins.
+    let profile = read_file("data/indometh.csv");
+    let got = fit_answer(
+        &profile,
+        &[],
+        json!({ "subject": "1", "model": model, "dose": 30.0 }),
+    );
+    assert_eq!(got["dose"], 30.0);
+    assert!(got.get("notes").is_none());
+}
+
+#[test]
+fn a_route_column_that_contradicts_an_infusion_dose_row_is_an_error_for_that_subject() {
+    let infusion = |route: &str| {
+        let table = format!(
+            "ID,TIME,DV,AMT,DUR,ROUTE,EVID\n\
+1,0,,100,2,{route},1\n1,1,4.2,,,,0\n1,2,7.9,,,,0\n1,4,6.1,,,,0\n1,8,3.0,,,,0\n1,12,1.6,,,,0\n"
+        );
+        let mut e = engine_with(&table, &[]);
+        nca_subjects(&mut e, json!({}))
+    };
+    for contradiction in ["iv_bolus", "extravascular", "oral"] {
+        let subjects = infusion(contradiction);
+        let message = subjects[0]["outcome"]["error"].as_str().unwrap();
+        assert!(
+            message.contains("is an infusion but the route column says"),
+            "{contradiction}: {message}"
+        );
+    }
+    let unreadable = infusion("sideways");
+    let message = unreadable[0]["outcome"]["error"].as_str().unwrap();
+    assert!(
+        message.contains("is an infusion, but the route `sideways` is not recognised"),
+        "{message}"
+    );
+    // A route column that says infusion agrees with the dose row.
+    for agreeing in ["iv_infusion", "infusion"] {
+        let subjects = infusion(agreeing);
+        assert!(subjects[0]["outcome"].get("ok").is_some(), "{agreeing}");
+    }
+}
+
+#[test]
+fn subject_all_with_the_maximum_likelihood_objective_equals_each_subject_named_alone() {
+    let csv = read_file("data/population/event_indometh.csv");
+    let options = json!({ "objective": "ml", "error_model": "additive" });
+    let all = entries(&fit_answer(
+        &csv,
+        &[],
+        json!({ "subject": "all", "model": "pk1.iv_bolus", "options": options }),
+    ));
+    assert_eq!(all.len(), 6);
+    let mut fitted = 0;
+    for fit in &all {
+        let subject = fit["subject"].as_str().unwrap();
+        let mut e = engine_with(&csv, &[]);
+        let alone = e.execute(
+            "fit.run",
+            json!({ "worksheet": 1, "subject": subject, "model": "pk1.iv_bolus", "options": options }),
+        );
+        match alone {
+            Ok(answer) => {
+                fitted += 1;
+                let alone = without(
+                    answer["result"].clone(),
+                    &["kind", "flag_messages", "status_message"],
+                );
+                assert_eq!(fit.to_string(), alone.to_string(), "subject {subject}");
+                assert_eq!(fit["outcome"]["ok"]["objective"], "ml", "subject {subject}");
+            }
+            // A fit that cannot start is refused alone and is that subject's error in `all`.
+            Err(refusal) => assert_eq!(
+                Value::String(refusal.message),
+                fit["outcome"]["error"],
+                "subject {subject}"
+            ),
+        }
+    }
+    assert!(fitted >= 1, "no subject was fitted by maximum likelihood");
+}
+
+#[test]
+fn a_request_that_is_wrong_for_every_subject_is_refused_as_a_whole_and_stores_nothing() {
+    let csv = read_file("data/population/event_indometh.csv");
+    let mut e = engine_with(&csv, &[]);
+    let request = |subject: &str| json!({ "worksheet": 1, "subject": subject, "model": "pk1.iv_bolus", "initial": { "zzz": 1.0 } });
+    let alone = e.execute("fit.run", request("1")).unwrap_err();
+    assert_eq!(alone.code, "fit_error");
+    let entries_before = e.history().len();
+    let all = e.execute("fit.run", request("all")).unwrap_err();
+    assert_eq!(all.code, "fit_error");
+    assert_eq!(all.message, alone.message);
+    assert!(e.project().analyses().is_empty(), "nothing was stored");
+    let last = e.history().entries().last().unwrap();
+    assert_eq!(e.history().len(), entries_before + 1);
+    assert!(!last.ok, "the refusal is a failed entry, not a success");
+
+    // An option out of its domain is the same.
+    let bad = json!({ "worksheet": 1, "subject": "all", "model": "pk1.iv_bolus",
+        "options": { "confidence_level": 7.0 } });
+    let single = json!({ "worksheet": 1, "subject": "1", "model": "pk1.iv_bolus",
+        "options": { "confidence_level": 7.0 } });
+    let a = e.execute("fit.run", single).unwrap_err();
+    let b = e.execute("fit.run", bad).unwrap_err();
+    assert_eq!(a.message, b.message);
+    assert!(e.project().analyses().is_empty());
+}
+
+#[test]
+fn a_subject_that_cannot_start_keeps_its_dose_and_counts_in_its_result() {
+    // Subject b has two observations, fewer than the three parameters of the model.
+    let csv = "subject,time,conc,dose\n\
+a,0.5,2.2,100\na,1,3.3,100\na,2,4.0,100\na,4,3.6,100\na,8,2.5,100\na,12,1.7,100\na,24,0.5,100\n\
+b,1,3.0,100\nb,4,2.0,100\n";
+    for table in [csv.to_owned(), as_event_table(csv)] {
+        let all = entries(&fit_answer(
+            &table,
+            &[],
+            json!({ "subject": "all", "model": "pk1.oral_1" }),
+        ));
+        assert_eq!(all.len(), 2);
+        let b = &all[1];
+        assert!(b["outcome"].get("error").is_some(), "{b}");
+        assert_eq!(b["dose"], 100.0);
+        assert_eq!(b["n_observations"], 2);
+        assert_eq!(b["n_missing"], 0);
+    }
+}
+
+#[test]
+fn a_subject_labelled_all_is_that_subject_in_both_layouts_with_a_note() {
+    let profile = "subject,time,conc,dose\n\
+all,0,0,100\nall,0.5,2.2,100\nall,1,3.3,100\nall,2,4.0,100\nall,4,3.6,100\nall,8,2.5,100\nall,24,0.5,100\n\
+b,0,0,100\nb,0.5,1.8,100\nb,1,2.9,100\nb,2,3.5,100\nb,4,3.2,100\nb,8,2.1,100\nb,24,0.4,100\n";
+    for (layout, table) in [
+        ("profile", profile.to_owned()),
+        ("event", as_event_table(profile)),
+    ] {
+        let result = fit_answer(
+            &table,
+            &[],
+            json!({ "subject": "all", "model": "pk1.oral_1" }),
+        );
+        assert_eq!(result["kind"], "fit", "{layout}");
+        assert_eq!(result["subject"], "all", "{layout}");
+        let note = result["notes"][0].as_str().unwrap();
+        assert!(
+            note.contains("`all` is the label of a subject") && note.contains("not every subject"),
+            "{layout}: {note}"
+        );
+        // The same subject fitted by a name that is not the keyword has no such note.
+        let other = fit_answer(
+            &table,
+            &[],
+            json!({ "subject": "b", "model": "pk1.oral_1" }),
+        );
+        assert!(other.get("notes").is_none(), "{layout}");
+    }
+}
+
+#[test]
+fn an_unknown_worksheet_is_reported_before_the_keyword_all() {
+    let mut e = Engine::new();
+    for subject in ["all", "1"] {
+        let params = json!({ "worksheet": 99, "subject": subject, "model": "pk1.oral_1" });
+        let by_execute = e.execute("fit.run", params.clone()).unwrap_err();
+        assert_eq!(by_execute.code, "unknown_worksheet", "{subject}");
+        let by_begin = e.begin("fit.run", params).unwrap_err();
+        assert_eq!(by_begin.code, "unknown_worksheet", "{subject}");
+    }
+}
+
+#[test]
+fn refusing_all_as_a_job_leaves_no_entry_in_the_history() {
+    let mut e = engine_with(&read_file("data/indometh.csv"), &[]);
+    let before = e.history().len();
+    let err = e
+        .begin(
+            "fit.run",
+            json!({ "worksheet": 1, "subject": "all", "model": "pk1.iv_bolus" }),
+        )
+        .unwrap_err();
+    assert_eq!(err.code, "subject_all_not_a_job");
+    assert_eq!(e.history().len(), before, "a refusal is not a run");
+    assert!(e.running_job().is_none());
+    // A job that fails for another reason is still recorded, as it was.
+    let err = e
+        .begin(
+            "fit.run",
+            json!({ "worksheet": 1, "subject": "nobody", "model": "pk1.iv_bolus" }),
+        )
+        .unwrap_err();
+    assert_eq!(err.code, "unknown_subject");
+    assert_eq!(e.history().len(), before + 1);
+}
+
+// ---- the profile layout: a covariate that varies refuses its subject (DAT-ERR-05, DAT-ERR-08) --------
+
+const PROFILE_WITH_WEIGHT: &str = "subject,time,conc,dose,WT\n\
+a,0.5,3.1,100,70\na,2,5.8,100,70\na,4,4.6,100,70\na,8,2.9,100,70\na,12,1.8,100,70\n\
+b,0.5,2.7,100,70\nb,2,5.2,100,80\nb,4,4.0,100,80\nb,8,2.5,100,80\nb,12,1.5,100,80\n\
+c,0.5,3.4,100,65\nc,2,6.0,100,65\nc,4,4.9,100,65\nc,8,3.1,100,65\nc,12,2.0,100,65\n";
+
+#[test]
+fn a_profile_layout_subject_with_a_varying_covariate_is_refused_like_in_the_event_layout() {
+    let check = {
+        let options: CsvOptions = serde_json::from_value(json!({ "covariates": ["WT"] })).unwrap();
+        let found = readings(PROFILE_WITH_WEIGHT.as_bytes(), &options).unwrap();
+        found[0]
+            .checks
+            .first()
+            .expect("the reading checks it")
+            .clone()
+    };
+    assert_eq!(check.code, "covariate_varies");
+
+    let mut e = engine_with(PROFILE_WITH_WEIGHT, &["WT"]);
+    let subjects = by_subject(&nca_subjects(&mut e, json!({ "route": "extravascular" })));
+    let message = subjects["b"]["outcome"]["error"].as_str().unwrap();
+    assert_eq!(message, check.message);
+    assert!(
+        message.contains("covariate `WT` takes several values for subject b")
+            && message.contains("70 at row 6")
+            && message.contains("80 at row 7"),
+        "{message}"
+    );
+    // The others run, and give what they give without the affected subject.
+    let rest = "subject,time,conc,dose,WT\n".to_owned()
+        + &PROFILE_WITH_WEIGHT
+            .lines()
+            .skip(1)
+            .filter(|l| !l.starts_with("b,"))
+            .collect::<Vec<_>>()
+            .join("\n")
+        + "\n";
+    let mut r = engine_with(&rest, &["WT"]);
+    let reference = by_subject(&nca_subjects(&mut r, json!({ "route": "extravascular" })));
+    for id in ["a", "c"] {
+        assert_eq!(
+            subjects[id].to_string(),
+            reference[id].to_string(),
+            "subject {id}"
+        );
+    }
+
+    // A fit of every subject, and of the subject alone, refuse it with the same sentence.
+    let all = entries(&fit_answer(
+        PROFILE_WITH_WEIGHT,
+        &["WT"],
+        json!({ "subject": "all", "model": "pk1.oral_1" }),
+    ));
+    assert_eq!(all[1]["outcome"]["error"], message);
+    assert!(all[0]["outcome"].get("ok").is_some() && all[2]["outcome"].get("ok").is_some());
+    let mut e = engine_with(PROFILE_WITH_WEIGHT, &["WT"]);
+    let alone = e
+        .execute(
+            "fit.run",
+            json!({ "worksheet": 1, "subject": "b", "model": "pk1.oral_1" }),
+        )
+        .unwrap_err();
+    assert_eq!(alone.message, message);
+
+    // The event layout of the same data refuses it with the same words.
+    let event = "ID,TIME,DV,AMT,EVID,WT\n\
+b,0,,100,1,70\nb,0.5,2.7,,0,70\nb,2,5.2,,0,80\nb,4,4.0,,0,80\n";
+    let mut ev = engine_with(event, &["WT"]);
+    let twin = nca_subjects(&mut ev, json!({ "route": "extravascular" }));
+    assert!(
+        twin[0]["outcome"]["error"]
+            .as_str()
+            .unwrap()
+            .contains("covariate `WT` takes several values for subject b"),
+    );
+}
+
+#[test]
+fn data_describe_names_the_refused_subjects_with_their_sentence() {
+    // Profile layout: the varying covariate.
+    let mut e = engine_with(PROFILE_WITH_WEIGHT, &["WT"]);
+    let described = ok(&mut e, "data.describe", json!({ "worksheet": 1 }));
+    let refused = described["refused"].as_array().unwrap();
+    assert_eq!(refused.len(), 1);
+    assert_eq!(refused[0]["subject"], "b");
+    assert_eq!(refused[0]["code"], "covariate_varies");
+    let nca = nca_subjects(&mut e, json!({ "route": "extravascular" }));
+    assert_eq!(
+        Value::String(refused[0]["message"].as_str().unwrap().to_owned()),
+        by_subject(&nca)["b"]["outcome"]["error"]
+    );
+
+    // Event layout: every case of the refusal files that names a subject lists it, with the
+    // sentence its NCA gives.
+    let mut listed = 0;
+    for name in refusal_cases() {
+        let case = read_json(&format!("expected/data/{name}.json"));
+        let affected: Vec<String> = case["affected"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s.as_str().unwrap().to_owned())
+            .collect();
+        if affected.is_empty() {
+            continue;
+        }
+        let csv = read_file(&format!("data/{}", case["file"].as_str().unwrap()));
+        let covariates = covariates_of_case(&case);
+        let covariates: Vec<&str> = covariates.iter().map(String::as_str).collect();
+        let mut e = engine_with(&csv, &covariates);
+        let described = ok(&mut e, "data.describe", json!({ "worksheet": 1 }));
+        let shown: Vec<String> = described["refused"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{name}: no `refused` in {described}"))
+            .iter()
+            .map(|r| r["subject"].as_str().unwrap().to_owned())
+            .collect();
+        assert_eq!(shown, affected, "{name}");
+        let nca = by_subject(&nca_subjects(&mut e, json!({ "route": "extravascular" })));
+        for r in described["refused"].as_array().unwrap() {
+            let id = r["subject"].as_str().unwrap();
+            assert_eq!(
+                Value::String(r["message"].as_str().unwrap().to_owned()),
+                nca[id]["outcome"]["error"],
+                "{name}: subject {id}"
+            );
+            listed += 1;
+        }
+    }
+    assert!(listed >= 20, "only {listed} refused subjects were listed");
+
+    // A table without a problem answers as before: no `refused` member.
+    let mut clean = engine_with(&read_file("data/theoph.csv"), &[]);
+    let described = ok(&mut clean, "data.describe", json!({ "worksheet": 1 }));
+    assert!(described.get("refused").is_none());
+}
+
+#[test]
+fn several_subjects_with_the_same_problem_each_carry_their_own_sentence() {
+    // Subjects 1 and 3 each have a weight that changes; subject 2 does not. The sentences name
+    // their own subject and their own rows.
+    let table = "ID,TIME,DV,AMT,EVID,WT\n\
+1,0,,100,1,70\n1,1,5.0,,0,70\n1,2,6.0,,0,75\n\
+2,0,,100,1,60\n2,1,5.5,,0,60\n2,2,6.5,,0,60\n\
+3,0,,100,1,80\n3,1,4.5,,0,81\n3,2,5.5,,0,81\n";
+    let mut e = engine_with(table, &["WT"]);
+    let subjects = by_subject(&nca_subjects(&mut e, json!({ "route": "extravascular" })));
+    let sentence = |id: &str, first: &str, first_row: usize, second: &str, second_row: usize| {
+        format!(
+            "covariate `WT` takes several values for subject {id} ({first} at row {first_row} and {second} at row {second_row}); in this version a covariate has one value per subject. Give one value per subject, or declare the column as not a covariate"
+        )
+    };
+    assert_eq!(
+        subjects["1"]["outcome"]["error"],
+        sentence("1", "70", 1, "75", 3)
+    );
+    assert_eq!(
+        subjects["3"]["outcome"]["error"],
+        sentence("3", "80", 7, "81", 8)
+    );
+    assert!(subjects["2"]["outcome"].get("ok").is_some());
+    // The fits of every subject say the same.
+    let all = entries(&fit_answer(
+        table,
+        &["WT"],
+        json!({ "subject": "all", "model": "pk1.oral_1" }),
+    ));
+    assert_eq!(
+        all[0]["outcome"]["error"],
+        subjects["1"]["outcome"]["error"]
+    );
+    assert_eq!(
+        all[2]["outcome"]["error"],
+        subjects["3"]["outcome"]["error"]
+    );
 }
