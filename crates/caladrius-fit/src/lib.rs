@@ -100,7 +100,7 @@ pub enum Derivatives {
     ForwardDifference,
     /// Closed forms, in the (v, k) parameterisation: pk1.iv_bolus, pk1.iv_infusion, pk1.oral_1,
     /// pk1.oral_1_lag, pk1.oral_0 and pk1.oral_0_lag, for any subset of fitted parameters, and
-    /// every pk2 model; refused (never replaced) when the model has none.
+    /// every pk2 and pk3 model; refused (never replaced) when the model has none.
     Analytic,
 }
 

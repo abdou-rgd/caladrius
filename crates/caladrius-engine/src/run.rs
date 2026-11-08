@@ -330,7 +330,10 @@ pub(crate) struct FitMeta {
 /// infusion. For a model with a zero-order absorption the duration is a parameter, not a fact of
 /// the dose.
 fn takes_dose_duration(model: ModelId) -> bool {
-    matches!(model, ModelId::IvInfusion | ModelId::Pk2IvInfusion)
+    matches!(
+        model,
+        ModelId::IvInfusion | ModelId::Pk2IvInfusion | ModelId::Pk3IvInfusion
+    )
 }
 
 /// Holds `dur` at the duration of the dose row (DAT-USE-02) unless the person has fixed or fitted

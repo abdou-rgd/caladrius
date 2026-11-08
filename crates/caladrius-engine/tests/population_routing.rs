@@ -931,6 +931,70 @@ fn an_infusion_is_fitted_with_the_duration_of_its_dose_row_from_dur_or_from_rate
     );
 }
 
+/// A three-compartment infusion takes the duration of its dose row like the one- and
+/// two-compartment ones (DAT-USE-02): the event table gives the same fit as the profile layout
+/// with `dur` fixed by hand, and no `dur` is asked for. T-172: the id was missing from the routing
+/// when the three-compartment models met the event layout.
+#[test]
+fn a_pk3_infusion_is_fitted_with_the_duration_of_its_dose_row() {
+    let model = "pk3.iv_infusion";
+    // A pk3 profile simulated with an infusion of 1 h (public parameters of the pk3 oracle),
+    // with a small alternating error, in both layouts.
+    let times = [
+        0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 36.0, 48.0, 72.0, 96.0,
+    ];
+    let mut sim = Engine::new();
+    let simulated = ok(
+        &mut sim,
+        "model.simulate",
+        json!({ "model": model, "dose": 100, "times": times,
+                "params": { "cl": 3, "vc": 8, "q2": 9.5, "vp2": 9.5, "q3": 6.3, "vp3": 31.5, "dur": 1 } }),
+    );
+    let conc: Vec<f64> = simulated["conc"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c.as_f64().unwrap())
+        .collect();
+    assert_eq!(conc.len(), times.len());
+    let mut event = String::from(
+        "ID,TIME,DV,AMT,DUR,EVID
+1,0,,100,1,1
+",
+    );
+    let mut profile = String::from(
+        "Subject,Time,Conc,Dose
+",
+    );
+    for (i, (t, c)) in times.iter().zip(&conc).enumerate() {
+        let noisy = c * if i % 2 == 0 { 1.01 } else { 0.99 };
+        event.push_str(&format!(
+            "1,{t},{noisy},,,0
+"
+        ));
+        profile.push_str(&format!(
+            "1,{t},{noisy},100
+"
+        ));
+    }
+    let initial = json!({ "cl": 3.2, "vc": 7.5, "q2": 9.0, "vp2": 10.0, "q3": 6.0, "vp3": 30.0 });
+
+    let got = fit_answer(
+        &event,
+        &[],
+        json!({ "subject": "1", "model": model, "initial": initial }),
+    );
+    assert_eq!(got["outcome"]["ok"]["status"], "converged", "{got}");
+    assert!(got.get("notes").is_none(), "{got}");
+    let want = fit_answer(
+        &profile,
+        &[],
+        json!({ "subject": "1", "model": model, "initial": initial,
+                "options": { "fixed": { "dur": 1.0 } } }),
+    );
+    assert_eq!(got["outcome"], want["outcome"]);
+}
+
 #[test]
 fn a_model_that_does_not_read_the_duration_from_the_file_says_so() {
     let table = indometh_with_column("DUR", "2");
