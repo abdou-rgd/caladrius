@@ -986,3 +986,97 @@ fn a_replay_tells_the_model_the_verdict_and_keeps_the_digests_for_the_program() 
         whole["first_divergence"]["recomputed"]
     );
 }
+
+#[test]
+fn a_pk3_fit_runs_over_mcp_and_its_initial_estimates_are_refused_readably() {
+    let mut s = Server::new();
+    // The tool schema lists the three-compartment ids and their parameter sets.
+    let list = send(
+        &mut s,
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }),
+    );
+    for name in [
+        "fit_run",
+        "fit_evaluate",
+        "fit_initial_estimates",
+        "model_simulate",
+    ] {
+        let tool = list["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["name"] == name)
+            .unwrap();
+        let schema = tool["inputSchema"].to_string();
+        assert!(schema.contains("pk3.oral_0_lag"), "{name}");
+        assert!(schema.contains("cl,vc,q2,vp2,q3,vp3"), "{name}");
+    }
+    // A pk3 profile from model_simulate (public oracle parameters), 1 % alternating error.
+    let times = [
+        0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 36.0,
+        48.0, 72.0, 96.0, 120.0,
+    ];
+    let sim = call(
+        &mut s,
+        2,
+        "model_simulate",
+        json!({ "model": "pk3.iv_bolus", "dose": 100,
+                "params": { "cl": 3, "vc": 8, "q2": 9.5, "vp2": 9.5, "q3": 6.3, "vp3": 31.5 },
+                "times": times }),
+    );
+    assert_eq!(sim["result"]["isError"], false, "{sim}");
+    let conc = sim["result"]["structuredContent"]["conc"]
+        .as_array()
+        .unwrap();
+    let mut csv = String::from("time,conc,dose\n");
+    for (i, (t, c)) in times.iter().zip(conc).enumerate() {
+        let noise = if i % 2 == 0 { 1.01 } else { 0.99 };
+        csv.push_str(&format!("{t},{},100\n", c.as_f64().unwrap() * noise));
+    }
+    let r = call(
+        &mut s,
+        3,
+        "data_import",
+        json!({ "name": "pk3", "csv": csv }),
+    );
+    let id = r["result"]["structuredContent"]["worksheet"]["id"].clone();
+    let fit = call(
+        &mut s,
+        4,
+        "fit_run",
+        json!({ "worksheet": id, "model": "pk3.iv_bolus",
+                "initial": { "cl": 3.2, "vc": 7.5, "q2": 9.0, "vp2": 10.0, "q3": 6.0, "vp3": 30.0 } }),
+    );
+    assert_jsonrpc(&fit);
+    assert_eq!(fit["result"]["isError"], false, "{fit}");
+    let ok = &fit["result"]["structuredContent"]["result"]["outcome"]["ok"];
+    assert!(ok["status"].is_string(), "{ok}");
+    assert!(ok["values"]["estimate.cl"].as_f64().is_some());
+    // No automatic initial estimates for pk3: a tool error that says what to do.
+    let r = call(
+        &mut s,
+        5,
+        "fit_initial_estimates",
+        json!({ "worksheet": id, "model": "pk3.iv_bolus" }),
+    );
+    assert_eq!(r["result"]["isError"], true);
+    let text = r["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(text.starts_with("fit_error: "), "{text}");
+    assert!(text.contains("three-compartment"), "{text}");
+    assert!(text.contains("initial value"), "{text}");
+    // A refusal of the model is a tool error with its sentence.
+    let r = call(
+        &mut s,
+        6,
+        "model_simulate",
+        json!({ "model": "pk3.iv_bolus", "dose": 100,
+                "params": { "cl": 0, "vc": 8, "q2": 9.5, "vp2": 9.5, "q3": 6.3, "vp3": 31.5 },
+                "times": [1] }),
+    );
+    assert_eq!(r["result"]["isError"], true);
+    let text = r["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(
+        text.starts_with("model_error: ") && text.contains("cl"),
+        "{text}"
+    );
+}

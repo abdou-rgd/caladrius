@@ -928,3 +928,138 @@ fn project_replay_checks_a_saved_project_and_exits_with_1_when_it_differs() {
     // Every other command exits with 0.
     assert_eq!(run_args(&["commands"]).unwrap().exit_code, 0);
 }
+
+/// A pk3 profile simulated by `model.simulate` (public oracle parameters cl 3, vc 8, q2 9.5,
+/// vp2 9.5, q3 6.3, vp3 31.5, dose 100) with a 1 % alternating error, written as a CSV file.
+fn pk3_csv_file(dir: &std::path::Path) -> String {
+    let sim = run_args(&[
+        "model.simulate",
+        "--param",
+        "model=pk3.iv_bolus",
+        "--param",
+        "dose=100",
+        "--param",
+        "params.cl=3",
+        "--param",
+        "params.vc=8",
+        "--param",
+        "params.q2=9.5",
+        "--param",
+        "params.vp2=9.5",
+        "--param",
+        "params.q3=6.3",
+        "--param",
+        "params.vp3=31.5",
+        "--param",
+        "times=[0.05,0.1,0.25,0.5,0.75,1,1.5,2,3,4,6,8,12,16,24,36,48,72,96,120]",
+    ])
+    .unwrap();
+    let sim = json_out(&sim);
+    let times = sim["times"].as_array().unwrap();
+    let conc = sim["conc"].as_array().unwrap();
+    let mut csv = String::from("Subject,Time (h),Conc (mg/L),Dose (mg)\n");
+    for (i, (t, c)) in times.iter().zip(conc).enumerate() {
+        let noise = if i % 2 == 0 { 1.01 } else { 0.99 };
+        csv.push_str(&format!(
+            "A,{},{},100\n",
+            t.as_f64().unwrap(),
+            c.as_f64().unwrap() * noise
+        ));
+    }
+    let path = dir.join("pk3.csv");
+    fs::write(&path, csv).unwrap();
+    path.to_str().unwrap().to_owned()
+}
+
+#[test]
+fn a_pk3_fit_runs_from_the_command_line() {
+    let dir = scratch("pk3");
+    let file = pk3_csv_file(&dir);
+    let fit = run_args(&[
+        "fit.run",
+        "--csv",
+        &file,
+        "--param",
+        "model=pk3.iv_bolus",
+        "--param",
+        "initial.cl=3.2",
+        "--param",
+        "initial.vc=7.5",
+        "--param",
+        "initial.q2=9",
+        "--param",
+        "initial.vp2=10",
+        "--param",
+        "initial.q3=6",
+        "--param",
+        "initial.vp3=30",
+        "--format",
+        "csv",
+    ])
+    .unwrap()
+    .bare();
+    assert!(
+        fit.starts_with("parameter,estimate,se,cv_percent,ci_lo,ci_hi\n"),
+        "{fit}"
+    );
+    assert_eq!(fit.lines().count(), 7, "{fit}");
+    for name in ["cl", "vc", "q2", "vp2", "q3", "vp3"] {
+        assert!(fit.contains(&format!("\n{name},")), "{name}: {fit}");
+    }
+    // Initial estimates are not generated for pk3: the refusal is one readable line.
+    let refused = failure(&[
+        "fit.initial_estimates",
+        "--csv",
+        &file,
+        "--param",
+        "model=pk3.iv_bolus",
+    ]);
+    assert!(refused.contains("fit_error"), "{refused}");
+    assert!(refused.contains("three-compartment"), "{refused}");
+    assert!(refused.contains("initial value"), "{refused}");
+}
+
+#[test]
+fn a_pk3_simulation_refusal_is_one_readable_line_with_a_code() {
+    let refused = failure(&[
+        "model.simulate",
+        "--param",
+        "model=pk3.iv_bolus",
+        "--param",
+        "dose=100",
+        "--param",
+        "params.cl=0",
+        "--param",
+        "params.vc=8",
+        "--param",
+        "params.q2=9.5",
+        "--param",
+        "params.vp2=9.5",
+        "--param",
+        "params.q3=6.3",
+        "--param",
+        "params.vp3=31.5",
+        "--param",
+        "times=[1]",
+    ]);
+    assert!(refused.contains("model_error"), "{refused}");
+    assert!(refused.contains("cl"), "{refused}");
+    assert_eq!(refused.trim().lines().count(), 1, "{refused}");
+}
+
+#[test]
+fn the_command_list_with_schemas_names_the_pk3_ids_and_their_parameter_sets() {
+    let full = json_out(&run_args(&["commands", "--format", "json"]).unwrap());
+    let list = full.as_array().unwrap();
+    for id in [
+        "fit.run",
+        "fit.evaluate",
+        "fit.initial_estimates",
+        "model.simulate",
+    ] {
+        let command = list.iter().find(|c| c["id"] == id).unwrap();
+        let schema = command["params_schema"].to_string();
+        assert!(schema.contains("pk3.oral_0_lag"), "{id}");
+        assert!(schema.contains("a,b,c,alpha,beta,gamma"), "{id}");
+    }
+}

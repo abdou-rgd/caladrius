@@ -30,7 +30,7 @@ cargo xtask web      # builds the browser page (apps/caladrius-web) into target/
 
 ## Usage
 
-The command-line application runs the same commands as the UI and the MCP server (`caladrius-cli commands` lists them with their titles; `caladrius-cli commands --format json` adds the JSON schema of the parameters and results of each).
+The command-line application runs the same commands as the UI and the MCP server (`caladrius-cli commands` lists them with their titles; `caladrius-cli commands --format json` adds the JSON schema of the parameters and results of each). The model commands (`model.simulate`, `fit.evaluate`, `fit.run`) take the ids `pk1.*`, `pk2.*` and `pk3.*` (one, two and three compartments); `fit.initial_estimates` does not generate estimates for `pk2.*` and `pk3.*`, and says to give them.
 
 ```sh
 # NCA of the Theoph dataset, one table (subject, parameter, value, reason) on standard output
@@ -45,7 +45,7 @@ cargo run -q -p caladrius-cli -- project.replay --project indo.caladrius.json
 
 ## MCP
 
-`caladrius-mcp` is a Model Context Protocol server on standard input and output (JSON-RPC 2.0, one message per line; no network). It exposes every command of the registry as a tool: `data_import`, `nca_run`, `fit_run`, `model_simulate`, `export_table`... The seal of each result is in the `_meta` of the answer, never in the text an assistant reads.
+`caladrius-mcp` is a Model Context Protocol server on standard input and output (JSON-RPC 2.0, one message per line; no network). It exposes every command of the registry as a tool: `data_import`, `nca_run`, `fit_run`, `model_simulate`, `export_table`... The tools take the same model ids as the command line, `pk1.*`, `pk2.*` and `pk3.*`. The seal of each result is in the `_meta` of the answer, never in the text an assistant reads.
 
 Build the binary once with `cargo build --release -p caladrius-mcp` (it lands in `target/release/caladrius-mcp`), then register it in the agent host. In Claude Code, run `claude mcp add caladrius -- /path/to/caladrius-mcp`, or add this to `.mcp.json` at the root of a project; any other host that starts MCP servers over stdio runs the binary with no arguments as a child process.
 

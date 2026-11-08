@@ -14,6 +14,11 @@
 //! `specs/differences.md`) is neither validated nor a failure: it is counted in its own column and
 //! left out of the validated and expected totals. A difference cannot hide a regression: moving a
 //! row from validated to documented lowers the validated floor and fails the run.
+//!
+//! A value the oracle writes but whose tolerance is an open question (the `scalar_ill` rows of the
+//! three-compartment cases, held by Q-024) is *held*: counted in its own column, in neither the
+//! validated nor the expected totals, and never a failure. The floors count it with the other rows
+//! the oracle has, so that a held row cannot be dropped silently.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -35,19 +40,38 @@ use crate::workspace;
 /// Output file, relative to the workspace root.
 const OUTPUT: &str = "docs/conformance.md";
 /// Marker of a floor line in the output file:
-/// `<!-- floor <case> <parameter> <validated> <expected> <documented> -->` (the documented count is
-/// optional when reading, for files written before documented differences existed).
+/// `<!-- floor <case> <parameter> <validated> <expected> <documented> [<held>] -->` (the documented
+/// count is optional when reading, for files written before documented differences existed; the
+/// held count is written only when it is not zero).
 const FLOOR_MARK: &str = "<!-- floor ";
 /// Closing of a floor line.
 const FLOOR_END: &str = "-->";
 
-/// Validated, expected and documented counts of one parameter. `expected` leaves out the rows
-/// covered by a documented difference, which are counted in `documented` instead.
+/// Validated, expected, documented and held counts of one parameter. `expected` leaves out the
+/// rows covered by a documented difference, which are counted in `documented` instead, and the
+/// rows held by an open question, which are counted in `held`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 struct Count {
     validated: usize,
     expected: usize,
     documented: usize,
+    held: usize,
+}
+
+impl Count {
+    fn plus(self, other: Count) -> Count {
+        Count {
+            validated: self.validated + other.validated,
+            expected: self.expected + other.expected,
+            documented: self.documented + other.documented,
+            held: self.held + other.held,
+        }
+    }
+
+    /// Every row the oracle has for this parameter, whatever became of it.
+    fn rows(self) -> usize {
+        self.expected + self.documented + self.held
+    }
 }
 
 /// The three kinds of oracle case (`oracle/README.md`), in the order of the document.
@@ -121,11 +145,7 @@ impl CaseReport {
     fn total(&self) -> Count {
         self.parameters
             .iter()
-            .fold(Count::default(), |acc, (_, c)| Count {
-                validated: acc.validated + c.validated,
-                expected: acc.expected + c.expected,
-                documented: acc.documented + c.documented,
-            })
+            .fold(Count::default(), |acc, (_, c)| acc.plus(*c))
     }
 }
 
@@ -346,7 +366,7 @@ fn parse_floors(text: &str) -> Result<Floors> {
         let bad = |why: &str| {
             XtaskError::new(format!(
                 "{OUTPUT} line {}: malformed floor line ({why}): {line:?}; expected \
-`{FLOOR_MARK}<case> <parameter> <validated> <expected> <documented> {FLOOR_END}`. Fix or restore the file \
+`{FLOOR_MARK}<case> <parameter> <validated> <expected> <documented> [<held>] {FLOOR_END}`. Fix or restore the file \
 from version control; floors are not dropped silently",
                 index + 1
             ))
@@ -361,11 +381,17 @@ from version control; floors are not dropped silently",
                 .map_err(|_| bad("count is not a whole number"))
         };
         match words.as_slice() {
-            [case, parameter, validated, expected] | [case, parameter, validated, expected, _] => {
+            [case, parameter, validated, expected]
+            | [case, parameter, validated, expected, _]
+            | [case, parameter, validated, expected, _, _] => {
                 let count = Count {
                     validated: number(validated)?,
                     expected: number(expected)?,
                     documented: match words.get(4) {
+                        Some(word) => number(word)?,
+                        None => 0,
+                    },
+                    held: match words.get(5) {
                         Some(word) => number(word)?,
                         None => 0,
                     },
@@ -420,12 +446,12 @@ fn check_floors(floors: &Floors, reports: &[CaseReport]) -> Result<()> {
                 count.validated, floor.validated
             ));
         }
-        // Rows documented as differences are still rows of the oracle.
-        if count.expected + count.documented < floor.expected + floor.documented {
+        // Rows documented as differences or held by a question are still rows of the oracle.
+        if count.rows() < floor.rows() {
             drops.push(format!(
                 "{case}: {parameter} has {} expected rows, floor is {}",
-                count.expected + count.documented,
-                floor.expected + floor.documented
+                count.rows(),
+                floor.rows()
             ));
         }
         let unvalidated = count.expected.saturating_sub(count.validated);
@@ -465,19 +491,12 @@ fn check_floors(floors: &Floors, reports: &[CaseReport]) -> Result<()> {
 fn render(reports: &[CaseReport]) -> String {
     let mut out = String::new();
     let sum = |rs: &mut dyn Iterator<Item = &CaseReport>| {
-        rs.fold(Count::default(), |acc, r| {
-            let t = r.total();
-            Count {
-                validated: acc.validated + t.validated,
-                expected: acc.expected + t.expected,
-                documented: acc.documented + t.documented,
-            }
-        })
+        rs.fold(Count::default(), |acc, r| acc.plus(r.total()))
     };
     let all = sum(&mut reports.iter());
     out.push_str("# Conformance\n\n");
     out.push_str(
-        "Generated by `cargo xtask conformance`; never edit by hand. Each value of `oracle/expected/` (NCA against PKNCA), `oracle/expected/models/` (closed-form model values; `pk2/`: two-compartment values, partial derivatives and the inputs the engine must refuse) and `oracle/expected/fit/` (reference weighted least-squares fits) is compared with the engine within the tolerance named for its kind below; a value expected as not available must be not available. For the fits, the entries of the per-case tables are the groups of the oracle tests (estimates, residual sum of squares, statistics, confidence limits, information criteria, secondary parameters) and the convergence status. A value covered by a documented difference (`specs/differences.md`) is neither validated nor a failure: it has its own column and is left out of the totals. The floors (last lines: validated, expected and documented rows per parameter per case) can only go up.\n\n",
+        "Generated by `cargo xtask conformance`; never edit by hand. Each value of `oracle/expected/` (NCA against PKNCA), `oracle/expected/models/` (closed-form model values; `pk2/` and `pk3/`: two- and three-compartment values, partial derivatives and the inputs the engine must refuse) and `oracle/expected/fit/` (reference weighted least-squares fits) is compared with the engine within the tolerance named for its kind below; a value expected as not available must be not available. For the fits, the entries of the per-case tables are the groups of the oracle tests (estimates, residual sum of squares, statistics, confidence limits, information criteria, secondary parameters) and the convergence status. A value covered by a documented difference (`specs/differences.md`) is neither validated nor a failure: it has its own column and is left out of the totals. A value held by an open question of `board/QUESTIONS.md` is the same: it is listed as held, and left out of the totals. The floors (last lines: validated, expected, documented and, when there are any, held rows per parameter per case) can only go up.\n\n",
     );
     out.push_str(&format!(
         "**Overall: {} of {} values validated ({:.1} %).**",
@@ -489,6 +508,12 @@ fn render(reports: &[CaseReport]) -> String {
         out.push_str(&format!(
             " {} further values are documented differences, neither validated nor failures.",
             all.documented
+        ));
+    }
+    if all.held > 0 {
+        out.push_str(&format!(
+            " {} further values are held by an open question (column `held`), neither validated nor failures.",
+            all.held
         ));
     }
     out.push_str("\n\n");
@@ -515,7 +540,7 @@ fn render(reports: &[CaseReport]) -> String {
             "|---|{}---|---|---|---|\n",
             "---|".repeat(kind.headers().len())
         ));
-        for r in of_kind {
+        for r in &of_kind {
             let t = r.total();
             let full = r
                 .parameters
@@ -535,6 +560,23 @@ fn render(reports: &[CaseReport]) -> String {
             ));
         }
         out.push('\n');
+        let held: Vec<(&str, usize)> = of_kind
+            .iter()
+            .map(|r| (r.name.as_str(), r.total().held))
+            .filter(|(_, n)| *n > 0)
+            .collect();
+        if !held.is_empty() {
+            out.push_str(&format!(
+                "{} values on {} cases are held by an open question (the `scalar_ill` rows of `oracle/expected/models/pk3/`, held by Q-024 in `board/QUESTIONS.md`: a condition number above 1e3 with respect to the parameters, so that the tolerance cannot be demanded of any double precision implementation). They are in none of the counts above, they are not failures, and the case tables below list them in a `held` column.\n\n",
+                t.held,
+                held.len()
+            ));
+            out.push_str("| case | held values |\n|---|---|\n");
+            for (name, n) in &held {
+                out.push_str(&format!("| {name} | {n} |\n"));
+            }
+            out.push('\n');
+        }
     }
     for r in reports {
         out.push_str(&format!("\n### {}\n\n", r.name));
@@ -544,27 +586,47 @@ fn render(reports: &[CaseReport]) -> String {
         if !r.errors.is_empty() {
             out.push('\n');
         }
-        out.push_str(&format!(
-            "| {} | validated | documented differences | status |\n|---|---|---|---|\n",
-            r.kind.parameter_title()
-        ));
+        let has_held = r.total().held > 0;
+        if has_held {
+            out.push_str(&format!(
+                "| {} | validated | documented differences | held | status |\n|---|---|---|---|---|\n",
+                r.kind.parameter_title()
+            ));
+        } else {
+            out.push_str(&format!(
+                "| {} | validated | documented differences | status |\n|---|---|---|---|\n",
+                r.kind.parameter_title()
+            ));
+        }
         for (name, c) in &r.parameters {
             let status = if c.validated == c.expected {
                 "ok"
             } else {
                 "FAILS"
             };
-            out.push_str(&format!(
-                "| `{name}` | {} / {} | {} | {status} |\n",
-                c.validated, c.expected, c.documented
-            ));
+            if has_held {
+                out.push_str(&format!(
+                    "| `{name}` | {} / {} | {} | {} | {status} |\n",
+                    c.validated, c.expected, c.documented, c.held
+                ));
+            } else {
+                out.push_str(&format!(
+                    "| `{name}` | {} / {} | {} | {status} |\n",
+                    c.validated, c.expected, c.documented
+                ));
+            }
         }
     }
     out.push('\n');
     for r in reports {
         for (name, c) in &r.parameters {
+            let held = if c.held > 0 {
+                format!(" {}", c.held)
+            } else {
+                String::new()
+            };
             out.push_str(&format!(
-                "{FLOOR_MARK}{} {name} {} {} {} {FLOOR_END}\n",
+                "{FLOOR_MARK}{} {name} {} {} {}{held} {FLOOR_END}\n",
                 r.name, c.validated, c.expected, c.documented
             ));
         }
@@ -586,11 +648,14 @@ pub fn run() -> Result<()> {
     update_file(&root.join(OUTPUT), &reports)?;
     for r in &reports {
         let t = r.total();
-        let documented = if t.documented > 0 {
+        let mut documented = if t.documented > 0 {
             format!(", {} documented differences", t.documented)
         } else {
             String::new()
         };
+        if t.held > 0 {
+            documented.push_str(&format!(", {} held (Q-024)", t.held));
+        }
         console::out(&format!(
             "{:<20} {:>4} / {:<4} values validated ({:.1} %){documented}",
             r.name,
@@ -603,14 +668,7 @@ pub fn run() -> Result<()> {
         let t = reports
             .iter()
             .filter(|r| r.kind == kind)
-            .fold(Count::default(), |acc, r| {
-                let c = r.total();
-                Count {
-                    validated: acc.validated + c.validated,
-                    expected: acc.expected + c.expected,
-                    documented: acc.documented + c.documented,
-                }
-            });
+            .fold(Count::default(), |acc, r| acc.plus(r.total()));
         console::out(&format!(
             "total {:<6} {:>5} / {:<5} values validated ({:.1} %)",
             match kind {
@@ -684,6 +742,7 @@ mod tests {
                 validated,
                 expected,
                 documented: 0,
+                held: 0,
             },
         )
     }
@@ -749,7 +808,8 @@ mod tests {
             Some(&Count {
                 validated: 3,
                 expected: 4,
-                documented: 0
+                documented: 0,
+                held: 0
             })
         );
         assert_eq!(
@@ -757,7 +817,8 @@ mod tests {
             Some(&Count {
                 validated: 2,
                 expected: 2,
-                documented: 0
+                documented: 0,
+                held: 0
             })
         );
         assert!(get("b", "cmax").is_some());
@@ -781,6 +842,7 @@ mod tests {
                     validated,
                     expected,
                     documented,
+                    held: 0,
                 },
             )],
         )
@@ -1003,5 +1065,69 @@ mod tests {
                 assert_eq!(total.validated, total.expected, "{name}");
             }
         }
+    }
+
+    fn with_held(name: &str, validated: usize, expected: usize, held: usize) -> CaseReport {
+        report_of(
+            name,
+            vec![(
+                "cmax".to_owned(),
+                Count {
+                    validated,
+                    expected,
+                    documented: 0,
+                    held,
+                },
+            )],
+        )
+    }
+
+    #[test]
+    fn held_rows_have_their_own_listing_and_are_counted_in_no_total() {
+        let text = render(&[with_held("a", 3, 3, 2), report("b", 2, 2)]);
+        assert!(
+            text.contains(
+                "**Overall: 5 of 5 values validated (100.0 %).** 2 further values are held"
+            ),
+            "{text}"
+        );
+        assert!(
+            text.contains("2 values on 1 cases are held by an open question"),
+            "{text}"
+        );
+        assert!(text.contains("| a | 2 |"), "{text}");
+        assert!(text.contains("| `cmax` | 3 / 3 | 0 | 2 | ok |"), "{text}");
+        // The case without held rows keeps the table it always had.
+        assert!(text.contains("| `cmax` | 2 / 2 | 0 | ok |"), "{text}");
+        assert!(text.contains("<!-- floor a cmax 3 3 0 2 -->"), "{text}");
+        assert!(text.contains("<!-- floor b cmax 2 2 0 -->"), "{text}");
+        let floors = parse_floors(&text).unwrap();
+        let floor = floors
+            .parameters
+            .get(&("a".to_owned(), "cmax".to_owned()))
+            .unwrap();
+        assert_eq!(
+            (
+                floor.validated,
+                floor.expected,
+                floor.documented,
+                floor.held
+            ),
+            (3, 3, 0, 2)
+        );
+    }
+
+    #[test]
+    fn a_held_row_cannot_be_dropped_and_may_become_an_expected_row() {
+        let floors = parse_floors(&render(&[with_held("a", 3, 3, 2)])).unwrap();
+        assert!(check_floors(&floors, &[with_held("a", 3, 3, 2)]).is_ok());
+        // Q-024 answered: the two held rows become expected rows and validate.
+        assert!(check_floors(&floors, &[with_held("a", 5, 5, 0)]).is_ok());
+        // A held row dropped from the oracle is refused.
+        let err = check_floors(&floors, &[with_held("a", 3, 3, 1)]).unwrap_err();
+        assert!(
+            err.to_string().contains("4 expected rows, floor is 5"),
+            "{err}"
+        );
     }
 }

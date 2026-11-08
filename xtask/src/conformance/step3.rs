@@ -1,8 +1,15 @@
 //! The model and fit cases of the conformance table (`oracle/expected/models/`, its two-compartment
-//! subdirectory `pk2/`, its multiple-dosing subdirectory `md/`, and `oracle/expected/fit/`),
-//! compared the way `crates/caladrius-models/tests/oracle_models.rs`, `oracle_models_2c.rs`,
+//! subdirectory `pk2/`, its three-compartment subdirectory `pk3/`, its multiple-dosing
+//! subdirectory `md/`, and `oracle/expected/fit/`), compared the way
+//! `crates/caladrius-models/tests/oracle_models.rs`, `oracle_models_2c.rs`, `oracle_models_3c.rs`,
 //! `oracle_models_md.rs` and `crates/caladrius-fit/tests/oracle_fit.rs` do, with the tolerances of
 //! `caladrius-testkit`.
+//!
+//! The three-compartment cases are read as the two-compartment ones are (values, conditioning and
+//! conversion scalars, derivatives, multiple dosing and steady state, and the error suite). The
+//! rows of the group `scalar_ill` (a condition number above 1e3 with respect to the parameters)
+//! are *held* by Q-024: counted in their own column, in neither the validated nor the expected
+//! totals, and never compared.
 //!
 //! A model case counts one row per expected value, grouped by quantity (`conc`, `auc`, `aumc`, then
 //! each secondary parameter). A two-compartment derivative case counts one row per expected
@@ -26,9 +33,10 @@ use caladrius_models::{
     jacobian, run as run_model,
 };
 use caladrius_testkit::{
-    FitCase, MdCase, ModelCase, Pk2ErrorCase, Pk2Kind, RegimenKind, Tolerance, list_fit_cases,
-    list_md_cases, list_model_cases, list_pk2_cases, load_fit_case, load_md_case, load_md_errors,
-    load_model_case, load_pk2_case, load_pk2_errors,
+    FitCase, MdCase, ModelCase, Pk2ErrorCase, Pk2Kind, Pk3Kind, RegimenKind, Tolerance,
+    list_fit_cases, list_md_cases, list_model_cases, list_pk2_cases, list_pk3_cases,
+    list_pk3_md_cases, load_fit_case, load_md_case, load_md_errors, load_model_case, load_pk2_case,
+    load_pk2_errors, load_pk3_case, load_pk3_errors, load_pk3_md_case,
 };
 
 use super::{CaseReport, Count, Kind};
@@ -42,7 +50,9 @@ fn oracle_error(e: caladrius_testkit::OracleError) -> XtaskError {
 
 /// The reports of every model case: the one-compartment cases, then the two-compartment value and
 /// derivative cases, each in the order of the file names, then the two-compartment error suite,
-/// then the multiple-dosing cases in the order of the file names and their error suite.
+/// then the multiple-dosing cases in the order of the file names and their error suite, then the
+/// three-compartment cases (values, derivatives, multiple dosing) and their error suite in the
+/// same order.
 pub(super) fn model_reports() -> Result<Vec<CaseReport>> {
     let mut out = Vec::new();
     for name in list_model_cases().map_err(oracle_error)? {
@@ -70,11 +80,35 @@ pub(super) fn model_reports() -> Result<Vec<CaseReport>> {
         "pk1.*, pk2.* regimens (inputs to refuse)",
         &load_md_errors().map_err(oracle_error)?,
     ));
+    for name in list_pk3_cases().map_err(oracle_error)? {
+        let loaded = load_pk3_case(&name).map_err(oracle_error)?;
+        out.push(match loaded.kind {
+            Pk3Kind::Derivatives => evaluate_derivatives(&loaded.case),
+            Pk3Kind::Values | Pk3Kind::Conditioning | Pk3Kind::Conversion => {
+                evaluate_model(&loaded.case)
+            }
+        });
+    }
+    for name in list_pk3_md_cases().map_err(oracle_error)? {
+        let loaded = load_pk3_md_case(&name).map_err(oracle_error)?;
+        out.push(evaluate_md(&loaded));
+    }
+    out.push(evaluate_errors(
+        PK3_ERRORS_CASE,
+        "pk3.* (inputs to refuse)",
+        &load_pk3_errors().map_err(oracle_error)?,
+    ));
     Ok(out)
 }
 
 /// Name of the two-compartment error suite in the table (its file name).
 const PK2_ERRORS_CASE: &str = caladrius_testkit::pk2::PK2_ERRORS;
+
+/// Name of the three-compartment error suite in the table (its file name).
+const PK3_ERRORS_CASE: &str = caladrius_testkit::pk3::PK3_ERRORS;
+
+/// The group of the rows held by Q-024 (`scalar_ill`: condition number above 1e3).
+const HELD_GROUP: &str = "scalar_ill";
 
 /// Name of the multiple-dosing error suite in the table (its file name).
 const MD_ERRORS_CASE: &str = caladrius_testkit::MD_ERRORS;
@@ -110,7 +144,8 @@ fn ordered(mut counts: BTreeMap<String, Count>) -> Vec<(String, Count)> {
     parameters
 }
 
-/// Every expected row of `case` counted, validated when `ok` says so for its value.
+/// Every expected row of `case` counted, validated when `ok` says so for its value. A row of the
+/// held group is counted as held and not compared.
 fn count_rows(
     case: &ModelCase,
     mut ok: impl FnMut(&str, &str, Option<f64>) -> bool,
@@ -118,6 +153,10 @@ fn count_rows(
     let mut counts: BTreeMap<String, Count> = BTreeMap::new();
     for (group, name, expected) in case.expected.iter() {
         let count = counts.entry(name.to_owned()).or_default();
+        if group == HELD_GROUP {
+            count.held += 1;
+            continue;
+        }
         count.expected += 1;
         count.validated += usize::from(ok(group, name, expected));
     }
@@ -557,8 +596,10 @@ mod tests {
     fn every_model_case_is_fully_validated() {
         let reports = model_reports().unwrap();
         // 21 one-compartment cases, 107 + 64 two-compartment cases and their error suite, 246
-        // multiple-dosing cases and their error suite.
-        assert_eq!(reports.len(), 21 + 107 + 64 + 1 + 246 + 1);
+        // multiple-dosing cases and their error suite, 360 three-compartment value, conditioning,
+        // conversion and derivative cases, 72 three-compartment multiple-dosing cases and their
+        // error suite.
+        assert_eq!(reports.len(), 21 + 107 + 64 + 1 + 246 + 1 + 360 + 72 + 1);
         for r in reports {
             let t = total(&r);
             assert!(r.errors.is_empty(), "{}: {:?}", r.name, r.errors);
@@ -567,25 +608,74 @@ mod tests {
                 assert_eq!(t.expected, 80, "{}", r.name);
             } else if r.name == MD_ERRORS_CASE {
                 assert_eq!(t.expected, 41, "{}", r.name);
-            } else if r.name.starts_with("model_md_") {
+            } else if r.name == PK3_ERRORS_CASE {
+                assert_eq!(t.expected, 254, "{}", r.name);
+            } else if r.name.starts_with("model_pk3_cond_") || r.name.starts_with("model_pk3_conv_")
+            {
+                // Scalars only.
+                assert!(t.expected > 0, "{}", r.name);
+            } else if r.name.starts_with("model_md_") || r.name.starts_with("model_pk3_md_") {
                 // conc and auc first, then accum_c for a steady state.
                 assert_eq!(names.get(..2), Some(&["conc", "auc"][..]), "{}", r.name);
                 if r.name.contains("_ss_") {
                     assert_eq!(names.get(2), Some(&"accum_c"), "{}", r.name);
                 }
-            } else if r.name.starts_with("model_pk2_deriv_") {
+            } else if r.name.starts_with("model_pk2_deriv_")
+                || r.name.starts_with("model_pk3_deriv_")
+            {
                 assert!(names.iter().all(|n| n.starts_with("d_")), "{}", r.name);
             } else {
                 // The grid quantities come first: conc and auc, then aumc for two compartments.
-                let first: &[&str] = if r.name.starts_with("model_pk2_") {
-                    &GRID_QUANTITIES[..3]
-                } else {
-                    &GRID_QUANTITIES[..2]
-                };
+                let first: &[&str] =
+                    if r.name.starts_with("model_pk2_") || r.name.starts_with("model_pk3_") {
+                        &GRID_QUANTITIES[..3]
+                    } else {
+                        &GRID_QUANTITIES[..2]
+                    };
                 assert_eq!(names.get(..first.len()), Some(first), "{}", r.name);
             }
             assert_eq!(t.validated, t.expected, "{}", r.name);
         }
+    }
+
+    #[test]
+    fn the_scalar_ill_rows_are_held_not_counted_and_not_compared() {
+        let mut held_cases = 0;
+        let mut held_rows = 0;
+        for name in list_pk3_cases().unwrap() {
+            let mut loaded = load_pk3_case(&name).unwrap();
+            let ill = loaded
+                .case
+                .expected
+                .iter()
+                .filter(|(group, _, _)| *group == HELD_GROUP)
+                .count();
+            if ill == 0 {
+                continue;
+            }
+            held_cases += 1;
+            held_rows += ill;
+            let r = evaluate_model(&loaded.case);
+            assert!(r.errors.is_empty(), "{name}: {:?}", r.errors);
+            let t = total(&r);
+            assert_eq!(t.held, ill, "{name}");
+            assert_eq!(t.validated, t.expected, "{name}");
+            assert_eq!(t.expected + t.held, loaded.case.expected.len(), "{name}");
+            if held_cases == 1 {
+                // A held value moved far away changes nothing: it is not compared.
+                let (group, row, _) = loaded
+                    .case
+                    .expected
+                    .iter()
+                    .find(|(group, _, _)| *group == HELD_GROUP)
+                    .map(|(g, n, v)| (g.to_owned(), n.to_owned(), v))
+                    .unwrap();
+                loaded.case.expected.insert(&group, &row, Some(1e300));
+                assert_eq!(evaluate_model(&loaded.case), r, "{name}");
+            }
+        }
+        // One ignored test of `oracle_models_3c` per case with such rows: 47 cases.
+        assert_eq!((held_cases, held_rows), (47, 98));
     }
 
     #[test]
