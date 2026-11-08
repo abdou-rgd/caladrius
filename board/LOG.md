@@ -164,3 +164,9 @@
   - `duplicate_times` and random effects on `tlag` and `dur` are refused. The hand checks are H39 to H44.
   - Two decisions taken meanwhile (OS-01 and OS-03), reversible by Abdou.
   - Specs only. Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-158 (oracle, Sonnet high; review on Sonnet, a doc fix round): the population-simulation oracle on branch `iter3/sim` (5b6a184 to e6e5b4a).
+  - It covers Philox4x32-10 words and KATs, AS 241 on 215 points, the exact part with the draws given (22 cases), the distribution and study checks, quantiles, invariance, and the refusal rows.
+  - The orchestrator re-ran the R oracle on a fresh copy, and the output is byte-identical.
+  - The reviewer re-implemented Philox and AS 241 on their own and agrees bit for bit. 10 planted faults all go red.
+  - Every engine test fails with `not_built`, and the guards are green.
+  - Not merged into `main` before 2026-11-18.

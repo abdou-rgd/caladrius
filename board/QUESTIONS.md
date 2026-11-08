@@ -285,3 +285,29 @@ Measured since (T-152 fix round A, 2026-11-08):
   - Option (a), the proposal: keep 1e-10.
   - Option (b): 3e-11, which restores the margin. It is stricter for the inner solver.
   - Decision meanwhile: (a), with T-153 reporting its worst η error.
+
+Added by T-168, the exact fit-level oracle (`iter3/pop`, 07b81f1 and bd19a46). No new constant is proposed; the rules below use `POP_OFV`.
+- **Parameters at the maximum:** |d_j| ≤ √(2·POP_OFV·(R⁻¹)_jj), with the diagonal of R⁻¹ stored per case (`tolerance_basis`).
+  - This is the Cauchy–Schwarz bound for an OFV excess of `POP_OFV` along a quadratic.
+  - The bounds run from 1.3e-5 to 8.0e-4 depending on the label.
+  - Against the worst disagreement of the three references (256-bit Rmpfr, nlme ML, direct maximisation), the margin is at least 1000× on the free parameters and 22× to 70× on the Ω of the rank-one block.
+- **The objective at the maximum:** `POP_OFV`.
+  - Measured 8.5e-14 at worst on the interior cases.
+  - On the boundary cases it is 4.8e-8 and 2.8e-8, a margin of 2, which comes from nlme's convergence residue. The 256-bit point is stationary to 1e-74.
+- **A variance held on 0:** at most `POP_OFV`/gradient, which gives 5.4e-9 on `q1_boundary` and 1.0e-9 on `q2_diag_boundary`.
+  - The engine works on ln ω, so it must also report `omega_collapse` or `at_bound`.
+  - The margin to the references is 5 and 2.
+- **Margins below 10× are engine requirements, not tolerances to widen:** ε_out ≤ 5e-8, and finite-difference noise below about 1e-8 at ln ω about −9.5 and −10.3. Both are written in T-154.
+- The standard errors (r, s, sandwich) are printed and never asserted.
+
+Added by T-158, the population-simulation oracle (`iter3/sim`, 5b6a184 to e6e5b4a). These constants live in the testkit and only the new tests use them:
+
+| constant | value | for | the measurement behind it |
+|---|---|---|---|
+| `TOL_Z` | 1e-14 relative | z in the tails of AS 241 (the central region is bit-exact) | 7.0e-16 measured, with `ln` moved by ±1 ulp; margin 14 |
+| `TOL_EXACT` | 1e-12 relative to max(\|e\|, scale) | η, P, PRED, IPRED, σ, y_raw, y, dv of the exact part | 9.48e-16 measured; margin about 1055 |
+| `TOL_STAT` | 1e-9 | the statistics of the distribution checks recomputed from stored draws | 9.86e-14 measured |
+
+Bit-exact, with no tolerance: the KATs, the counters, the words, the uniforms, L, the central z, the type 7 quantiles, the counts and `cens`. The BLQ and zero ties cannot flip on a correct engine: the nearest y is 2e-3 of the scale from LLOQ and 1e-3 from 0.
+
+Decision taken meanwhile: the T-168 and T-158 rules stand for the new tests. Nothing is written in `AGENTS.md` without a yes here.
