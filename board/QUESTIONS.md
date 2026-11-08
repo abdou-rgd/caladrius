@@ -191,7 +191,7 @@ Decision taken meanwhile: the `iter3/*` branches stay local; `main` receives onl
 
 Answer (2026-11-07): not answered in words; the decision taken meanwhile stands.
 
-Answer (2026-11-08, Abdou, in chat): « Oui, pousse-les ». The 16 `iter3/*` branches were pushed to `origin` on 2026-11-08 as they stood, finished work and work in progress alike (`iter3/pop` carries T-154, which has not been reviewed). Pushing a branch is not a merge: `main` still receives only `docs/` and `board/` before 2026-11-18. The untracked T-174 scripts in the `pop-triage` worktree were not committed, so they were not pushed.
+Answer (2026-11-08, Abdou, in chat): « Oui, pousse-les ». The 16 `iter3/*` branches were pushed to `origin` on 2026-11-08 as they stood, finished work and work in progress alike (`iter3/pop` carries T-154, which has not been reviewed). Pushing a branch is not a merge: `main` still receives only `docs/` and `board/` before 2026-11-18. The untracked T-174 scripts in the `pop-triage` worktree were not committed, so they were not pushed. Later that day, during the cleanup, they were committed as they stood (963dbd1 on `iter3/pop-triage`) and pushed.
 
 ## Q-023 (2026-11-07, orchestrator): the tolerances of the maximum-likelihood fit in `AGENTS.md` section 5
 
@@ -325,3 +325,12 @@ Decision taken meanwhile (2026-11-08), reversible by Abdou: keep the constants. 
 To confirm before the first release. Option (a): keep as is. Option (b): check the coefficients against the printed table of the 1988 paper and cite only the paper. Option (c): replace AS 241 with another published inverse.
 
 Answer (human): pending.
+
+## Q-028 (2026-11-08, orchestrator): the cleanup before the change of how the project is run
+
+`AGENTS.md` section 11 asks for a written agreement before deleting files outside the repository and before any `git push`. The cleanup of 2026-11-08 does both:
+- it removes the worktrees under `C:\Users\abdou\caladrius-iter2` and `C:\Users\abdou\caladrius-iter3`, the agent build directories under `target/`, and an old scratchpad of this session;
+- it deletes, locally and on `origin`, the branches already contained in a kept branch;
+- it pushes `iter2/egui`, `iter2/react`, `iter2/leptos` and the two new commits of `iter2/base`.
+
+Answer (2026-11-08, Abdou, in chat): « ok fait tout le process de nettoyage, maintenance, rangement aussi bien sur le repo qu'en local parce que je vais faire une grosse update sur comment est-ce qu'on dirige ce projet ». Nothing was deleted that a kept branch or `origin` does not still hold; the deleted branch tips are in `LOG.md`.
