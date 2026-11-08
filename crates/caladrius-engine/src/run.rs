@@ -7,8 +7,9 @@ use caladrius_fit::FitInput;
 use caladrius_models::{ModelId, ModelInput};
 use caladrius_nca::{NcaInput, Route};
 use caladrius_project::{
-    AnalysisResult, AnalysisSpec, FitRun, FitSpec, NcaSpec, NcaSubjectResult, Outcome, Profile,
-    Project, SimulationRun, SimulationSpec, Worksheet,
+    ALL_SUBJECTS, AnalysisResult, AnalysisSpec, CovariateValue, Dataset, FitRun, FitSpec, NcaSpec,
+    NcaSubjectResult, Outcome, Profile, Project, Purpose, SimulationRun, SimulationSpec,
+    SubjectData, Worksheet, WorksheetId,
 };
 
 use crate::error::CommandError;
@@ -42,32 +43,84 @@ fn route_from_text(text: &str) -> Result<Route, String> {
     }
 }
 
-fn nca_subject(ws: &Worksheet, subject: &str, spec: &NcaSpec) -> NcaSubjectResult {
-    let fail = |message: String, dose: Option<f64>, route: Option<Route>| NcaSubjectResult {
-        subject: subject.to_owned(),
-        dose,
-        route,
-        outcome: Outcome::Error(message),
-    };
-    let profile = match ws.profile(Some(subject)) {
-        Ok(p) => p,
-        Err(e) => return fail(e.message, None, None),
-    };
-    let dose = spec.dose.or(profile.dose);
-    let route = match (&spec.route, &profile.route) {
-        (Some(r), _) => *r,
-        (None, Some(text)) => match route_from_text(text) {
-            Ok(r) => r,
-            Err(message) => return fail(message, dose, None),
+/// The covariates of `subject` in the dataset, to be copied into its result (DAT-USE-03).
+fn covariates_of(ds: &Dataset, subject: &str) -> BTreeMap<String, Option<CovariateValue>> {
+    ds.subjects
+        .iter()
+        .find(|s| s.id == subject)
+        .map(|s| s.covariates.clone())
+        .unwrap_or_default()
+}
+
+/// The route of a subject whose dose row may be an infusion (DAT-USE-01). The route of the
+/// analysis wins over the file; a note says so when they disagree about an infusion.
+fn nca_route(
+    spec: &NcaSpec,
+    text: Option<&str>,
+    file_duration: Option<f64>,
+    subject: &str,
+    notes: &mut Vec<String>,
+) -> Result<Route, String> {
+    match (spec.route, file_duration) {
+        (Some(Route::IvInfusion { duration }), Some(file)) => {
+            if duration != file {
+                notes.push(format!(
+                    "subject {subject}: the infusion duration {duration} of the analysis is used; the dose row gives {file}"
+                ));
+            }
+            Ok(Route::IvInfusion { duration })
+        }
+        (Some(route), Some(file)) => {
+            notes.push(format!(
+                "subject {subject}: the route of the analysis is used; the dose row is an infusion of duration {file}"
+            ));
+            Ok(route)
+        }
+        (Some(route), None) => Ok(route),
+        (None, Some(duration)) => match text.map(route_from_text) {
+            Some(Ok(Route::Extravascular)) => Err(format!(
+                "the dose row of subject {subject} is an infusion but the route column says extravascular; give the route in the analysis"
+            )),
+            _ => Ok(Route::IvInfusion { duration }),
         },
-        (None, None) => {
-            return fail(
+        (None, None) => match text {
+            Some(text) => route_from_text(text),
+            None => Err(
                 "no route of administration: give `route` in the analysis or add a route column to the worksheet"
                     .to_owned(),
-                dose,
-                None,
-            );
+            ),
+        },
+    }
+}
+
+fn nca_subject(ws: &Worksheet, ds: &Dataset, subject: &str, spec: &NcaSpec) -> NcaSubjectResult {
+    let covariates = covariates_of(ds, subject);
+    let fail = |message: String, dose: Option<f64>, route: Option<Route>, notes: Vec<String>| {
+        NcaSubjectResult {
+            subject: subject.to_owned(),
+            dose,
+            route,
+            outcome: Outcome::Error(message),
+            covariates: covariates.clone(),
+            notes,
         }
+    };
+    let data = match ws.subject_data(ds, Some(subject), Purpose::Nca) {
+        Ok(d) => d,
+        Err(e) => return fail(e.message, None, None, Vec::new()),
+    };
+    let mut notes = data.notes;
+    let profile = data.profile;
+    let dose = spec.dose.or(profile.dose);
+    let route = match nca_route(
+        spec,
+        profile.route.as_deref(),
+        data.infusion_duration,
+        subject,
+        &mut notes,
+    ) {
+        Ok(r) => r,
+        Err(message) => return fail(message, dose, None, notes),
     };
     let input = NcaInput {
         time: profile.time,
@@ -86,12 +139,15 @@ fn nca_subject(ws: &Worksheet, subject: &str, spec: &NcaSpec) -> NcaSubjectResul
         dose,
         route: Some(route),
         outcome,
+        covariates,
+        notes,
     }
 }
 
 fn run_nca(project: &Project, spec: &NcaSpec) -> Result<AnalysisResult, CommandError> {
     let ws = project.worksheet(spec.worksheet)?;
-    let all = ws.subjects();
+    let ds = ws.dataset();
+    let all = ws.analysis_subjects(&ds);
     let subjects = match &spec.subject {
         Some(s) if !all.contains(s) => {
             return Err(CommandError::new(
@@ -116,7 +172,10 @@ fn run_nca(project: &Project, spec: &NcaSpec) -> Result<AnalysisResult, CommandE
         ));
     }
     Ok(AnalysisResult::Nca {
-        subjects: subjects.iter().map(|s| nca_subject(ws, s, spec)).collect(),
+        subjects: subjects
+            .iter()
+            .map(|s| nca_subject(ws, &ds, s, spec))
+            .collect(),
     })
 }
 
@@ -128,24 +187,45 @@ pub(crate) struct FitData {
     pub(crate) conc: Vec<f64>,
     pub(crate) n_missing: usize,
     pub(crate) n_blq: usize,
+    /// The duration of the dose row, when it is an infusion (event layout).
+    pub(crate) duration: Option<f64>,
+    pub(crate) covariates: BTreeMap<String, Option<CovariateValue>>,
+    pub(crate) notes: Vec<String>,
 }
 
-/// Reads the observations of one subject for a fit. Rows without a concentration, and rows below
-/// the limit of quantification (NCA-DAT-05c, FIT-DAT-01), are left out and counted; the dose
-/// comes from `dose` or from the worksheet.
+/// [`fit_data_in`] on the dataset of `ws` as it is now.
 pub(crate) fn fit_data(
     ws: &Worksheet,
     subject: Option<&str>,
     dose: Option<f64>,
 ) -> Result<FitData, CommandError> {
-    let Profile {
-        subject,
-        time,
-        conc,
-        blq,
-        dose: sheet_dose,
-        ..
-    } = ws.profile(subject)?;
+    fit_data_in(ws, &ws.dataset(), subject, dose)
+}
+
+/// Reads the observations of one subject for a fit. Rows without a concentration, and rows below
+/// the limit of quantification (NCA-DAT-05c, FIT-DAT-01), are left out; the counts are those of
+/// the dataset (FIT-ML-20). The dose comes from `dose` or from the worksheet.
+pub(crate) fn fit_data_in(
+    ws: &Worksheet,
+    ds: &Dataset,
+    subject: Option<&str>,
+    dose: Option<f64>,
+) -> Result<FitData, CommandError> {
+    let SubjectData {
+        profile:
+            Profile {
+                subject,
+                time,
+                conc,
+                blq,
+                dose: sheet_dose,
+                ..
+            },
+        infusion_duration,
+        counts,
+        covariates,
+        notes,
+    } = ws.subject_data(ds, subject, Purpose::Fit)?;
     let dose = dose.or(sheet_dose).ok_or_else(|| {
         CommandError::new(
             "dose_required",
@@ -155,8 +235,6 @@ pub(crate) fn fit_data(
             ),
         )
     })?;
-    let n_blq = blq.iter().filter(|b| **b).count();
-    let n_missing = conc.iter().filter(|c| !c.is_finite()).count();
     let (time, conc): (Vec<f64>, Vec<f64>) = time
         .into_iter()
         .zip(conc)
@@ -164,13 +242,28 @@ pub(crate) fn fit_data(
         .filter(|((_, c), below)| c.is_finite() && !below)
         .map(|(pair, _)| pair)
         .unzip();
+    // The rows that reach the fit are the `n_used` of the dataset. Two readings of one table that
+    // disagree are a bug to see, not a number to pick.
+    if time.len() != counts.n_used {
+        return Err(CommandError::new(
+            "count_mismatch",
+            format!(
+                "subject {subject}: {} observations reach the fit but the dataset counts {}; read the file again",
+                time.len(),
+                counts.n_used
+            ),
+        ));
+    }
     Ok(FitData {
         subject,
         dose,
         time,
         conc,
-        n_missing,
-        n_blq,
+        n_missing: counts.n_missing,
+        n_blq: counts.n_blq,
+        duration: infusion_duration,
+        covariates,
+        notes,
     })
 }
 
@@ -179,9 +272,44 @@ pub(crate) fn fit_data(
 pub(crate) struct FitMeta {
     pub(crate) subject: String,
     pub(crate) dose: f64,
+    /// `n_used` of the dataset (FIT-ML-20): the observations that reach the fit.
     pub(crate) n_observations: usize,
     pub(crate) n_missing: usize,
     pub(crate) n_blq: usize,
+    pub(crate) covariates: BTreeMap<String, Option<CovariateValue>>,
+    pub(crate) notes: Vec<String>,
+}
+
+/// Whether the dose row of the file gives the duration of this model's input: an intravenous
+/// infusion. For a model with a zero-order absorption the duration is a parameter, not a fact of
+/// the dose.
+fn takes_dose_duration(model: ModelId) -> bool {
+    matches!(model, ModelId::IvInfusion | ModelId::Pk2IvInfusion)
+}
+
+/// Holds `dur` at the duration of the dose row (DAT-USE-02) unless the person has fixed or fitted
+/// it. A different fixed value is used, and a note says so.
+pub(crate) fn file_duration(
+    model: ModelId,
+    data_duration: Option<f64>,
+    subject: &str,
+    fixed: &mut BTreeMap<String, f64>,
+    initial: &BTreeMap<String, f64>,
+    notes: &mut Vec<String>,
+) {
+    let Some(file) = data_duration.filter(|_| takes_dose_duration(model)) else {
+        return;
+    };
+    match fixed.get("dur") {
+        Some(given) if *given != file => notes.push(format!(
+            "subject {subject}: the duration `dur` {given} of the options is used; the dose row gives {file}"
+        )),
+        Some(_) => {}
+        None if initial.contains_key("dur") => {}
+        None => {
+            fixed.insert("dur".to_owned(), file);
+        }
+    }
 }
 
 /// Reads the observations of `spec` from the project and starts the fit (the initial estimates of
@@ -191,41 +319,85 @@ pub(crate) fn start_fit(
     spec: &FitSpec,
 ) -> Result<(caladrius_fit::FitRun<ModelId>, FitMeta), CommandError> {
     let ws = project.worksheet(spec.worksheet)?;
-    let data = fit_data(ws, spec.subject.as_deref(), spec.dose)?;
-    let input = FitInput {
-        model: spec.model,
-        dose: data.dose,
-        time: data.time.clone(),
-        conc: data.conc.clone(),
-        weighting: spec.weighting,
-        initial: spec.initial.clone(),
-        options: spec.options.clone(),
-    };
-    let run =
-        caladrius_fit::start(&input).map_err(|e| CommandError::new("fit_error", e.to_string()))?;
+    let ds = ws.dataset();
+    let data = fit_data_in(ws, &ds, spec.subject.as_deref(), spec.dose)?;
+    start_data(spec, data)
+}
+
+/// Starts the fit of a subject whose observations were read.
+fn start_data(
+    spec: &FitSpec,
+    data: FitData,
+) -> Result<(caladrius_fit::FitRun<ModelId>, FitMeta), CommandError> {
+    let mut options = spec.options.clone();
+    let mut notes = data.notes;
+    file_duration(
+        spec.model,
+        data.duration,
+        &data.subject,
+        &mut options.fixed,
+        &spec.initial,
+        &mut notes,
+    );
     let meta = FitMeta {
         subject: data.subject,
         dose: data.dose,
         n_observations: data.time.len(),
         n_missing: data.n_missing,
         n_blq: data.n_blq,
+        covariates: data.covariates,
+        notes,
     };
+    let input = FitInput {
+        model: spec.model,
+        dose: data.dose,
+        time: data.time,
+        conc: data.conc,
+        weighting: spec.weighting,
+        initial: spec.initial.clone(),
+        options,
+    };
+    let run =
+        caladrius_fit::start(&input).map_err(|e| CommandError::new("fit_error", e.to_string()))?;
     Ok((run, meta))
 }
 
 /// The result of a fit that ended, as the project stores it.
 pub(crate) fn fit_analysis(meta: FitMeta, result: caladrius_fit::FitResult) -> AnalysisResult {
-    AnalysisResult::Fit(FitRun {
+    AnalysisResult::Fit(fit_run_of(meta, result))
+}
+
+fn fit_run_of(meta: FitMeta, result: caladrius_fit::FitResult) -> FitRun {
+    FitRun {
         subject: meta.subject,
         dose: Some(meta.dose),
         n_observations: meta.n_observations,
         n_missing: meta.n_missing,
         n_blq: meta.n_blq,
         outcome: Outcome::Ok(result),
-    })
+        covariates: meta.covariates,
+        notes: meta.notes,
+    }
+}
+
+/// True when `subject` asks for one fit per subject: the keyword, unless a subject of the worksheet
+/// is labelled with it (that subject is then the one meant, as it always was).
+pub(crate) fn wants_all_subjects(
+    project: &Project,
+    worksheet: WorksheetId,
+    subject: Option<&str>,
+) -> bool {
+    subject == Some(ALL_SUBJECTS)
+        && project
+            .worksheet(worksheet)
+            .map(|ws| !ws.subjects().iter().any(|s| s == ALL_SUBJECTS))
+            .unwrap_or(true)
 }
 
 fn run_fit(project: &Project, spec: &FitSpec) -> Result<AnalysisResult, CommandError> {
+    if wants_all_subjects(project, spec.worksheet, spec.subject.as_deref()) {
+        return run_fit_all(project, spec);
+    }
     let (run, meta) = start_fit(project, spec)?;
     match run.run(&mut crate::job::NeverCancel) {
         caladrius_fit::Outcome::Done(result) => Ok(fit_analysis(meta, result)),
@@ -236,6 +408,62 @@ fn run_fit(project: &Project, spec: &FitSpec) -> Result<AnalysisResult, CommandE
             "fit_cancelled",
             format!("fit cancelled after iteration {after_iteration}; nothing was stored"),
         )),
+    }
+}
+
+/// One independent fit per subject, with the same model and options (DAT-USE-02). Nothing is shared
+/// between the subjects; a subject that cannot be fitted is a result with its error, and the
+/// others run.
+pub(crate) fn run_fit_all(
+    project: &Project,
+    spec: &FitSpec,
+) -> Result<AnalysisResult, CommandError> {
+    let ws = project.worksheet(spec.worksheet)?;
+    let ds = ws.dataset();
+    let labels = ws.analysis_subjects(&ds);
+    if labels.is_empty() {
+        return Err(CommandError::new(
+            "no_subjects",
+            format!(
+                "worksheet `{}` has no subject with data; check the subject column",
+                ws.name()
+            ),
+        ));
+    }
+    let subjects = labels
+        .iter()
+        .map(|label| fit_one_of_all(ws, &ds, label, spec))
+        .collect();
+    Ok(AnalysisResult::Fits { subjects })
+}
+
+fn fit_one_of_all(ws: &Worksheet, ds: &Dataset, label: &str, spec: &FitSpec) -> FitRun {
+    let failed = |message: String, meta: Option<&FitMeta>| FitRun {
+        subject: label.to_owned(),
+        dose: meta.map(|m| m.dose),
+        n_observations: meta.map_or(0, |m| m.n_observations),
+        n_missing: meta.map_or(0, |m| m.n_missing),
+        n_blq: meta.map_or(0, |m| m.n_blq),
+        outcome: Outcome::Error(message),
+        covariates: covariates_of(ds, label),
+        notes: meta.map_or_else(Vec::new, |m| m.notes.clone()),
+    };
+    let data = match fit_data_in(ws, ds, Some(label), spec.dose) {
+        Ok(d) => d,
+        Err(e) => return failed(e.message, None),
+    };
+    let (run, meta) = match start_data(spec, data) {
+        Ok(started) => started,
+        Err(e) => return failed(e.message, None),
+    };
+    match run.run(&mut crate::job::NeverCancel) {
+        caladrius_fit::Outcome::Done(result) => fit_run_of(meta, result),
+        caladrius_fit::Outcome::Cancelled {
+            after_iteration, ..
+        } => failed(
+            format!("fit cancelled after iteration {after_iteration}"),
+            Some(&meta),
+        ),
     }
 }
 

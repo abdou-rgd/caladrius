@@ -283,3 +283,81 @@ fn compare_prints_the_difference_of_two_auc_methods_of_theoph_against_pknca() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn fit_run_with_subject_all_fits_every_subject_and_a_single_fit_equals_its_entry() {
+    let data: PathBuf = oracle_dir().join("data/indometh.csv");
+    let data = data.to_str().unwrap();
+    let all = cli(&[
+        "fit.run",
+        "--csv",
+        data,
+        "--param",
+        "subject=all",
+        "--param",
+        "model=pk1.iv_bolus",
+        "--no-seal",
+    ]);
+    assert!(all.status.success(), "{}", stderr(&all));
+    let answer: serde_json::Value = serde_json::from_str(&stdout(&all)).unwrap();
+    assert_eq!(answer["result"]["kind"], "fits");
+    let subjects = answer["result"]["subjects"].as_array().unwrap();
+    assert_eq!(subjects.len(), 6);
+    let one = cli(&[
+        "fit.run",
+        "--csv",
+        data,
+        "--param",
+        "subject=3",
+        "--param",
+        "model=pk1.iv_bolus",
+        "--no-seal",
+    ]);
+    assert!(one.status.success(), "{}", stderr(&one));
+    let single: serde_json::Value = serde_json::from_str(&stdout(&one)).unwrap();
+    let entry = subjects.iter().find(|s| s["subject"] == "3").unwrap();
+    for key in [
+        "subject",
+        "dose",
+        "n_observations",
+        "n_missing",
+        "n_blq",
+        "outcome",
+    ] {
+        assert_eq!(entry[key], single["result"][key], "{key}");
+    }
+    // The default is unchanged: several subjects and none named is refused.
+    let none = cli(&["fit.run", "--csv", data, "--param", "model=pk1.iv_bolus"]);
+    assert_eq!(none.status.code(), Some(1));
+    assert!(
+        stderr(&none).contains("subject_required"),
+        "{}",
+        stderr(&none)
+    );
+    // `all` is not a job: nothing to watch or cancel.
+    let watched = cli(&[
+        "fit.run",
+        "--csv",
+        data,
+        "--param",
+        "subject=all",
+        "--param",
+        "model=pk1.iv_bolus",
+        "--progress",
+    ]);
+    assert_eq!(watched.status.code(), Some(1));
+    assert!(
+        stderr(&watched).contains("one fit per subject in one step"),
+        "{}",
+        stderr(&watched)
+    );
+}
+
+#[test]
+fn the_help_says_what_subject_all_does() {
+    let help = cli(&["help"]);
+    assert!(help.status.success());
+    let text = stdout(&help);
+    assert!(text.contains("subject=all"), "{text}");
+    assert!(text.contains("one independent fit per subject"), "{text}");
+}

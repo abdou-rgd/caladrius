@@ -354,6 +354,13 @@ pub(crate) fn analysis_table(name: &str, analysis: &Analysis) -> Result<Table, C
         ("fit.trace", AnalysisResult::Fit(run)) => fit_trace(run),
         ("simulation", AnalysisResult::Simulation(run)) => simulation(run),
         ("plot.points", AnalysisResult::Plot(run)) => Ok(plot_points(run)),
+        (_, AnalysisResult::Fits { .. }) => Err(CommandError::new(
+            "ambiguous_subject",
+            format!(
+                "analysis {} holds one fit per subject; export one subject: run fit.run with `subject` set to one subject",
+                analysis.id()
+            ),
+        )),
         _ => Err(wrong(name, analysis)),
     }
 }

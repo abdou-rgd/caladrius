@@ -35,6 +35,14 @@ pub(crate) fn draw(project: &Project, spec: &PlotSpec) -> Result<PlotRun, Comman
             };
             let run = match a.result() {
                 Some(AnalysisResult::Fit(run)) => run,
+                Some(AnalysisResult::Fits { .. }) => {
+                    return Err(CommandError::new(
+                        "ambiguous_subject",
+                        format!(
+                            "fit {analysis} holds one fit per subject; plot one subject: run fit.run with `subject` set to one subject"
+                        ),
+                    ));
+                }
                 _ => {
                     return Err(CommandError::new(
                         "no_result",

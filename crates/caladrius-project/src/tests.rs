@@ -40,6 +40,8 @@ fn some_nca_result() -> AnalysisResult {
             dose: Some(100.0),
             route: Some(Route::Extravascular),
             outcome: Outcome::Ok(result),
+            covariates: Default::default(),
+            notes: Vec::new(),
         }],
     }
 }

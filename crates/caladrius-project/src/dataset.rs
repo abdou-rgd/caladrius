@@ -129,6 +129,10 @@ pub struct SubjectRecords {
     /// reading check while the other subjects run. Absent when nothing is wrong.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refusal: Option<String>,
+    /// The sentence of that problem for this subject, the one the reading's check gives for the
+    /// first subject it names (DAT-ERR-08). Present exactly when `refusal` is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refusal_message: Option<String>,
 }
 
 /// The records of a table.
@@ -178,9 +182,12 @@ struct Acc {
     /// The previous time of any row and of any observation row.
     last_time: Option<f64>,
     last_observation_time: Option<f64>,
-    time_goes_back: bool,
-    time_repeats: bool,
+    /// The first time that goes back: (data row from 1, the time, the time before it).
+    time_goes_back: Option<(usize, f64, f64)>,
+    /// The first observation time that repeats: (data row from 1, the time).
+    time_repeats: Option<(usize, f64)>,
     refusal: Option<String>,
+    refusal_message: Option<String>,
 }
 
 /// The columns of the table that the records use.
@@ -415,8 +422,8 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
         };
         acc.n_rows += 1;
         if let Some(t) = number_at(cols.time, row) {
-            if acc.last_time.is_some_and(|last| t < last) {
-                acc.time_goes_back = true;
+            if let Some(last) = acc.last_time.filter(|last| t < *last) {
+                acc.time_goes_back.get_or_insert((row + 1, t, last));
             }
             acc.last_time = Some(t);
         }
@@ -498,16 +505,31 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
         if let Some(acc) = p.subject.and_then(|i| accs.get_mut(i)) {
             if acc.refusal.is_none() {
                 acc.refusal = Some(p.code.to_owned());
+                acc.refusal_message = Some(p.message.clone());
             }
         }
     }
-    for acc in &mut accs {
-        if acc.refusal.is_none() {
-            if acc.time_goes_back {
-                acc.refusal = Some("time_not_increasing".to_owned());
-            } else if acc.time_repeats {
-                acc.refusal = Some("duplicate_times".to_owned());
-            }
+    // The two time problems have the sentences of the checks of the reading (`check_times`), for
+    // this subject; a table without a subject column leaves the subject out of them, as they do.
+    for (id, acc) in ids.iter().zip(accs.iter_mut()) {
+        if acc.refusal.is_some() {
+            continue;
+        }
+        let of = if subject_col.is_some() {
+            format!(" of subject {id}")
+        } else {
+            String::new()
+        };
+        if let Some((row, b, a)) = acc.time_goes_back {
+            acc.refusal = Some("time_not_increasing".to_owned());
+            acc.refusal_message = Some(format!(
+                "time goes back at row {row}{of} ({b} after {a}); a profile is listed in time order"
+            ));
+        } else if let Some((row, b)) = acc.time_repeats {
+            acc.refusal = Some("duplicate_times".to_owned());
+            acc.refusal_message = Some(format!(
+                "time {b} appears twice at row {row}{of}; duplicated times are an error for an NCA (keep one row, or give them to different subjects)"
+            ));
         }
     }
 
@@ -542,6 +564,7 @@ pub(crate) fn build(table: &ImportedTable) -> Built {
                 doses: acc.doses,
                 observations: acc.observations,
                 refusal: acc.refusal,
+                refusal_message: acc.refusal_message,
             }
         })
         .collect();
@@ -629,7 +652,7 @@ fn profile_row(cols: &Cols, row: usize, acc: &mut Acc) {
     let time = number_at(cols.time, row);
     if let Some(t) = time {
         if acc.last_observation_time == Some(t) {
-            acc.time_repeats = true;
+            acc.time_repeats.get_or_insert((row + 1, t));
         }
         acc.last_observation_time = Some(t);
     }
@@ -691,7 +714,7 @@ fn event_row(
         acc.n_observation_rows += 1;
         if let Some(t) = time {
             if acc.last_observation_time == Some(t) {
-                acc.time_repeats = true;
+                acc.time_repeats.get_or_insert((row + 1, t));
             }
             acc.last_observation_time = Some(t);
         }

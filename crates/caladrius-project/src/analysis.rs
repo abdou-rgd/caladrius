@@ -8,6 +8,7 @@ use caladrius_models::{ModelId, ModelInput, ModelOutput};
 use caladrius_nca::{NcaOptions, NcaResult, Route};
 use serde::{Deserialize, Serialize};
 
+use crate::dataset::CovariateValue;
 use crate::plot::{PlotRun, PlotSource, PlotSpec};
 use crate::worksheet::WorksheetId;
 
@@ -43,13 +44,18 @@ pub struct NcaSpec {
     pub options: NcaOptions,
 }
 
-/// Fit of a one-compartment model to the profile of one subject.
+/// The value of [`FitSpec::subject`] that asks for one independent fit per subject (DAT-USE-02).
+/// A subject that is itself labelled `all` is the subject, not the keyword.
+pub const ALL_SUBJECTS: &str = "all";
+
+/// Fit of a model to the profile of one subject, or to each subject on its own.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FitSpec {
     /// The worksheet read.
     pub worksheet: WorksheetId,
-    /// The subject; `None` when the worksheet has a single subject.
+    /// The subject; `None` when the worksheet has a single subject; [`ALL_SUBJECTS`] for one
+    /// independent fit per subject, with the same model and options.
     #[serde(default)]
     pub subject: Option<String>,
     /// The model.
@@ -158,6 +164,14 @@ pub struct NcaSubjectResult {
     pub route: Option<Route>,
     /// The result, or why there is none.
     pub outcome: Outcome<NcaResult>,
+    /// The declared covariates of the subject, copied from the dataset and used nowhere else
+    /// (DAT-USE-03). Absent when none is declared.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub covariates: BTreeMap<String, Option<CovariateValue>>,
+    /// What was decided for the subject that the person should know: the rows before the dose that
+    /// were left out, an infusion duration given twice. Absent when there is nothing to say.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub notes: Vec<String>,
 }
 
 /// The fit of one subject.
@@ -177,6 +191,13 @@ pub struct FitRun {
     pub n_blq: usize,
     /// The result, or why there is none.
     pub outcome: Outcome<FitResult>,
+    /// The declared covariates of the subject, copied from the dataset and used nowhere else
+    /// (DAT-USE-03). Absent when none is declared.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub covariates: BTreeMap<String, Option<CovariateValue>>,
+    /// What was decided for the subject that the person should know (see [`NcaSubjectResult`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub notes: Vec<String>,
 }
 
 /// A simulation.
@@ -199,6 +220,12 @@ pub enum AnalysisResult {
     },
     /// A fit.
     Fit(FitRun),
+    /// One independent fit per subject (`subject = all`), in the order of the subjects. An error
+    /// in one subject is that subject's `outcome`.
+    Fits {
+        /// Subjects, in worksheet order.
+        subjects: Vec<FitRun>,
+    },
     /// A simulation.
     Simulation(SimulationRun),
     /// The panels of a plot.

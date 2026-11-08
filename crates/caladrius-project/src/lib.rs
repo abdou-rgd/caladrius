@@ -23,12 +23,13 @@ mod dataset;
 mod error;
 mod plot;
 mod project;
+mod subject;
 mod units;
 mod worksheet;
 
 pub use analysis::{
-    Analysis, AnalysisId, AnalysisResult, AnalysisSpec, AnalysisStatus, FitRun, FitSpec, NcaSpec,
-    NcaSubjectResult, Outcome, SimulationRun, SimulationSpec, StaleReason,
+    ALL_SUBJECTS, Analysis, AnalysisId, AnalysisResult, AnalysisSpec, AnalysisStatus, FitRun,
+    FitSpec, NcaSpec, NcaSubjectResult, Outcome, SimulationRun, SimulationSpec, StaleReason,
 };
 pub use csv::{CsvOptions, ImportedTable, Reading, ReadingCheck, readings};
 pub use dataset::{
@@ -41,6 +42,7 @@ pub use plot::{
     PlotSource, PlotSpec, SeriesRole, SeriesStyle,
 };
 pub use project::{FORMAT_VERSION, Project};
+pub use subject::{ObservationCounts, Purpose, SubjectData};
 pub use units::{AcceptedUnits, UnitWarning, accepted_units, derived_units, unit_warnings};
 pub use worksheet::{
     Column, ColumnData, ColumnRole, Profile, SINGLE_SUBJECT, Worksheet, WorksheetId,

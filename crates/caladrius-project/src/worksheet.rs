@@ -56,7 +56,8 @@ pub enum ColumnRole {
 }
 
 impl ColumnRole {
-    /// Every role, in the order the schema lists them. A test of this crate matches each variant, so    /// a new role cannot be left out of this list, and the engine builds its schema from it.
+    /// Every role, in the order the schema lists them. A test of this crate matches each variant, so
+    /// a new role cannot be left out of this list, and the engine builds its schema from it.
     pub const ALL: [ColumnRole; 14] = [
         ColumnRole::Time,
         ColumnRole::Concentration,
@@ -110,7 +111,7 @@ impl ColumnRole {
 
     /// True for the roles that several columns can have: a covariate. Every other role, `other`
     /// included, is held by at most one column (`other` has no such limit; it means no role).
-    pub(crate) fn can_repeat(&self) -> bool {
+    pub fn can_repeat(&self) -> bool {
         matches!(self, ColumnRole::Covariate | ColumnRole::Other)
     }
 }

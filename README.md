@@ -37,6 +37,8 @@ The command-line application runs the same commands as the UI and the MCP server
 cargo run -q -p caladrius-cli -- nca.run --csv oracle/data/theoph.csv --param route=extravascular --format csv
 # a model fit; the project file keeps the work between calls
 cargo run -q -p caladrius-cli -- fit.run --csv oracle/data/indometh.csv --project indo.caladrius.json --param subject=1 --param model=pk1.iv_bolus --param weighting=inv_y2 --format csv
+# one independent fit per subject (subject=all); nca.run without a subject already analyses every subject
+cargo run -q -p caladrius-cli -- fit.run --csv oracle/data/indometh.csv --param subject=all --param model=pk1.iv_bolus --param weighting=inv_y2
 # run the history of the saved project again and check every step against its seal (exit code 1 when something differs)
 cargo run -q -p caladrius-cli -- project.replay --project indo.caladrius.json
 ```

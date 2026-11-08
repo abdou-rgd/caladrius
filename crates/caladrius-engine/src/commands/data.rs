@@ -168,7 +168,7 @@ fn override_column(columns: &mut [Column], o: &ColumnOverride) -> Result<(), Com
         ));
     }
     if let Some(role) = o.role {
-        if role != ColumnRole::Other {
+        if !role.can_repeat() {
             for c in columns.iter_mut().filter(|c| c.role == role) {
                 c.role = ColumnRole::Other;
             }
@@ -192,7 +192,7 @@ fn override_column(columns: &mut [Column], o: &ColumnOverride) -> Result<(), Com
 pub(crate) const IMPORT: CommandDef = CommandDef {
     id: "data.import",
     title: "Import a CSV into a new worksheet",
-    description: "Reads CSV text (header line, one line per row; comma, semicolon or tab; a decimal comma is understood with a semicolon) into a new worksheet. Roles (time, concentration, subject, dose, route) and units written in the headers, such as `Conc (ng/mL)`, are recognised; `notes` lists what was guessed or ignored. Use `columns` to set a role or a unit explicitly. A comment line `# caladrius ...` at the top, as the exports of Caladrius write it, is skipped.",
+    description: "Reads CSV text (header line, one line per row; comma, semicolon or tab; a decimal comma is understood with a semicolon) into a new worksheet. Roles (time, concentration, subject, dose, route, and for an event table event, rate, dur, cmt, mdv, cens, limit, covariate) and units written in the headers, such as `Conc (ng/mL)`, are recognised; `notes` lists what was guessed or ignored. Use `columns` to set a role or a unit explicitly (any number of columns can be `covariate`; every other role is held by one column). A comment line `# caladrius ...` at the top, as the exports of Caladrius write it, is skipped. A table with a subject column holds several subjects, in one of two layouts. In the profile layout (no `event` column) each subject has its observation rows, one dose and its route at time 0. In the event layout (an `event` column: 0 or `obs` for an observation, 1 or `dose` for a dose) each subject has dose rows (amount, time, route, and for an infusion `dur` or `rate`) and observation rows. `nca.run` without `subject` analyses every subject, one result or one error per subject; `fit.run` needs `subject` to name one, or `all` for one independent fit per subject. A subject whose rows fail a check of the data (a time that goes back or is repeated, a dose that varies, a covariate that varies, a record type or a censoring code that is not allowed, a subject with no observation) is refused with the sentence of that check while the other subjects run; a subject with more than one dose row is refused by the NCA and the fit of this version, which analyse a single dose per profile. Declared covariates are copied into each subject's result and used nowhere else.",
     mutates: true,
     params: || {
         root(
@@ -290,7 +290,7 @@ fn describe(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
 pub(crate) const DESCRIBE: CommandDef = CommandDef {
     id: "data.describe",
     title: "Describe a worksheet",
-    description: "Columns with role, unit, type, missing count and range; subjects; unit warnings (dose, concentration and time checked together); the derived units (AUC, clearance, volume); and the first rows.",
+    description: "Columns with role, unit, type, missing count and range; subjects (the labels of the subject column, in order of appearance: a table with several subjects is analysed by `nca.run` for all of them and by `fit.run` with `subject` = all); unit warnings (dose, concentration and time checked together); the derived units (AUC, clearance, volume); and the first rows. The subjects that an analysis would refuse are named by that analysis, not here.",
     mutates: false,
     params: || {
         root(
@@ -396,7 +396,7 @@ fn changed_schema() -> Value {
 pub(crate) const SET_COLUMN: CommandDef = CommandDef {
     id: "data.set_column",
     title: "Set the role or the unit of a column",
-    description: "Gives a column a role (time, concentration, subject, dose, route, other) and/or a unit. A role held by another column moves to this one. A change marks the results of the analyses that read the worksheet as stale.",
+    description: "Gives a column a role (time, concentration, subject, dose, route, event, rate, dur, cmt, mdv, cens, limit, covariate, other) and/or a unit. A role held by another column moves to this one, except `covariate`, which any number of columns can have. A change marks the results of the analyses that read the worksheet as stale.",
     mutates: true,
     params: || {
         root(

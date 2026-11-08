@@ -67,6 +67,16 @@ fn add_flag_messages(result: Option<&AnalysisResult>, view: &mut Value) {
                 }
             }
         }
+        Some(AnalysisResult::Fits { subjects }) => {
+            for (i, run) in subjects.iter().enumerate() {
+                let Some(ok) = run.outcome.ok() else { continue };
+                let messages: Vec<String> = ok.flags().iter().map(ToString::to_string).collect();
+                if let Some(slot) = view.pointer_mut(&format!("/result/subjects/{i}")) {
+                    slot["flag_messages"] = json!(messages);
+                    slot["status_message"] = json!(ok.status().message());
+                }
+            }
+        }
         _ => {}
     }
 }
@@ -128,7 +138,7 @@ fn spec_properties() -> Vec<(&'static str, Value)> {
             "subject",
             crate::schema::described(
                 crate::schema::subject(),
-                "One subject, a label as text or number; omitted or null: every subject (NCA) or the only subject (fit).",
+                "One subject, a label as text or number. Omitted or null: every subject (NCA), or the only subject (fit; with several subjects the fit is refused unless one is named or `all` is given). For `fit.run`, the text `all` fits every subject on its own (one independent fit per subject, same model and options), unless a subject is labelled `all`.",
             ),
         ),
     ]
@@ -182,7 +192,7 @@ fn nca_run(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
 pub(crate) const NCA_RUN: CommandDef = CommandDef {
     id: "nca.run",
     title: "Run a non-compartmental analysis",
-    description: "Runs the NCA on the profiles of a worksheet (one subject, or all) and stores the result in an analysis object (new, or `analysis` updated). Each subject gives its parameters by PKNCA name, each a value or `not_calculated` with a reason, or an error saying what to fix. The route and dose come from the arguments or from the route and dose columns.",
+    description: "Runs the NCA on the profiles of a worksheet (one subject, or every subject when `subject` is omitted) and stores the result in an analysis object (new, or `analysis` updated). Each subject gives its parameters by PKNCA name, each a value or `not_calculated` with a reason, or an error saying what to fix; a subject that the data check refused carries the sentence of its check, and the others run. The route and dose come from the arguments or from the route and dose columns. With an event column (a dose row and observation rows per subject) a subject uses its observation rows and its first dose row: amount, time (the time axis starts at the dose, and observation rows before the dose are left out with the reason `before_dose`), route, and for an infusion the duration from `dur` or `rate`; a `route` in the arguments wins over the file, with a note. A subject with more than one dose row is refused for that subject only. Each result carries the declared covariates of its subject, copied and used nowhere else.",
     mutates: true,
     params: || {
         let mut props = spec_properties();
@@ -237,6 +247,12 @@ pub(crate) fn begin_fit(
 ) -> Result<(caladrius_fit::FitRun<ModelId>, FitJobData), CommandError> {
     let p: FitRunParams = parse("fit.run", params)?;
     check_target(&engine.project, p.analysis, "fit")?;
+    if run::wants_all_subjects(&engine.project, p.worksheet, p.subject.as_deref()) {
+        return Err(CommandError::new(
+            "subject_all_not_a_job",
+            "`subject` = all runs one fit per subject in a single step and cannot run as a job (no progress, no cancel); use `execute`",
+        ));
+    }
     let spec = FitSpec {
         worksheet: p.worksheet,
         subject: p.subject,
@@ -275,7 +291,32 @@ pub(crate) fn finish_fit(
 }
 
 /// `execute("fit.run")`: begin, run with nobody watching, finish. `execute` records the entry.
+///
+/// With `subject` = all (DAT-USE-02) the fits are independent and run one after the other in this
+/// call, without the job machinery: one analysis is stored with a list of per-subject results.
 fn fit_run(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
+    let p: FitRunParams = parse("fit.run", params.clone())?;
+    if run::wants_all_subjects(&engine.project, p.worksheet, p.subject.as_deref()) {
+        check_target(&engine.project, p.analysis, "fit")?;
+        let spec = FitSpec {
+            worksheet: p.worksheet,
+            subject: p.subject,
+            model: p.model,
+            dose: p.dose,
+            weighting: p.weighting,
+            initial: p.initial,
+            options: p.options,
+        };
+        let result = run::run_fit_all(&engine.project, &spec)?;
+        let id = store(
+            &mut engine.project,
+            p.analysis,
+            p.name.as_deref(),
+            AnalysisSpec::Fit(spec),
+            result,
+        )?;
+        return view(&engine.project, id);
+    }
     let job = engine.begin_job(crate::job::FIT_RUN, params)?;
     let completed = job.run(&mut crate::job::NeverCancel);
     match engine.finish_job(completed) {
@@ -297,7 +338,7 @@ fn initial_property() -> (&'static str, Value) {
 pub(crate) const FIT_RUN: CommandDef = CommandDef {
     id: "fit.run",
     title: "Fit a model to a profile",
-    description: "Weighted least-squares fit (Gauss-Newton with the Levenberg and Hartley modification) of a one- or two-compartment model to the profile of one subject; stores the result in an analysis object. The result has the status (converged or why not), estimates with standard error, CV% and confidence intervals, diagnostics, observed and predicted values, the smooth curve, the trace, and quality flags. A fit that cannot start is an error and stores nothing.",
+    description: "Weighted least-squares fit (Gauss-Newton with the Levenberg and Hartley modification) of a one- or two-compartment model to the profile of one subject; stores the result in an analysis object. The result has the status (converged or why not), estimates with standard error, CV% and confidence intervals, diagnostics, observed and predicted values, the smooth curve, the trace, and quality flags. A fit that cannot start is an error and stores nothing. A worksheet with several subjects needs `subject` (one label); without it the fit is refused with `subject_required`. `subject` = all fits every subject on its own, with the same model and options and the initial estimates generated per subject (`initial` and `dose`, when given, apply to each): the result is a list in `subjects`, one fit per subject in order of appearance, and a subject that cannot be fitted is that subject's result with its error (a subject that the data check refused carries the sentence of its check) while the others run. `all` is not a job: it has no progress and no cancel. For an infusion model (pk1.iv_infusion, pk2.iv_infusion) on an event table, `dur` is held at the duration of the subject's dose row unless `options.fixed.dur` or `initial.dur` says otherwise. Each result carries the declared covariates of its subject, copied and used nowhere else.",
     mutates: true,
     params: || {
         let mut props = spec_properties();
@@ -334,7 +375,17 @@ fn fit_initial_estimates(engine: &mut Engine, params: Value) -> Result<Value, Co
     let p: InitialParams = parse("fit.initial_estimates", params)?;
     let ws = engine.project.worksheet(p.worksheet)?;
     let data = run::fit_data(ws, p.subject.as_deref(), p.dose)?;
-    let initial = run::initial_estimates(&data, p.model, &p.fixed)?;
+    let mut fixed = p.fixed.clone();
+    let mut notes = Vec::new();
+    run::file_duration(
+        p.model,
+        data.duration,
+        &data.subject,
+        &mut fixed,
+        &BTreeMap::new(),
+        &mut notes,
+    );
+    let initial = run::initial_estimates(&data, p.model, &fixed)?;
     respond(&json!({
         "subject": data.subject,
         "dose": data.dose,

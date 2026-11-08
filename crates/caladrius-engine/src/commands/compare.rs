@@ -167,6 +167,17 @@ fn side(project: &Project, id: AnalysisId) -> Result<Side, CommandError> {
             }
             entries
         }
+        AnalysisResult::Fits { subjects } => {
+            let names: Vec<&str> = subjects.iter().map(|s| s.subject.as_str()).collect();
+            return Err(CommandError::new(
+                "ambiguous_subject",
+                format!(
+                    "analysis {id} has {} fits ({}); compare one subject: run fit.run with `subject` set to one subject",
+                    names.len(),
+                    names.join(", ")
+                ),
+            ));
+        }
         AnalysisResult::Simulation(_) => {
             return Err(CommandError::new(
                 "wrong_kind",

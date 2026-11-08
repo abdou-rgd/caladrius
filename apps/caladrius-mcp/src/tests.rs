@@ -986,3 +986,71 @@ fn a_replay_tells_the_model_the_verdict_and_keeps_the_digests_for_the_program() 
         whole["first_divergence"]["recomputed"]
     );
 }
+
+#[test]
+fn fit_run_with_subject_all_fits_every_subject_and_the_help_says_so() {
+    let mut s = Server::new();
+    let r = send(
+        &mut s,
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": { "protocolVersion": "2024-11-05", "capabilities": {},
+                            "clientInfo": { "name": "t", "version": "0" } } }),
+    );
+    let help = r["result"]["instructions"].as_str().unwrap();
+    assert!(
+        help.contains("\"all\" for one independent fit per subject"),
+        "{help}"
+    );
+    let csv = "subject,time,conc,dose\n\
+a,0,10,100\na,1,6,100\na,2,3.7,100\na,4,1.4,100\na,8,0.2,100\n\
+b,0,12,100\nb,1,7,100\nb,2,4.4,100\nb,4,1.7,100\nb,8,0.3,100\n";
+    let r = call(&mut s, 2, "data_import", json!({ "name": "w", "csv": csv }));
+    let id = r["result"]["structuredContent"]["worksheet"]["id"].clone();
+    // The default is unchanged.
+    let r = call(
+        &mut s,
+        3,
+        "fit_run",
+        json!({ "worksheet": id, "model": "pk1.iv_bolus" }),
+    );
+    assert_eq!(r["result"]["isError"], true);
+    assert!(
+        r["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("subject_required")
+    );
+    let r = call(
+        &mut s,
+        4,
+        "fit_run",
+        json!({ "worksheet": id, "subject": "all", "model": "pk1.iv_bolus" }),
+    );
+    assert_eq!(r["result"]["isError"], false, "{r}");
+    let result = &r["result"]["structuredContent"]["result"];
+    assert_eq!(result["kind"], "fits");
+    let subjects: Vec<&str> = result["subjects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["subject"].as_str().unwrap())
+        .collect();
+    assert_eq!(subjects, ["a", "b"]);
+    // The tool description says what `all` gives.
+    let tools = send(
+        &mut s,
+        json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/list" }),
+    );
+    let fit = tools["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "fit_run")
+        .unwrap();
+    assert!(
+        fit["description"]
+            .as_str()
+            .unwrap()
+            .contains("`subject` = all")
+    );
+}

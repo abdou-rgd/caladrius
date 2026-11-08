@@ -114,11 +114,19 @@ options for a command:
                       prints its main table, see --table)
   --table NAME        the table to print with --format csv (export.table names)
   --progress          fit.run only: one line per iteration on standard error, such as
-                      `iteration 3, wrss 12.5`; the answer on standard output is unchanged
+                      `iteration 3, wrss 12.5`; the answer on standard output is unchanged.
+                      Not with `--param subject=all`
   --cancel-after N    fit.run only: cancel after iteration N (for scripts and tests). Prints
                       `error: fit cancelled after iteration N; nothing was stored` on standard error,
                       stores nothing, prints no answer and exits with code 1. Ctrl-C does the
                       same at the next iteration
+  --param subject=all with fit.run: one independent fit per subject of the worksheet (same
+                      model and options, initial estimates generated per subject); the answer
+                      is a list in `subjects`, and a subject that cannot be fitted is that
+                      subject's result with its error while the others run. Without it a
+                      worksheet with several subjects needs one named (`subject_required`).
+                      nca.run without `subject` already analyses every subject. There is no
+                      progress and no cancel for `all`: it is not a job
   --no-seal           print the answer as it is. By default it carries the seal of the command:
                       a `seal` member in JSON, a first line `# caladrius engine=... seal=...` in
                       CSV (data.import skips that line; for other programs read with
@@ -747,7 +755,15 @@ fn run_command(
         }
     }
     let params = Value::Object(params);
-    let result = if args.command == "fit.run" {
+    // `--param subject=all` is one fit per subject: it runs in one step through `execute`, as a
+    // command with no progress to watch and no cancel (DAT-USE-02).
+    let all_subjects = args.command == "fit.run" && params["subject"].as_str() == Some("all");
+    if all_subjects && (args.progress || args.cancel_after.is_some()) {
+        return fail(
+            "`--progress` and `--cancel-after` watch one fit; `subject=all` runs one fit per subject in one step, so name one subject to watch it",
+        );
+    }
+    let result = if args.command == "fit.run" && !all_subjects {
         // What the import said comes before the lines of the fit.
         for note in notes.drain(..) {
             sink(&note);

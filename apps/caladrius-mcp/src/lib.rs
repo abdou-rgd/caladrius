@@ -55,6 +55,7 @@ const INSTRUCTIONS: &str = "Caladrius: pharmacokinetic analysis. Every tool is a
 Typical session: data_import (CSV text in `csv`; roles and units are guessed from the headers and reported), \
 data_describe to check them (data_set_column to fix a role or a unit), nca_run for a non-compartmental analysis \
 or fit_run for a model fit (the answer holds the result and its status), export_table for CSV tables. \
+A worksheet with several subjects: nca_run without `subject` analyses every subject, one result or one error each; fit_run needs `subject` to name one, or `subject` = \"all\" for one independent fit per subject (same model and options, a list in `subjects`; an error in one subject is that subject's result and the others run). Covariates of the table are copied into each subject's result. \
 Worksheets and analyses persist during the session; after data_set_cell or data_set_column an analysis is \
 `stale` until analysis_run. project_save returns the whole project to keep. project_replay with no arguments runs the work of the session again and checks every step against its seal: report its verdict and its summary in words, they say whether it reproduces bit for bit or where it does not. To compare two analyses of one subject call analysis_compare: per shared parameter it gives both values with units, b-a, the relative difference in percent and the ratio, or `not_comparable` with the reason; quote those numbers, never compute them. Errors say what to fix.";
 
