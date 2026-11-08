@@ -180,4 +180,5 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-172 | Integrate brick 1 and brick 2: iter3/pk3 merged with iter3/ml on iter3/int | engine | in progress | T-171, T-169 |
 | T-173 | Oracle answers to the T-154 notes: at_bound counted as converged in the sealed recovery, q1 off-diagonal guard | oracle | in progress | T-154 |
 | T-174 | Triage of the cl bias of design A: independent FOCEI fit in R and saemix on the 200 sealed replicates | oracle | in progress | T-154, T-152 |
+| T-175 | specs/models.md, the round left by T-167 and T-171 (pk3 macro path: magnitude rules, double-double floor, DerivedOutOfRange arms) | reader | in progress | T-167, T-171 |
 | T-160 | specs/vpc.md, the visual predictive check (brick 4, if time allows) | reader | done | T-157, T-170, T-162 |
