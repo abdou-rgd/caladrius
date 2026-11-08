@@ -93,9 +93,11 @@ fn check(name: &str, value: f64, zero_allowed: bool) -> Result<f64, ModelError> 
     }
 }
 
-/// A derived quantity must be a finite number > 0 (MOD-3C-06 item 3).
+/// A derived quantity must be a finite normal number > 0 (MOD-3C-06 item 3): a subnormal value has
+/// lost bits (and the products and quotients taken from it more still), so it is refused as an
+/// underflow like zero. This function belongs to pk3: pk1 and pk2 have their own.
 fn derived(name: &str, from: &str, value: f64) -> Result<f64, ModelError> {
-    if value.is_finite() && value > 0.0 {
+    if value.is_finite() && value >= f64::MIN_POSITIVE {
         Ok(value)
     } else {
         Err(ModelError::DerivedOutOfRange {
@@ -104,6 +106,16 @@ fn derived(name: &str, from: &str, value: f64) -> Result<f64, ModelError> {
             value,
         })
     }
+}
+
+/// The product of `factors` in the order given, each partial product being a derived quantity (a
+/// partial product that goes subnormal has lost bits that a normal final product would hide).
+fn normal_product(name: &str, from: &str, factors: &[f64]) -> Result<f64, ModelError> {
+    let mut product = 1.0;
+    for factor in factors {
+        product = derived(name, from, product * factor)?;
+    }
+    Ok(product)
 }
 
 /// Which set the given names select; an error for none or for two sets.
@@ -356,11 +368,8 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     let (n1, n0, gap, dd) = macro_roots([a, b, c], weight, lambda);
     let n1 = derived("n1", "sum of w x (S - lambda)", n1)?;
     let n0 = derived("n0", "sum of w x lambda x lambda", n0)?;
-    let k10 = derived(
-        "k10",
-        "alpha x beta x gamma / n0",
-        alpha * beta * gamma / n0,
-    )?;
+    let triple = normal_product("alpha x beta x gamma", "alpha x beta x gamma", &lambda)?;
+    let k10 = derived("k10", "alpha x beta x gamma / n0", triple / n0)?;
     // The gap of the poles is the square root of the discriminant. A discriminant that is not
     // positive cannot come from a macro set with a, b, c > 0 in exact arithmetic (MOD-3C-06
     // item 3): it is the rounding of a set whose poles are too close to be told apart.
@@ -384,24 +393,14 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     let offsets = macro_offsets(lambda, weight, gap, dd, k21, k31);
     // The exponent next to a pole, judged from the offsets (zone (i) of MOD-3C-08).
     check_macro_offsets(id, offsets, k21, k31)?;
+    // The coupling of a pole is the product of the three offsets of the exponents to it over
+    // (gap x pole); the offsets are magnitudes, so the value is positive when it is a normal number,
+    // and the products on the way are checked to be normal numbers too.
     let coupling = |name: &str, pole: &str, magnitudes: [f64; 3], k: f64| {
-        let value = magnitudes.iter().product::<f64>() / (gap * k);
-        if value.is_finite() && value > 0.0 {
-            Ok(value)
-        } else if !value.is_finite() || value == 0.0 {
-            Err(ModelError::DerivedOutOfRange {
-                name: name.to_string(),
-                from: format!("the offsets of the exponents to the pole {pole}"),
-                value,
-            })
-        } else {
-            Err(no_valid_model(
-                id,
-                pole,
-                name,
-                "its coupling is not a positive number",
-            ))
-        }
+        let from = format!("the offsets of the exponents to the pole {pole}");
+        let product = normal_product(name, &from, &magnitudes)?;
+        let scale = derived(name, &from, gap * k)?;
+        derived(name, &from, product / scale)
     };
     let k12 = coupling("k12", "k21", offsets.map(|(o21, _)| o21.abs()), k21)?;
     let k13 = coupling("k13", "k31", offsets.map(|(_, o31)| o31.abs()), k31)?;
@@ -478,7 +477,7 @@ struct MacroDd {
 }
 
 /// The power of two 2^-e with 2^e <= t < 2^(e+1), built from the exponent bits of `t` (1 when `t`
-/// is zero, subnormal or not finite): multiplying the macro coefficients by it is exact and
+/// is zero, subnormal or not finite; `from_macro` refuses such a T before this point): multiplying the macro coefficients by it is exact and
 /// brings T = a + b + c near 1, so that the double-double quantities below (of the order of T,
 /// T·n1 and T³) neither underflow nor overflow whatever the absolute size of the coefficients.
 fn unit_scale(t: f64) -> f64 {
@@ -516,7 +515,13 @@ fn macro_roots(
     let n0_num = y0.add(y1).add(y2);
     let delta = n1_num.mul(n1_num).sub(n0_num.mul(total).times_four());
     let mid = n1_num.sub(total.mul_f(2.0 * beta));
+    // The double-double quantities are of degree 2 in the exponents; below FLOOR their low parts are
+    // subnormal and no longer carry the digits asked of them, so the plain doubles are used (and the
+    // derived quantities refuse what is not a normal number).
+    let floor = f64::from_bits(123 << 52);
     if total.is_finite()
+        && n1_num.hi.abs() >= floor
+        && n0_num.hi.abs() >= floor
         && n1_num.is_finite()
         && n0_num.is_finite()
         && delta.is_finite()
@@ -922,6 +927,63 @@ mod tests {
             ("vc", d.vc),
         ];
         assert!(resolve(ModelId::Pk3IvBolus, &given(&reported), 100.0).is_ok());
+    }
+
+    /// A sum a + b + c that is a subnormal number is an underflow (the coefficients have lost bits
+    /// already), refused as such and not as a pair of poles that cannot be told apart.
+    #[test]
+    fn a_subnormal_total_of_the_coefficients_is_an_underflow() {
+        let tau = 1.1 * libm::pow(2.0, -20.0);
+        for micro in [
+            micro_set(1.0, 0.2, 0.9, 0.5),
+            micro_set(1.0, (1.0 - tau) / (1.0 + tau), 0.9, 0.5),
+        ] {
+            let m = macro_of(micro);
+            for exp in [-1030.0, -1038.0] {
+                let f = libm::pow(2.0, exp);
+                let scaled: Vec<(&str, f64)> = m
+                    .iter()
+                    .map(|&(n, v)| if n.len() == 1 { (n, v * f) } else { (n, v) })
+                    .collect();
+                let total: f64 = scaled.iter().take(3).map(|x| x.1).sum();
+                assert!(total > 0.0 && total < f64::MIN_POSITIVE, "{total}");
+                let e = resolve(ModelId::Pk3IvBolus, &given(&scaled), 100.0 * f).unwrap_err();
+                assert!(
+                    matches!(&e, ModelError::DerivedOutOfRange { name, .. } if name == "a + b + c"),
+                    "x 2^{exp}: {e}"
+                );
+            }
+        }
+    }
+
+    /// The exponents of the base set multiplied down until a product of three of them is a subnormal
+    /// number: refused as an underflow, never answered with a constant that lost its digits.
+    #[test]
+    fn exponents_whose_product_is_subnormal_are_an_underflow() {
+        let base = macro_of(micro_set(1.0, 0.2, 0.9, 0.5));
+        let with = |f: f64| -> Result<Disposition, ModelError> {
+            let scaled: Vec<(&str, f64)> = base
+                .iter()
+                .map(|&(n, v)| if n.len() == 1 { (n, v) } else { (n, v * f) })
+                .collect();
+            resolve(ModelId::Pk3IvBolus, &given(&scaled), 100.0)
+        };
+        for f in [1e-105, 1e-107, 1e-110] {
+            let e = with(f).unwrap_err();
+            assert!(
+                matches!(e, ModelError::DerivedOutOfRange { .. }),
+                "{f}: {e}"
+            );
+        }
+        let kept = with(1e-95).unwrap();
+        let unit = with(1.0).unwrap();
+        for (g, u) in [
+            (kept.k10, unit.k10),
+            (kept.k12, unit.k12),
+            (kept.k31, unit.k31),
+        ] {
+            assert!((g / 1e-95 - u).abs() <= 1e-12 * u, "{g} against {u}");
+        }
     }
 
     fn given_owned(pairs: &[(&str, f64)]) -> BTreeMap<String, f64> {
