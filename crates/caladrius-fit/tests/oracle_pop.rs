@@ -890,9 +890,15 @@ macro_rules! sealed_tests {
 ///   `POP_OFV / gradient` is within the OFV tolerance; the engine, which works on the log scale of Omega, cannot
 ///   reach 0 and must report the collapse (flag `omega_collapse`, POP-EST-04) or `at_bound`;
 /// * **the rank-one boundary of the block** (Omega is singular at the maximum, POP-EST-04 has no flag for it):
-///   the objective, theta and sigma are compared; the status and the flags are not asserted;
-/// * **an interior maximum**: status `converged`, and no `few_subjects` / `few_observations` flag (the designs
-///   have more subjects and observations than parameters, POP-COV-03, POP-INN-03);
+///   theta, the elements of Omega, sigma and the objective are compared, all with the bounds of the curvature
+///   (`tolerance_basis`, all the parameters). The comparison of Omega is sound: `G` (the gradient of the objective
+///   with respect to Omega) is positive semidefinite at the maximum, so `tr(G (Omega - Omega_hat)) >= 0` for any
+///   feasible Omega and the OFV excess of an error is at least `d^T R d / 2`. The status must not be `non_finite`,
+///   `inner_failed` or `max_iterations`; the other statuses and the flags are not asserted;
+/// * **a diagonal Omega**: the off-diagonal element of the answer is exactly 0;
+/// * **an interior maximum**: status `converged`, no `at_bound` (status or flag), and no `few_subjects` /
+///   `few_observations` flag (the designs have more subjects and observations than parameters, POP-COV-03,
+///   POP-INN-03). `omega_collapse` is not asserted (it depends on OP-11);
 /// * **the standard errors** (the three kinds of POP-COV-01, exact) are printed next to the engine's, never
 ///   asserted (OP-04, OP-11 are open).
 fn fit_case(name: &str) -> PopFitCase {
@@ -951,20 +957,25 @@ fn check_fit(name: &str, start: &str, convention: &str) {
     let answer = population_fit(&request)
         .unwrap_or_else(|e| panic!("{name} from `{start}`: the engine refuses a valid fit: {e}"));
     let mut p = Problems::new();
+    if case.design.omega_shape == "diagonal" {
+        for label in ["omega_full[1][0]", "omega_full[0][1]"] {
+            let off = labelled(&answer, "estimate", label)
+                .unwrap_or_else(|| panic!("{name}: the answer has no `{label}` in `estimate`"));
+            assert!(
+                off == 0.0,
+                "{name}: a diagonal Omega must have `{label}` exactly 0, the answer has {off:e}"
+            );
+        }
+    }
     for label in case.labels() {
         let expected = case.expected_value(&label).expect("an exact value");
         let actual = labelled(&answer, "estimate", &label)
             .unwrap_or_else(|| panic!("{name}: the answer has no `{label}` in `estimate`"));
         let abs = if let Some(gradient) = case.bound_gradient(&label) {
             AbsoluteTolerance::POP_OFV.abs / gradient
-        } else if case.tolerance_basis.parameters.contains(&label) {
-            case.curvature_bound(&label, AbsoluteTolerance::POP_OFV)
-                .expect("a curvature")
         } else {
-            eprintln!(
-                "{name}: `{label}` is not asserted (a singular Omega), exact {expected:e}, engine {actual:e}"
-            );
-            continue;
+            case.curvature_bound(&label, AbsoluteTolerance::POP_OFV)
+                .unwrap_or_else(|e| panic!("{name}: {e}"))
         };
         p.check(
             &format!("{name} {label}"),
@@ -993,6 +1004,10 @@ fn check_fit(name: &str, start: &str, convention: &str) {
     let status = answer["status"].as_str().unwrap_or("");
     if case.expected.kind == "interior" {
         assert_eq!(status, "converged", "{name} from `{start}`: status");
+        assert!(
+            !flags.contains(&"at_bound"),
+            "{name}: the flag `at_bound` is raised at an interior maximum: {flags:?}"
+        );
         for bad in ["few_subjects", "few_observations"] {
             assert!(
                 !flags.contains(&bad),
@@ -1003,6 +1018,11 @@ fn check_fit(name: &str, start: &str, convention: &str) {
         assert!(
             flags.contains(&"omega_collapse") || status == "at_bound",
             "{name} from `{start}`: a variance at 0 must be reported (POP-EST-04: `omega_collapse` or `at_bound`), status `{status}`, flags {flags:?}"
+        );
+    } else {
+        assert!(
+            !["non_finite", "inner_failed", "max_iterations"].contains(&status),
+            "{name} from `{start}`: the fit failed, status `{status}`"
         );
     }
     print_fit_standard_errors(&case, &answer);

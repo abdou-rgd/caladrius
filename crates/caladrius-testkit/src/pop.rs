@@ -466,8 +466,10 @@ impl PopFitCase {
     }
 
     /// For a variance held on its bound at 0 (`q1`, `diag`): the gradient of the OFV with respect to the variance
-    /// `label`, positive. An OFV excess of at most `eps` then allows the variance at most `eps / gradient` (the
-    /// first-order term of the excess alone is `gradient * variance`, and the other terms are not negative).
+    /// `label`, positive. An OFV excess of at most `eps` allows the variance at most `eps / gradient`: the OFV is
+    /// concave in the variance (`m ln(lambda)`), so the excess is at most `gradient * variance`, not at least; the
+    /// bound is therefore sufficient for an excess within `eps`, and slightly stricter than the OFV tolerance; it stays the
+    /// test (an engine requirement, not a widened tolerance).
     pub fn bound_gradient(&self, label: &str) -> Option<f64> {
         self.expected
             .sign_conditions
