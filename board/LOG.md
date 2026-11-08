@@ -141,3 +141,11 @@
   - `xtask conformance` reads the pk3 oracle: models go from 34711 to 79186 of 79186. The 47 Q-024 cases (98 values) are held, shown and kept in the floors.
   - The digest is unchanged.
   - Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-166 (reader, Sonnet high; review on Sonnet, a fix round, a re-check and F1): `specs/population.md` synced with the Q-025 decisions and the T-152 questions, on branch `iter3/pop-spec` (7ad55d0, 6ab951f, 59dcdb1, 4101a34), merged into `iter3/pop` (24992cd).
+  - **Plain FOCE** freezes σ at the population prediction (POP-OBJ-06). On PX2 it gives −15.7471, against −14.1419 for FOCEI.
+  - **The inner problem** is polished by Newton (H37).
+  - **The request vocabulary** is POP-API-01, including `fixed`, `bounds`, `dataset_file`, `omega_shape` and the Ω and ξ keys.
+  - **Refusal texts** are set for T-152 round B.
+  - **A fourth oracle family:** the exact estimates of the balanced linear case (H38, 30 data values in the spec).
+  - Several decisions taken meanwhile, reversible by Abdou.
+  - Specs only. Not merged into `main` before 2026-11-18.
