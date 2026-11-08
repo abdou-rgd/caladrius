@@ -338,6 +338,45 @@ fn measure_the_sealed_design() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(1);
+    // With `T154_CSV=<path>`, one row per replicate for an independent fit to compare against.
+    let mut csv = std::env::var("T154_CSV").ok().map(|path| {
+        use std::io::Write;
+        let mut file = std::fs::File::create(path).unwrap();
+        let mut names: Vec<String> = ["cl", "v", "ka"]
+            .iter()
+            .filter(|n| sealed.truth.typical_values.contains_key(**n))
+            .map(|n| n.to_string())
+            .collect();
+        for n in sealed.truth.typical_values.keys() {
+            if !names.contains(n) {
+                names.push(n.clone());
+            }
+        }
+        let res = sealed.model.random_effects.clone();
+        writeln!(
+            file,
+            "# design {design}; engine T-154, release, FOCE-I, OFV in the `full` convention; omega_<re> \
+             is the variance Omega_kk (as the request's omega); xi.a and xi.b are a and b on the \
+             standard-deviation scale of the request and of error_init (sd = sqrt(a^2 + b^2 yhat^2)); \
+             se.<theta> is the printed (sandwich) SE on the user's scale, NA where not computed; \
+             at_bound is the flag at_bound of the covariance block; 17 significant digits"
+        )
+        .unwrap();
+        let mut header = vec![
+            "replicate".to_string(),
+            "status".to_string(),
+            "iterations".to_string(),
+            "ofv".to_string(),
+        ];
+        header.extend(names.iter().map(|n| format!("estimate.{n}")));
+        header.extend(res.iter().map(|r| format!("omega_{r}")));
+        header.extend(["xi.a".to_string(), "xi.b".to_string()]);
+        header.extend(names.iter().map(|n| format!("se.{n}")));
+        header.push("at_bound".to_string());
+        writeln!(file, "{}", header.join(",")).unwrap();
+        (file, names, res)
+    });
+    let g17 = |x: f64| format!("{x:.16e}");
     for rep in first..=k {
         let request = sealed_request(&sealed, rep);
         let start_sd: Vec<f64> = request
@@ -353,10 +392,45 @@ fn measure_the_sealed_design() {
             Ok(a) => a,
             Err(e) => {
                 println!("replicate {rep}: refused: {e}");
+                if let Some((file, _, _)) = csv.as_mut() {
+                    use std::io::Write;
+                    writeln!(file, "{rep},refused:{}", e.code.id()).unwrap();
+                }
                 continue;
             }
         };
         let seconds = clock.elapsed().as_secs_f64();
+        if let Some((file, names, res)) = csv.as_mut() {
+            use std::io::Write;
+            let est = answer.estimate.as_ref().unwrap();
+            let se = answer.se.as_ref().unwrap();
+            let mut row = vec![
+                rep.to_string(),
+                answer.status.clone(),
+                answer.iterations.unwrap().to_string(),
+                g17(answer.ofv),
+            ];
+            row.extend(names.iter().map(|n| g17(est.theta[n])));
+            row.extend(res.iter().map(|r| g17(est.omega_diagonal[r])));
+            row.extend(
+                ["a", "b"]
+                    .iter()
+                    .map(|key| est.xi.get(*key).map_or("NA".to_string(), |x| g17(*x))),
+            );
+            row.extend(names.iter().map(|n| {
+                se.theta
+                    .get(n)
+                    .copied()
+                    .flatten()
+                    .map_or("NA".to_string(), g17)
+            }));
+            let at_bound = answer
+                .covariance
+                .as_ref()
+                .is_some_and(|c| c.flags.iter().any(|f| f == "at_bound"));
+            row.push(if at_bound { "TRUE" } else { "FALSE" }.to_string());
+            writeln!(file, "{}", row.join(",")).unwrap();
+        }
         // The typical values and their standard errors as the oracle reads them (`estimate.<name>`,
         // `se.<name>`), for the aggregates over every replicate.
         let json = serde_json::to_value(&answer).unwrap();
