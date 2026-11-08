@@ -167,4 +167,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | to review | T-150, T-149, T-151 |
 | T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | to review | T-142 |
 | T-165 | pk3 oracle round 5: the F1 case, flags measured, pole claims asserted, round 4 nits | oracle | todo | T-164 |
-| T-166 | Spec sync for the population fit: the Q-025 decisions and the questions of T-152 into specs/population.md | reader | in progress | T-152 |
+| T-166 | Spec sync for the population fit: the Q-025 decisions and the questions of T-152 into specs/population.md | reader | to review | T-152 |
