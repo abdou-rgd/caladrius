@@ -121,8 +121,8 @@ impl Study {
 
     fn build(input: &SimInput, draws_only: bool) -> Result<Study, SimError> {
         let seed = input.seed.ok_or_else(missing_seed)?;
-        // The design first (SIM-REF-04, `label_key_collision`): it is the cheapest check and the one a
-        // user meets most.
+        // `missing_seed` first (SIM-REF-07), then the design (SIM-REF-04, `label_key_collision`): the cheapest
+        // check and the one a user meets most.
         let (raw, n_dv_ignored) = plan_design(&input.design, draws_only)?;
         let model = parse_model(&input.model)?;
         let names = parameter_names(model);
