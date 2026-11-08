@@ -191,6 +191,8 @@ Decision taken meanwhile: the `iter3/*` branches stay local; `main` receives onl
 
 Answer (2026-11-07): not answered in words; the decision taken meanwhile stands.
 
+Answer (2026-11-08, Abdou, in chat): « Oui, pousse-les ». The 16 `iter3/*` branches were pushed to `origin` on 2026-11-08 as they stood, finished work and work in progress alike (`iter3/pop` carries T-154, which has not been reviewed). Pushing a branch is not a merge: `main` still receives only `docs/` and `board/` before 2026-11-18. The untracked T-174 scripts in the `pop-triage` worktree were not committed, so they were not pushed.
+
 ## Q-023 (2026-11-07, orchestrator): the tolerances of the maximum-likelihood fit in `AGENTS.md` section 5
 
 T-148 (the oracle of brick 2) needed tolerances that section 5 does not have: −2LL crosses zero, so a relative rule on it means nothing. It defined them once in `caladrius-testkit` (`AbsoluteTolerance`, `crates/caladrius-testkit/src/ml.rs`), and only the new tests use them. They agree with what `specs/fit.md` OF-12 proposed from the reader's prototype (−2LL to 1.3e-9 against `optim`).
