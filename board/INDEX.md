@@ -177,4 +177,4 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-169 | caladrius-fit minors left by T-149 and T-151 (error.rs:298, the stale 13c comments, the A2 test) | engine | done | T-149, T-151 |
 | T-170 | specs/simulation.md round 2 after the simulator (T-158 and T-159 review items) | reader | done | T-159 |
 | T-171 | pk3 subnormal guards: unit_scale for a subnormal a+b+c, derived quantities must be normal numbers | engine | in progress | T-167 |
-| T-160 | specs/vpc.md, the visual predictive check (brick 4, if time allows) | reader | in progress | T-157, T-170, T-162 |
+| T-160 | specs/vpc.md, the visual predictive check (brick 4, if time allows) | reader | to review | T-157, T-170, T-162 |
