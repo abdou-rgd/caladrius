@@ -229,6 +229,34 @@ Same rules as before. The documentation of commercial programs was not used. The
 | H43 | Negative values under `keep` and `zero`, BLQ against an LLOQ, the combined error, invariance of a subject across designs, three replicates | `specs/simulation.md` SIM-ORD-03 to -06, SX4 |
 | H44 | Type 7 quantile over 19 replicates against R's `quantile` (identical to the bit with the expression of R, one ulp apart with the other form) and types 6 and 8 for comparison | `specs/simulation.md` SIM-SUM-01, SX5 |
 
-**Not read.** The papers behind S-59, S-61, S-63 and S-67; the documentation of `nlmixr2` or `saemix` on the visual predictive check (the VPC section is marked `later`).
+**Not read.** The papers behind S-59, S-61, S-63 and S-67; the documentation of `nlmixr2` or `saemix` on the visual predictive check (read for `specs/vpc.md` as help pages only, section 16).
 
 **Clean room.** Only three pages were fetched (S-60, S-63 through R's source, S-65); no page of the documentation of a commercial program was opened or is named in `specs/simulation.md`.
+
+## 16. Sources added for `specs/vpc.md` (card T-160, 2026-11-08)
+
+Same rules as before. Only papers, R's own help pages and the help pages (not the code) of open packages were used; the documentation of commercial programs was not opened. The rules of `specs/vpc.md` are written from these sources and from derivations (D); every number of its worked examples comes from the throwaway base R 4.5.2 scripts of H-VX1 to H-VX7.
+
+| key | source | location | terms and how used |
+|---|---|---|---|
+| S-68 | Holford N. The visual predictive check: superiority to standard diagnostic (Rorschach) plots. PAGE 14 (2005), Abstr 738 | poster abstract and text, read; thin on construction | Facts only: simulate with the original data set as the template, about 1000 simulated observations per time. Used for `VPC-SIM-01`. |
+| S-69 | Karlsson MO, Holford N. A tutorial on visual predictive checks. PAGE 17 (2008), Abstr 1434 | tutorial slides, read (slide numbers cited in the rules) | Facts only: the definition (slide 3), binning (6 to 11), the confidence interval of the prediction interval (12), the structure of the simulated data (14), censored data (29), stratification (33 to 36), the form OBS·PREDav,bin/PRED (36), false-positive and false-negative rates (37 to 39). Used for `VPC-SIM-01`, `-05`, `VPC-BIN-01`, `-06`, `VPC-STAT-02` to `-06`, `VPC-PC-01`, `VPC-BLQ-02`, `VPC-STR-*`, `VPC-ORA-02`. |
+| S-70 | Bergstrand M, Hooker AC, Wallin JE, Karlsson MO. Prediction-corrected visual predictive checks for diagnosing nonlinear mixed-effects models. AAPS J 2011;13(2):143-151 | abstract, Methods (VPC, pcVPC) and Discussion read; Eq. 1 and 2 read as images; the sentence on PREDbin could not be re-read verbatim in the correction round (full text behind a verification page) | Facts only: 1000 replicates, one bin per protocol time or about equal numbers per bin, the 95% interval from the 2.5 and 97.5 percentiles of replicate-wise statistics, Eq. 1 and 2, censored observations omitted for a pcVPC. Eq. 3 (variability correction) was not read. Used for `VPC-BIN-01`, `VPC-STAT-*`, `VPC-PC-*`, `VPC-BLQ-02`. |
+| S-71 | Bergstrand M, Karlsson MO. Handling data below the limit of quantification in mixed effect models. AAPS J 2009;11(2):371-380 | Methods (visual predictive check) and Results (Figures 4 and 5) read | Facts only: 500 simulated data sets, a panel of percentiles and a panel of the fraction below the limit with the simulated median and interval. Used for `VPC-BLQ-*`. |
+| S-72 | R 4.5.2 help pages `findInterval` (base) and `quantile` (stats) | installed help of the local R | GPL package documentation. Facts only: the intervals closed on the left, `rightmost.closed`, the type-7 formula. Used for `VPC-BIN-03`, `VPC-STAT-01`. |
+| S-73 | Help pages of the `vpc` package (MIT licence): `vpc`, `vpc_cens` | help pages read; **the code was not read** | Facts only: defaults of `bins`, `n_bins`, `bin_mid`, `pi`, `ci`, `pred_corr`, `pred_corr_lower_bnd`, `stratify`; the censored check as a probability of being below the limit. Used for `VPC-BIN-02`, `-04`, `VPC-STAT-04`, `VPC-PC-03`, `VPC-BLQ-03`, `VPC-STR-02`. |
+| S-74 | Help pages of `saemix` (GPL): `vpc` options `vpc.bin`, `vpc.interval`, `nb.sim`, `bin.method`, `bin.breaks`; and of nlmixr2plot `vpcPlot` (`n`, binning arguments) | help pages read; **the code was not read**; the `saemix` options `vpc.method` and `vpc.extreme` were not found in the text read | Facts only: 10 bins, 0.95, 1000 simulations; 300 for nlmixr2plot. Used for `VPC-SIM-06`, `VPC-BIN-01`, `-02`, `-08`, `VPC-STAT-04`. |
+
+**Hand checks added** (throwaway base R 4.5.2 scripts outside the repository, every random draw from a fixed seed).
+
+| key | what | where |
+|---|---|---|
+| H-VX1 | Equal-count bins on a fixed grid and on `Theoph`, edges, `x_mean`, `x_middle`, boundary rule | `specs/vpc.md` VX1 |
+| H-VX2 | Band across 40 replicates, 27 checks identical to `quantile(type = 7)` | VX2 |
+| H-VX3 | Prediction correction, lower-bound case, ratio-first against product-first | VX3 |
+| H-VX4 | BLQ fraction band and the two quantile options | VX4 |
+| H-VX5 | Calibration of the band at R = 1000, K = 400, and a power check | VX5 |
+| H-VX6 | The R minimum, long-double sums, `median` against type 7 | VX6 |
+| H-VX7 | k = 1, one distinct x, k above the distinct count, an oral time-0 row | VX7 |
+
+**Not read.** The code of the `vpc`, `saemix` and nlmixr2 packages; Eq. 3 of S-70; the `saemix` help on `vpc.method` and `vpc.extreme`; any documentation of a commercial program.
