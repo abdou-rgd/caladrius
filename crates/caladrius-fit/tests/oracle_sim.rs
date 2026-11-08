@@ -68,9 +68,9 @@ use serde_json::{Map, Value, json};
 
 // ---------------------------------------------------------------- the adapter (the only thing T-159 changes)
 
-/// THE ADAPTER. Today: the simulator is not built. T-159 replaces this body (and only this body) with the call
-/// into the engine, building its input from `request` and returning the answer in the shape described in the
-/// header of this file.
+/// THE ADAPTER. It builds the input of `caladrius_fit::sim` from `request`, calls it, and returns the answer in
+/// the shape described in the header of this file. It strips `threads` (an adapter-level knob, not an option of
+/// SIM-MOD-05) and refuses any other option key it does not know with `invalid_option`.
 fn simulation(request: &Value) -> Result<Value, SimError> {
     use caladrius_fit::sim as eng;
     use std::collections::BTreeMap;
