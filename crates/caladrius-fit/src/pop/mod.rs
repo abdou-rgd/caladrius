@@ -1,19 +1,28 @@
-//! The population objective at fixed parameters (`specs/population.md`): FOCEI (`foce_i`, the
-//! default, POP-OBJ-02), plain FOCE with σ frozen at the population prediction (`foce`,
-//! POP-OBJ-06) and FO (`fo`, POP-OBJ-03), in the conventions `full` and `no_2pi` (POP-OBJ-05), with
-//! the conditional modes η̂ of every subject (POP-INN-01, POP-INN-02) and the refusals of POP-INN-03
-//! that are decided before any outer iteration.
+//! The population fit (`specs/population.md`): FOCEI (`foce_i`, the default, POP-OBJ-02), plain
+//! FOCE with σ frozen at the population prediction (`foce`, POP-OBJ-06) and FO (`fo`, POP-OBJ-03),
+//! in the conventions `full` and `no_2pi` (POP-OBJ-05), with the conditional modes η̂ of every
+//! subject (POP-INN-01, POP-INN-02) and the refusals of POP-INN-03 that are decided before any
+//! outer iteration.
 //!
-//! The outer estimation, the covariance, the shrinkage and the diagnostics are not here yet: a
-//! request without `options.evaluate_only = true` is refused with the code `not_available`.
+//! With `options.evaluate_only = true` the objective, the modes and the diagnostics are returned at
+//! the given parameters. Otherwise the outer fit of POP-EST-01 to POP-EST-05 runs ([`outer`]), with
+//! the covariance of POP-COV-01 to POP-COV-04 ([`covariance`]).
 //!
 //! The model `identity_linear` (POP-MOD-05) is a test model: it is reachable through this API only,
 //! is not in the catalogue of `caladrius-models` and is not named in any message of this module.
 
 mod checks;
+mod covariance;
 mod data;
 mod dense;
+mod diagnostics;
+mod evaluation;
 mod inner;
+#[cfg(test)]
+mod measure;
+mod outer;
+mod phi;
+mod start;
 mod structure;
 #[cfg(test)]
 mod tests;
@@ -30,8 +39,11 @@ use crate::{Bounds, ErrorModel};
 
 use checks::LagDomain;
 use data::Subject;
-use inner::InnerProblem;
+use evaluation::{Evaluation, Settings};
+use phi::{Holds, Layout, Params};
 use structure::{Structure, SubjectModel};
+
+pub use covariance::{CovarianceBlock, Kind as CovarianceKind};
 
 // ---------------------------------------------------------------- the request
 
@@ -59,11 +71,13 @@ pub struct PopRequest {
     /// Options of the model (the test model's design).
     #[serde(default)]
     pub model_options: ModelOptions,
-    /// Typical values held at a value (they are not counted as free), and the error parameters `a`
-    /// and `b` held at a value in the user's units.
+    /// Typical values held at a value (they are not counted as free), the error parameters `a`
+    /// and `b` held at a value in the user's units, and `omega.<random effect>`, a variance of Ω
+    /// held at a value (POP-EST-02: one ω_k of a diagonal Ω, or every variance of a block).
     #[serde(default)]
     pub fixed: BTreeMap<String, f64>,
-    /// Bounds by typical value (FIT-BND-01); read for the domain of `tlag` (POP-INN-03 item 1).
+    /// Bounds by typical value (FIT-BND-01, POP-EST-02); also read for the domain of `tlag`
+    /// (POP-INN-03 item 1).
     #[serde(default)]
     pub bounds: BTreeMap<String, Bounds>,
     /// A table in the event layout in place of `subjects`; the host reads it into `dataset_text`.
@@ -94,7 +108,7 @@ pub struct PopOptions {
     pub method: Option<String>,
     /// `full` (the default) or `no_2pi`.
     pub ofv_convention: Option<String>,
-    /// `sandwich`, `r` or `s` (checked; the covariance itself is not computed here).
+    /// `sandwich` (the default), `r` or `s`: the kind that is printed (POP-COV-01).
     pub covariance: Option<String>,
     /// Labels of subjects left out of the run.
     #[serde(default)]
@@ -142,10 +156,10 @@ pub enum OfvConvention {
     No2Pi,
 }
 
-/// The answer of an evaluation.
+/// The answer of an evaluation or of a fit.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PopAnswer {
-    /// `evaluated` (POP-API-01 item 6).
+    /// `evaluated` (POP-API-01 item 6), or the status of the fit (POP-EST-03).
     pub status: String,
     pub method: Method,
     pub ofv_convention: OfvConvention,
@@ -161,6 +175,96 @@ pub struct PopAnswer {
     pub xi_used: BTreeMap<String, ErrorValue>,
     /// Every subject of the run, in dataset order.
     pub subjects: Vec<SubjectAnswer>,
+    /// η-shrinkage per random effect (POP-DIA-03); null where NC.
+    pub eta_shrinkage: Vec<Option<f64>>,
+    /// ε-shrinkage (POP-DIA-03); null where NC.
+    pub eps_shrinkage: Option<f64>,
+    /// The number of free parameters (POP-DIA-04).
+    pub k: usize,
+    /// AIC and BIC (ln N) in the convention of the answer (POP-DIA-04); null when NC.
+    pub aic: Option<f64>,
+    pub bic: Option<f64>,
+    /// A fit only: the estimates (POP-EST-04, POP-API-01 item 13).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub estimate: Option<Estimate>,
+    /// A fit only: the standard errors of the printed kind, same keys (POP-COV-04).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub se: Option<StandardErrors>,
+    /// A fit only: the standard errors of the three kinds (`sandwich`, `r`, `s`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub se_by_kind: Option<BTreeMap<String, StandardErrors>>,
+    /// A fit only: the covariance block (POP-EST-04).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub covariance: Option<CovarianceBlock>,
+    /// A fit only: the accepted outer iterations.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iterations: Option<usize>,
+    /// A fit only: one row per accepted iteration, iteration 0 included (POP-EST-03).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trace: Option<Vec<TraceAnswer>>,
+    /// A fit only: where the start came from (POP-EST-05).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<StartRecord>,
+}
+
+/// The estimates of a fit, in the user's units.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Estimate {
+    /// The typical values by name (the fixed ones included).
+    #[serde(flatten)]
+    pub theta: BTreeMap<String, f64>,
+    /// The variances of Ω by random effect.
+    pub omega_diagonal: BTreeMap<String, f64>,
+    /// Ω, q × q, in the order of `random_effects` (exact zeros off a diagonal Ω).
+    pub omega_full: Vec<Vec<f64>>,
+    /// ω_k = √Ω_kk by random effect.
+    pub omega_sd: BTreeMap<String, f64>,
+    /// The correlations of Ω, q × q.
+    pub omega_correlation: Vec<Vec<f64>>,
+    /// The error parameters by key (`a`, `b`), FIT-ML-21.
+    pub xi: BTreeMap<String, f64>,
+}
+
+/// Standard errors with the keys of [`Estimate`]; null where NC, fixed, on a bound, or held at 0.
+/// The correlations of Ω have none in this version.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct StandardErrors {
+    #[serde(flatten)]
+    pub theta: BTreeMap<String, Option<f64>>,
+    pub omega_diagonal: BTreeMap<String, Option<f64>>,
+    pub omega_full: Vec<Vec<Option<f64>>>,
+    /// SE(ω_k) = SE(Ω_kk)/(2·ω_k), the delta method.
+    pub omega_sd: BTreeMap<String, Option<f64>>,
+    pub xi: BTreeMap<String, Option<f64>>,
+}
+
+/// One row of the trace of a fit.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TraceAnswer {
+    pub iteration: usize,
+    pub ofv: f64,
+    pub ofv_convention: OfvConvention,
+    /// The parameters in the user's units, by the labels of the covariance block (`omega[a,b]`,
+    /// `xi.a`).
+    pub parameters: BTreeMap<String, f64>,
+    pub nu: Option<f64>,
+    pub halvings: usize,
+    pub decrement: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+}
+
+/// Where the start of a fit came from (POP-EST-05, as FIT-ML-20).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct StartRecord {
+    /// `user`, `two_stage` or `mixed`.
+    pub kind: String,
+    /// By parameter: `user`, `fixed`, `two_stage`, `error_init` or `moments`.
+    pub sources: BTreeMap<String, String>,
+    /// The subjects left out of the two-stage means (empty without a two-stage start).
+    pub left_out: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 /// One error parameter used by an evaluation.
@@ -168,8 +272,8 @@ pub struct PopAnswer {
 pub struct ErrorValue {
     /// In the user's units (FIT-ML-21).
     pub value: f64,
-    /// `fixed`, `error_init`, or `moments` (FIT-ML-10 at the population prediction) when the
-    /// request gives neither.
+    /// `fixed`, `error_init`, or, when the request gives neither, `two_stage` (POP-EST-05, a fit
+    /// whose start ran the individual fits) or `moments` (FIT-ML-10 at the population prediction).
     pub source: String,
 }
 
@@ -202,8 +306,6 @@ pub enum PopErrorCode {
     TooFewSubjects,
     TooFewObservations,
     InnerFailed,
-    /// The outer estimation is not in this version yet (a request without `evaluate_only`).
-    NotAvailable,
 }
 
 impl PopErrorCode {
@@ -217,7 +319,6 @@ impl PopErrorCode {
             PopErrorCode::TooFewSubjects => "too_few_subjects",
             PopErrorCode::TooFewObservations => "too_few_observations",
             PopErrorCode::InnerFailed => "inner_failed",
-            PopErrorCode::NotAvailable => "not_available",
         }
     }
 }
@@ -288,44 +389,51 @@ fn covariance_failed(id: &str, method: Method) -> PopError {
 
 // ---------------------------------------------------------------- the run
 
-/// Evaluates the population objective at the parameters of the request (`options.evaluate_only`).
+/// Evaluates the population objective at the parameters of the request (`options.evaluate_only`),
+/// or fits the population model (POP-EST-03).
 pub fn run(request: &PopRequest) -> Result<PopAnswer, PopError> {
     run_with(request, &|_| false)
 }
 
-/// [`run`], with a hook that makes the inner problem of the named subjects fail (the unit test of
-/// `inner_failed`, POP-INN-03 item 4; never an option of the request).
+/// [`run`], with a hook that makes the inner problem of the named subjects fail at the starting
+/// values (the unit test of `inner_failed`, POP-INN-03 item 4; never an option of the request).
 pub(crate) fn run_with(
     request: &PopRequest,
     fail_inner: &dyn Fn(&str) -> bool,
 ) -> Result<PopAnswer, PopError> {
     let setup = Setup::new(request)?;
-    if !request.options.evaluate_only {
-        return Err(PopError {
-            code: PopErrorCode::NotAvailable,
-            message: "the outer estimation of the population fit is not available in this version yet; give `options.evaluate_only = true` to evaluate the objective at the given parameters".to_string(),
-        });
+    if request.options.evaluate_only {
+        setup.evaluate(fail_inner)
+    } else {
+        setup.fit(fail_inner)
     }
-    setup.evaluate(fail_inner)
 }
 
-/// Everything the evaluation needs, checked.
-struct Setup {
-    method: Method,
-    convention: OfvConvention,
-    error_model: ErrorModel,
-    structure: Structure,
-    theta: BTreeMap<String, f64>,
-    random_effects: Vec<String>,
-    omega: Mat,
-    l_inv: Mat,
-    /// The moved error variables.
-    xi: Vec<f64>,
-    /// The error parameters used, for the answer.
-    xi_used: BTreeMap<String, ErrorValue>,
-    subjects: Vec<Subject>,
-    /// The population prediction of each subject.
-    pred0: Vec<Vec<f64>>,
+/// Everything the evaluation and the fit need, checked.
+pub(crate) struct Setup {
+    pub(crate) method: Method,
+    pub(crate) convention: OfvConvention,
+    pub(crate) error_model: ErrorModel,
+    pub(crate) structure: Structure,
+    pub(crate) random_effects: Vec<String>,
+    pub(crate) subjects: Vec<Subject>,
+    pub(crate) block: bool,
+    /// The parameters given or computed for the start (θ with the fixed ones, L, moved ξ).
+    pub(crate) start: Params,
+    /// The error parameters used at the start, for the answer.
+    pub(crate) xi_used: BTreeMap<String, ErrorValue>,
+    /// The typical values held at their value.
+    pub(crate) fixed_theta: Vec<String>,
+    /// Bounds of the free typical values on the natural scale (a fit only).
+    pub(crate) bounds: BTreeMap<String, (f64, f64)>,
+    /// Which ω_k are held (all true or all false for a block).
+    pub(crate) fixed_omega: Vec<bool>,
+    /// Which error parameters are held.
+    pub(crate) fixed_xi: Vec<bool>,
+    /// The printed kind of covariance.
+    pub(crate) printed: String,
+    /// Where the start came from (a fit only).
+    pub(crate) start_record: Option<StartRecord>,
 }
 
 fn method_of(word: Option<&str>) -> Result<Method, PopError> {
@@ -351,9 +459,11 @@ fn convention_of(word: Option<&str>) -> Result<OfvConvention, PopError> {
     }
 }
 
-fn check_covariance(word: Option<&str>) -> Result<(), PopError> {
+/// The printed kind of covariance (POP-COV-01).
+fn covariance_of(word: Option<&str>) -> Result<String, PopError> {
     match word {
-        None | Some("sandwich" | "r" | "s") => Ok(()),
+        None => Ok("sandwich".to_string()),
+        Some(kind @ ("sandwich" | "r" | "s")) => Ok(kind.to_string()),
         Some(other) => Err(invalid(
             "covariance",
             format!("unknown covariance kind `{other}`; use `sandwich`, `r` or `s`"),
@@ -415,8 +525,13 @@ fn structure_of(request: &PopRequest) -> Result<Structure, PopError> {
         .ok_or_else(|| invalid("model", format!("unknown model `{id}`; {give}")))
 }
 
-/// POP-MOD-02: the list of random effects.
-fn random_effects_of(request: &PopRequest, structure: &Structure) -> Result<Vec<String>, PopError> {
+/// POP-MOD-02: the list of random effects. A fit may leave the typical value of a random effect
+/// out: the two-stage start computes it (POP-EST-05).
+fn random_effects_of(
+    request: &PopRequest,
+    structure: &Structure,
+    fit: bool,
+) -> Result<Vec<String>, PopError> {
     let Some(list) = &request.random_effects else {
         return Err(invalid(
             "random_effects",
@@ -466,7 +581,7 @@ fn random_effects_of(request: &PopRequest, structure: &Structure) -> Result<Vec<
                 ),
             ));
         }
-        if !request.initial.contains_key(p) && !request.fixed.contains_key(p) {
+        if !fit && !request.initial.contains_key(p) && !request.fixed.contains_key(p) {
             return Err(invalid(
                 "random_effects",
                 format!("`{p}` has no typical value; give it in `initial`"),
@@ -476,15 +591,16 @@ fn random_effects_of(request: &PopRequest, structure: &Structure) -> Result<Vec<
     Ok(list.clone())
 }
 
-/// The typical values: `initial` and `fixed` (error parameters excluded), checked.
-fn theta_of(
-    request: &PopRequest,
-    structure: &Structure,
-    random_effects: &[String],
-) -> Result<BTreeMap<String, f64>, PopError> {
+/// A key of `fixed` that holds a variance of Ω.
+fn omega_key(key: &str) -> Option<&str> {
+    key.strip_prefix("omega.")
+}
+
+/// The typical values given by `initial` and `fixed` (error parameters and Ω excluded), finite.
+fn given_theta(request: &PopRequest) -> Result<BTreeMap<String, f64>, PopError> {
     let mut theta = request.initial.clone();
     for (p, x) in &request.fixed {
-        if matches!(p.as_str(), "a" | "b") {
+        if matches!(p.as_str(), "a" | "b") || omega_key(p).is_some() {
             continue;
         }
         if theta.insert(p.clone(), *x).is_some() {
@@ -502,6 +618,16 @@ fn theta_of(
             ));
         }
     }
+    Ok(theta)
+}
+
+/// The checks of the typical values against the model.
+fn check_theta(
+    request: &PopRequest,
+    theta: &BTreeMap<String, f64>,
+    structure: &Structure,
+    random_effects: &[String],
+) -> Result<(), PopError> {
     match structure {
         Structure::IdentityLinear { z_powers } => {
             let keys: Vec<&str> = theta.keys().map(String::as_str).collect();
@@ -550,7 +676,7 @@ fn theta_of(
                     ),
                 ));
             }
-            for (p, &x) in &theta {
+            for (p, &x) in theta {
                 let zero_allowed = p == "tlag";
                 let inside = if zero_allowed { x >= 0.0 } else { x > 0.0 };
                 if !inside {
@@ -568,17 +694,25 @@ fn theta_of(
                 }
             }
             // The names and the parameter set, checked by the model itself.
-            if let Err(e) = model.predict(1.0, &theta, &[0.0]) {
+            if let Err(e) = model.predict(1.0, theta, &[0.0]) {
                 return Err(invalid("initial", format!("{e}")));
             }
         }
     }
-    Ok(theta)
+    Ok(())
 }
 
-/// Ω, its shape and its lower factor.
-fn omega_of(request: &PopRequest, q: usize, block: bool) -> Result<(Mat, Mat), PopError> {
+/// Ω as given, checked; `None` when the request gives none and a fit may compute it (POP-EST-05).
+fn omega_given(
+    request: &PopRequest,
+    q: usize,
+    block: bool,
+    may_compute: bool,
+) -> Result<Option<Mat>, PopError> {
     let Some(rows) = &request.omega else {
+        if may_compute {
+            return Ok(None);
+        }
         return Err(invalid(
             "omega",
             "no starting omega is given; give the q × q covariance matrix of the random effects",
@@ -617,19 +751,78 @@ fn omega_of(request: &PopRequest, q: usize, block: bool) -> Result<(Mat, Mat), P
             }
         }
     }
-    let Some(l) = dense::cholesky(&omega) else {
-        return Err(invalid(
+    Ok(Some(omega))
+}
+
+/// The variances of Ω held by `fixed` (keys `omega.<random effect>`), one entry per random
+/// effect (POP-EST-02). Decision taken meanwhile (2026-11-08), reversible by Abdou: the key holds
+/// the variance; a fixed variance of 0 is refused (remove the random effect instead, POP-MOD-02);
+/// for a block every variance must be given and equal the diagonal of `omega`, which then holds
+/// the whole block.
+fn fixed_omega_of(
+    request: &PopRequest,
+    random_effects: &[String],
+    block: bool,
+    omega: Option<&Mat>,
+) -> Result<Vec<Option<f64>>, PopError> {
+    let mut out = vec![None; random_effects.len()];
+    for (key, &x) in &request.fixed {
+        let Some(re) = omega_key(key) else {
+            continue;
+        };
+        let Some(k) = random_effects.iter().position(|r| r == re) else {
+            return Err(invalid(
+                "fixed",
+                format!(
+                    "`{key}` names no random effect; use `omega.<parameter>` with a parameter of `random_effects`"
+                ),
+            ));
+        };
+        if !(x.is_finite() && x > 0.0) {
+            return Err(invalid(
+                "fixed",
+                format!(
+                    "`{key}` is {x}; give a positive variance, or remove the random effect of `{re}` to hold it at 0"
+                ),
+            ));
+        }
+        if let Some(slot) = out.get_mut(k) {
+            *slot = Some(x);
+        }
+    }
+    if block && out.iter().any(Option::is_some) {
+        let whole = out.iter().all(Option::is_some);
+        let matches =
+            omega.is_some_and(|o| out.iter().enumerate().all(|(k, x)| *x == Some(o.at(k, k))));
+        if !(whole && matches) {
+            return Err(invalid(
+                "fixed",
+                "fixing one element of a block of omega is not available in this version; fix the whole block (every `omega.<parameter>` equal to the diagonal of `omega`) or none of it",
+            ));
+        }
+    }
+    Ok(out)
+}
+
+/// The lower factor L of the starting Ω, with the fixed variances put in place.
+fn start_factor(omega: &Mat, fixed: &[Option<f64>]) -> Result<Mat, PopError> {
+    let mut omega = omega.clone();
+    for (k, x) in fixed.iter().enumerate() {
+        if let Some(x) = x {
+            omega.set(k, k, *x);
+        }
+    }
+    dense::cholesky(&omega).ok_or_else(|| {
+        invalid(
             "omega",
             "the starting matrix is not positive definite; give positive variances and correlations strictly between -1 and 1",
-        ));
-    };
-    let l_inv = dense::lower_inverse(&l);
-    Ok((omega, l_inv))
+        )
+    })
 }
 
 /// The keys of the error parameters in a request (POP-API-01 item 12): `a` for the first parameter
 /// of the error model and `b` for the last, in the order of [`ErrorModel::names`].
-fn error_keys(em: ErrorModel) -> &'static [&'static str] {
+pub(crate) fn error_keys(em: ErrorModel) -> &'static [&'static str] {
     match em {
         ErrorModel::Additive => &["a"],
         ErrorModel::Proportional => &["b"],
@@ -750,18 +943,106 @@ fn lag_domain(request: &PopRequest, model: ModelId) -> Option<LagDomain> {
     })
 }
 
+/// Generated lower bound of FIT-BND-03 relative to the start (the value of the individual fit,
+/// `engine::GENERATED_FLOOR`, mirrored here).
+const GENERATED_FLOOR: f64 = 1e-6;
+
+/// FIT-BND-03 as the individual fit applies it (`engine::generated_lower`): `v`, `cl`, `k`, `ka`,
+/// `dur` above 1e-6 times their start, `tlag` at or above 0, any other name unbounded.
+fn generated_lower(name: &str, start: f64) -> f64 {
+    match name {
+        "v" | "cl" | "k" | "ka" | "dur" => GENERATED_FLOOR * start,
+        "tlag" => 0.0,
+        _ => f64::NEG_INFINITY,
+    }
+}
+
+/// The bounds of the free typical values of a fit (POP-EST-02), checked: a bound names a free
+/// typical value, its lower end is below its upper end, and the start lies inside.
+fn bounds_of(
+    request: &PopRequest,
+    theta: &BTreeMap<String, f64>,
+    fixed: &[String],
+    structure: &Structure,
+) -> Result<BTreeMap<String, (f64, f64)>, PopError> {
+    for name in request.bounds.keys() {
+        if !theta.contains_key(name) || fixed.contains(name) {
+            return Err(invalid(
+                "bounds",
+                format!(
+                    "`{name}` is not a free typical value of the fit; bound free typical values only"
+                ),
+            ));
+        }
+    }
+    let mut out = BTreeMap::new();
+    for (name, &x) in theta {
+        if fixed.contains(name) {
+            continue;
+        }
+        let given = request.bounds.get(name).copied().unwrap_or_default();
+        let generated = match structure {
+            Structure::Catalogue(_) => generated_lower(name, x),
+            Structure::IdentityLinear { .. } => f64::NEG_INFINITY,
+        };
+        let lo = given.lower.unwrap_or(generated);
+        let hi = given.upper.unwrap_or(f64::INFINITY);
+        if lo.is_nan() || hi.is_nan() || lo >= hi {
+            return Err(invalid(
+                "bounds",
+                format!(
+                    "the bounds of `{name}` are [{lo}, {hi}]; give a lower bound below the upper one"
+                ),
+            ));
+        }
+        if !(lo <= x && x <= hi) {
+            return Err(invalid(
+                "bounds",
+                format!(
+                    "the start of `{name}` is {x}, outside its bounds [{lo}, {hi}]; give a start inside them"
+                ),
+            ));
+        }
+        out.insert(name.clone(), (lo, hi));
+    }
+    Ok(out)
+}
+
 impl Setup {
     fn new(request: &PopRequest) -> Result<Self, PopError> {
+        let fit = !request.options.evaluate_only;
         let method = method_of(request.options.method.as_deref())?;
         let convention = convention_of(request.options.ofv_convention.as_deref())?;
-        // Validation only: an evaluation computes no covariance (that is T-154).
-        check_covariance(request.options.covariance.as_deref())?;
+        let printed = covariance_of(request.options.covariance.as_deref())?;
         let block = block_of(request.omega_shape.as_deref())?;
         let error_model = error_model_of(request.error_model.as_deref())?;
         let structure = structure_of(request)?;
-        let random_effects = random_effects_of(request, &structure)?;
-        let theta = theta_of(request, &structure, &random_effects)?;
-        let (omega, l_inv) = omega_of(request, random_effects.len(), block)?;
+        let random_effects = random_effects_of(request, &structure, fit)?;
+        let q = random_effects.len();
+        let mut theta = given_theta(request)?;
+        let fixed_theta: Vec<String> = request
+            .fixed
+            .keys()
+            .filter(|k| !matches!(k.as_str(), "a" | "b") && omega_key(k).is_none())
+            .cloned()
+            .collect();
+        let catalogue = matches!(structure, Structure::Catalogue(_));
+        // The typical values the two-stage start computes (POP-EST-05).
+        let missing: Vec<String> = random_effects
+            .iter()
+            .filter(|re| catalogue && !theta.contains_key(*re))
+            .cloned()
+            .collect();
+        // Without a two-stage start the checks keep the order of the evaluation (T-153).
+        if missing.is_empty() {
+            check_theta(request, &theta, &structure, &random_effects)?;
+        }
+        let omega0 = omega_given(request, q, block, fit && catalogue)?;
+        let fixed_omega = fixed_omega_of(request, &random_effects, block, omega0.as_ref())?;
+        let factor0 = match &omega0 {
+            Some(o) => Some(start_factor(o, &fixed_omega)?),
+            None => None,
+        };
         let given = error_given(request, error_model)?;
         let subjects = data::subjects(request)?;
 
@@ -769,7 +1050,7 @@ impl Setup {
         // (θ, Ω and ξ): it fits nothing (design choice, see the report of T-153).
         let complete = given.iter().all(Option::is_some);
         if !(request.options.evaluate_only && complete) {
-            let free_theta = request.initial.len();
+            let free_theta = request.initial.len() + missing.len();
             let free_xi = given
                 .iter()
                 .filter(|g| !matches!(g, Some((_, ErrorSource::Fixed))))
@@ -780,6 +1061,71 @@ impl Setup {
         if let Structure::Catalogue(model) = &structure {
             checks::refuse_unbounded(*model, error_model, &subjects, lag_domain(request, *model))?;
         }
+        let mut sources: BTreeMap<String, String> = BTreeMap::new();
+        for name in theta.keys() {
+            let source = if fixed_theta.contains(name) {
+                "fixed"
+            } else {
+                "user"
+            };
+            sources.insert(name.clone(), source.to_string());
+        }
+        let mut two_stage = None;
+        if let (Structure::Catalogue(model), true) =
+            (&structure, fit && (!missing.is_empty() || omega0.is_none()))
+        {
+            let names: Vec<String> = request
+                .initial
+                .keys()
+                .cloned()
+                .chain(missing.iter().cloned())
+                .collect();
+            let held: BTreeMap<String, f64> = fixed_theta
+                .iter()
+                .filter_map(|n| theta.get(n).map(|x| (n.clone(), *x)))
+                .collect();
+            let ts = start::two_stage(
+                *model,
+                &names,
+                &random_effects,
+                block,
+                error_model,
+                &held,
+                &request.initial,
+                &subjects,
+            )?;
+            for name in &missing {
+                if let Some(x) = ts.theta.get(name) {
+                    theta.insert(name.clone(), *x);
+                    sources.insert(name.clone(), "two_stage".to_string());
+                }
+            }
+            two_stage = Some(ts);
+        }
+        if !missing.is_empty() {
+            check_theta(request, &theta, &structure, &random_effects)?;
+        }
+        let l = match (factor0, &two_stage) {
+            (Some(l), _) => l,
+            (None, Some(ts)) => start_factor(&ts.omega, &fixed_omega)?,
+            (None, None) => {
+                return Err(invalid(
+                    "omega",
+                    "no starting omega is given; give the q × q covariance matrix of the random effects",
+                ));
+            }
+        };
+        for (k, re) in random_effects.iter().enumerate() {
+            let source = if fixed_omega.get(k).copied().flatten().is_some() {
+                "fixed"
+            } else if omega0.is_some() {
+                "user"
+            } else {
+                "two_stage"
+            };
+            sources.insert(format!("omega[{re},{re}]"), source.to_string());
+        }
+
         let mut pred0 = Vec::with_capacity(subjects.len());
         for s in &subjects {
             let theta_i = subject_theta(&theta, s)?;
@@ -790,7 +1136,7 @@ impl Setup {
                 dose: s.dose,
                 times: &s.times,
             };
-            let zero = vec![0.0; random_effects.len()];
+            let zero = vec![0.0; q];
             let Some(p) = model.predict(&zero) else {
                 return Err(invalid(
                     "initial",
@@ -804,20 +1150,22 @@ impl Setup {
         }
         let moments = moment_xi(error_model, &subjects, &pred0);
         // An evaluation uses `error_init` (POP-API-01 item 6). A parameter the request does not give
-        // takes the moment estimate, and the answer says so in `xi_used`: the controls of the
-        // refusal rows of the oracle give no `error_init`.
+        // takes the two-stage mean when the start ran the individual fits, else the moment estimate,
+        // and the answer says so in `xi_used`: the controls of the refusal rows of the oracle give no
+        // `error_init`.
+        let (fallback, fallback_source) = match &two_stage {
+            Some(ts) => (error_model.user_values(&ts.xi), "two_stage"),
+            None => (error_model.user_values(&moments), "moments"),
+        };
         let mut user = Vec::with_capacity(given.len());
         let mut xi_used = BTreeMap::new();
-        for ((g, m), key) in given
-            .iter()
-            .zip(error_model.user_values(&moments))
-            .zip(error_keys(error_model))
-        {
+        for ((g, m), key) in given.iter().zip(fallback).zip(error_keys(error_model)) {
             let (value, source) = match g {
                 Some((x, source)) => (*x, source.id()),
-                None => (m, "moments"),
+                None => (m, fallback_source),
             };
             user.push(value);
+            sources.insert(format!("xi.{key}"), source.to_string());
             xi_used.insert(
                 (*key).to_string(),
                 ErrorValue {
@@ -829,32 +1177,88 @@ impl Setup {
         let xi = error_model.moved_from_user(&user);
         // POP-INN-03 item 2.
         checks::refuse_non_positive_sigma(error_model, &xi, &subjects, &pred0)?;
+        let bounds = if fit {
+            bounds_of(request, &theta, &fixed_theta, &structure)?
+        } else {
+            BTreeMap::new()
+        };
+        let start_record = fit.then(|| {
+            let computed = sources.values().any(|s| s == "two_stage");
+            let user_given = sources
+                .values()
+                .any(|s| matches!(s.as_str(), "user" | "error_init" | "moments"));
+            let kind = match (computed, user_given) {
+                (false, _) => "user",
+                (true, false) => "two_stage",
+                (true, true) => "mixed",
+            };
+            StartRecord {
+                kind: kind.to_string(),
+                sources,
+                left_out: two_stage
+                    .as_ref()
+                    .map(|t| t.left_out.clone())
+                    .unwrap_or_default(),
+                note: two_stage.as_ref().and_then(|t| t.note.clone()),
+            }
+        });
         Ok(Self {
             method,
             convention,
             error_model,
             structure,
-            theta,
+            fixed_omega: fixed_omega.iter().map(Option::is_some).collect(),
+            fixed_xi: given
+                .iter()
+                .map(|g| matches!(g, Some((_, ErrorSource::Fixed))))
+                .collect(),
             random_effects,
-            omega,
-            l_inv,
-            xi,
-            xi_used,
             subjects,
-            pred0,
+            block,
+            start: Params { theta, l, xi },
+            xi_used,
+            fixed_theta,
+            bounds,
+            printed,
+            start_record,
         })
     }
 
-    fn evaluate(&self, fail_inner: &dyn Fn(&str) -> bool) -> Result<PopAnswer, PopError> {
+    /// N, the observations used.
+    pub(crate) fn n_observations(&self) -> usize {
+        self.subjects.iter().map(|s| s.y.len()).sum()
+    }
+
+    /// The free coordinates of φ and their bounds.
+    fn layout(&self) -> Layout {
+        let with_random_effect: Vec<String> = match self.structure {
+            Structure::Catalogue(_) => self.random_effects.clone(),
+            Structure::IdentityLinear { .. } => Vec::new(),
+        };
+        Layout::new(
+            self.start.clone(),
+            self.error_model,
+            self.block,
+            &Holds {
+                fixed_theta: &self.fixed_theta,
+                with_random_effect: &with_random_effect,
+                bounds: &self.bounds,
+                fixed_omega: &self.fixed_omega,
+                fixed_xi: &self.fixed_xi,
+            },
+        )
+    }
+
+    /// The answers of the subjects and the total OFV, in the convention of the answer, the
+    /// per-subject values summed in dataset order.
+    fn subject_answers(&self, evaluation: &Evaluation) -> (Vec<SubjectAnswer>, f64) {
         let ln_2pi = libm::log(std::f64::consts::TAU);
-        let q = self.random_effects.len();
-        let steps: Vec<f64> = (0..q).map(|k| inner_step(self.omega.at(k, k))).collect();
-        let mut answers = Vec::with_capacity(self.subjects.len());
         let mut total = 0.0;
-        for (s, pred0) in self.subjects.iter().zip(&self.pred0) {
+        let mut out = Vec::with_capacity(self.subjects.len());
+        for (s, v) in self.subjects.iter().zip(&evaluation.subjects) {
             let n = s.y.len();
             if n == 0 {
-                answers.push(SubjectAnswer {
+                out.push(SubjectAnswer {
                     id: s.id.clone(),
                     n_observations: 0,
                     ofv: 0.0,
@@ -864,85 +1268,293 @@ impl Setup {
                 });
                 continue;
             }
-            let theta_i = subject_theta(&self.theta, s)?;
-            let model = SubjectModel {
-                structure: &self.structure,
-                theta: &theta_i,
-                random_effects: &self.random_effects,
-                dose: s.dose,
-                times: &s.times,
-            };
-            let sigma0: Vec<f64> = pred0
-                .iter()
-                .map(|&f| self.error_model.sigma(&self.xi, f))
-                .collect();
-            let zero = vec![0.0; q];
-            let (core, eta_hat, decrement) = match self.method {
-                Method::Fo => {
-                    let ev = model
-                        .evaluate(&zero)
-                        .ok_or_else(|| fo_derivatives_failed(&s.id))?;
-                    let core = linearised(&s.y, &ev.pred, &ev.g, &zero, &sigma0, &self.omega);
-                    (core, None, None)
-                }
-                Method::FoceI | Method::Foce => {
-                    let frozen = (self.method == Method::Foce).then_some(sigma0.as_slice());
-                    let problem = InnerProblem {
-                        model: &model,
-                        y: &s.y,
-                        error_model: self.error_model,
-                        xi: &self.xi,
-                        frozen,
-                        l_inv: &self.l_inv,
-                        steps: &steps,
-                    };
-                    let mode = if fail_inner(&s.id) {
-                        None
-                    } else {
-                        problem.solve(&zero)
-                    };
-                    let p = mode.ok_or_else(|| inner_failed(&s.id))?;
-                    // POP-OBJ-02: σ̂ at the individual prediction; POP-OBJ-06: σ⁰.
-                    let sigma = if frozen.is_some() { &sigma0 } else { &p.sigma };
-                    let core = linearised(&s.y, &p.ev.pred, &p.ev.g, &p.eta, sigma, &self.omega);
-                    (core, Some(p.eta), Some(p.decrement))
-                }
-            };
-            let core = core.ok_or_else(|| covariance_failed(&s.id, self.method))?;
             let ofv = match self.convention {
-                OfvConvention::Full => n as f64 * ln_2pi + core,
-                OfvConvention::No2Pi => core,
+                OfvConvention::Full => n as f64 * ln_2pi + v.core,
+                OfvConvention::No2Pi => v.core,
             };
             total += ofv;
-            answers.push(SubjectAnswer {
+            out.push(SubjectAnswer {
                 id: s.id.clone(),
                 n_observations: n,
                 ofv,
-                eta_hat_reason: eta_hat.is_none().then(|| "fo".to_string()),
-                eta_hat,
-                newton_decrement: decrement,
+                eta_hat_reason: v.eta.is_none().then(|| "fo".to_string()),
+                eta_hat: v.eta.clone(),
+                newton_decrement: v.decrement,
             });
         }
-        Ok(PopAnswer {
-            status: "evaluated".to_string(),
+        (out, total)
+    }
+
+    /// The answer shared by an evaluation and a fit, at `p`.
+    fn answer(&self, status: &str, p: &Params, evaluation: &Evaluation, k: usize) -> PopAnswer {
+        let (subjects, ofv) = self.subject_answers(evaluation);
+        let shrinkage = diagnostics::shrinkage(
+            self.method,
+            self.error_model,
+            &p.xi,
+            &p.omega(),
+            &self.subjects,
+            evaluation,
+        );
+        let n = self.n_observations();
+        let (aic, bic) = if matches!(status, "evaluated" | "converged" | "at_bound") {
+            diagnostics::criteria(ofv, k, n)
+        } else {
+            (None, None)
+        };
+        PopAnswer {
+            status: status.to_string(),
             method: self.method,
             ofv_convention: self.convention,
-            ofv: total,
+            ofv,
             n_subjects: self.subjects.iter().filter(|s| !s.y.is_empty()).count(),
-            n_observations: self.subjects.iter().map(|s| s.y.len()).sum(),
+            n_observations: n,
             random_effects: self.random_effects.clone(),
             xi_used: self.xi_used.clone(),
-            subjects: answers,
-        })
+            subjects,
+            eta_shrinkage: shrinkage.eta,
+            eps_shrinkage: shrinkage.eps,
+            k,
+            aic,
+            bic,
+            estimate: None,
+            se: None,
+            se_by_kind: None,
+            covariance: None,
+            iterations: None,
+            trace: None,
+            start: None,
+        }
     }
-}
 
-/// The step of the central differences of the polish for a random effect of prior variance ω²:
-/// [`inner::POLISH_H`] times its prior standard deviation.
-fn inner_step(variance: f64) -> f64 {
-    let sd = variance.sqrt();
-    let scale = if sd.is_finite() && sd > 0.0 { sd } else { 1.0 };
-    inner::POLISH_H * scale
+    /// `evaluate_only`: the objective, the modes and the diagnostics at the start.
+    fn evaluate(&self, fail_inner: &dyn Fn(&str) -> bool) -> Result<PopAnswer, PopError> {
+        let settings = Settings {
+            eps: inner::EPS_IN,
+            keep: true,
+            fail_inner,
+        };
+        let evaluation = self
+            .evaluate_params(&self.start, &[], settings)
+            .map_err(|f| f.error(self.method))?;
+        let k = self.layout().len();
+        Ok(self.answer("evaluated", &self.start, &evaluation, k))
+    }
+
+    /// The outer fit (POP-EST-03), the covariance (POP-COV-01) and the answer (POP-EST-04).
+    fn fit(&self, fail_inner: &dyn Fn(&str) -> bool) -> Result<PopAnswer, PopError> {
+        let layout = self.layout();
+        let phi0 = layout.phi(&self.start);
+        let first = self
+            .evaluate_params(
+                &self.start,
+                &[],
+                Settings {
+                    eps: inner::EPS_IN,
+                    keep: false,
+                    fail_inner,
+                },
+            )
+            .map_err(|f| f.error(self.method))?;
+        let problem = outer::Problem {
+            setup: self,
+            layout: &layout,
+        };
+        let outcome = problem.minimise(phi0, first);
+        let p = layout.params(&outcome.phi);
+        // The final point again, keeping the linearisations for the diagnostics, from its own modes.
+        let q = self.random_effects.len();
+        let kept = self
+            .evaluate_params(
+                &p,
+                &outcome.evaluation.warm(q),
+                Settings {
+                    eps: inner::EPS_IN,
+                    keep: true,
+                    fail_inner: &|_| false,
+                },
+            )
+            .unwrap_or_else(|_| outcome.evaluation.clone());
+        let mut answer = self.answer(outcome.status.id(), &p, &kept, layout.len());
+        let omega = p.omega();
+        let start_omega = self.start.omega();
+        let sd = |m: &Mat| -> Vec<f64> { (0..q).map(|k| m.at(k, k).sqrt()).collect() };
+        let counts = covariance::Counts {
+            m: answer.n_subjects,
+            n: answer.n_observations,
+            theta_free: layout
+                .coords
+                .iter()
+                .filter(|c| c.part() == phi::Part::Theta)
+                .count(),
+            omega_free: layout
+                .coords
+                .iter()
+                .filter(|c| c.part() == phi::Part::Omega)
+                .count(),
+            xi_free: layout
+                .coords
+                .iter()
+                .filter(|c| c.part() == phi::Part::Xi)
+                .count(),
+            omega_start_sd: sd(&start_omega),
+            omega_sd: sd(&omega),
+            eta_shrinkage: answer.eta_shrinkage.clone(),
+        };
+        let errors = covariance::covariance(&problem, &outcome, &self.printed, &counts);
+        let names = layout.user_names(&self.random_effects, error_keys(self.error_model));
+        answer.estimate = Some(self.estimate(&p));
+        answer.se = errors
+            .by_kind
+            .get(&self.printed)
+            .map(|se| self.standard_errors(&p, se));
+        answer.se_by_kind = Some(
+            errors
+                .by_kind
+                .iter()
+                .map(|(kind, se)| (kind.clone(), self.standard_errors(&p, se)))
+                .collect(),
+        );
+        answer.covariance = Some(errors.block);
+        answer.iterations = Some(outcome.iterations);
+        answer.trace = Some(
+            outcome
+                .trace
+                .iter()
+                .map(|row| TraceAnswer {
+                    iteration: row.iteration,
+                    ofv: row.ofv,
+                    ofv_convention: self.convention,
+                    parameters: names.iter().cloned().zip(row.values.clone()).collect(),
+                    nu: row.nu,
+                    halvings: row.halvings,
+                    decrement: row.decrement,
+                    status: row.status.map(|s| s.id().to_string()),
+                })
+                .collect(),
+        );
+        answer.start = self.start_record.clone();
+        Ok(answer)
+    }
+
+    /// The estimates in the user's units (POP-EST-04, POP-API-01 item 13).
+    fn estimate(&self, p: &Params) -> Estimate {
+        let omega = p.omega();
+        let q = self.random_effects.len();
+        let mut full = vec![vec![0.0; q]; q];
+        let mut correlation = vec![vec![0.0; q]; q];
+        for (i, row) in full.iter_mut().enumerate() {
+            for (j, x) in row.iter_mut().enumerate() {
+                if self.block || i == j {
+                    *x = omega.at(i, j);
+                }
+            }
+        }
+        for (i, row) in correlation.iter_mut().enumerate() {
+            for (j, x) in row.iter_mut().enumerate() {
+                *x = if i == j {
+                    1.0
+                } else if self.block {
+                    omega.at(i, j) / (omega.at(i, i) * omega.at(j, j)).sqrt()
+                } else {
+                    0.0
+                };
+            }
+        }
+        let diagonal: BTreeMap<String, f64> = self
+            .random_effects
+            .iter()
+            .enumerate()
+            .map(|(k, re)| (re.clone(), omega.at(k, k)))
+            .collect();
+        let sd = diagonal
+            .iter()
+            .map(|(k, v)| (k.clone(), v.sqrt()))
+            .collect();
+        let xi = error_keys(self.error_model)
+            .iter()
+            .zip(self.error_model.user_values(&p.xi))
+            .map(|(k, v)| ((*k).to_string(), v))
+            .collect();
+        Estimate {
+            theta: p.theta.clone(),
+            omega_diagonal: diagonal,
+            omega_full: full,
+            omega_sd: sd,
+            omega_correlation: correlation,
+            xi,
+        }
+    }
+
+    /// The standard errors of one kind, from the values in the order of [`Layout::user_names`].
+    fn standard_errors(&self, p: &Params, se: &[Option<f64>]) -> StandardErrors {
+        let q = self.random_effects.len();
+        let n_theta = p.theta.len();
+        let get = |i: usize| se.get(i).copied().flatten();
+        let theta = p
+            .theta
+            .keys()
+            .enumerate()
+            .map(|(i, k)| (k.clone(), get(i)))
+            .collect();
+        let mut full = vec![vec![None; q]; q];
+        let mut index = n_theta;
+        for i in 0..q {
+            for j in 0..=i {
+                if self.block || i == j {
+                    let v = get(index);
+                    if let Some(row) = full.get_mut(i) {
+                        if let Some(slot) = row.get_mut(j) {
+                            *slot = v;
+                        }
+                    }
+                    if let Some(row) = full.get_mut(j) {
+                        if let Some(slot) = row.get_mut(i) {
+                            *slot = v;
+                        }
+                    }
+                    index += 1;
+                }
+            }
+        }
+        let omega = p.omega();
+        let diagonal: BTreeMap<String, Option<f64>> = self
+            .random_effects
+            .iter()
+            .enumerate()
+            .map(|(k, re)| {
+                let v = full.get(k).and_then(|r| r.get(k)).copied().flatten();
+                (re.clone(), v)
+            })
+            .collect();
+        let sd = self
+            .random_effects
+            .iter()
+            .enumerate()
+            .map(|(k, re)| {
+                let w = omega.at(k, k).sqrt();
+                let v = diagonal
+                    .get(re)
+                    .copied()
+                    .flatten()
+                    .filter(|_| w > 0.0)
+                    .map(|s| s / (2.0 * w));
+                (re.clone(), v)
+            })
+            .collect();
+        let xi = error_keys(self.error_model)
+            .iter()
+            .enumerate()
+            .map(|(k, key)| ((*key).to_string(), get(index + k)))
+            .collect();
+        StandardErrors {
+            theta,
+            omega_diagonal: diagonal,
+            omega_full: full,
+            omega_sd: sd,
+            xi,
+        }
+    }
 }
 
 /// The typical values with the subject's own duration merged in (POP-API-01 item 11).
@@ -963,50 +1575,4 @@ fn subject_theta(
         }
     }
     Ok(t)
-}
-
-/// ln|C| + (y − E)ᵀC⁻¹(y − E) with E = ŷ − G·η and C = G·Ω·Gᵀ + diag(σ²) (POP-OBJ-02), from the
-/// Cholesky factor of C; `None` when C is not positive definite.
-fn linearised(
-    y: &[f64],
-    pred: &[f64],
-    g: &[Vec<f64>],
-    eta: &[f64],
-    sigma: &[f64],
-    omega: &Mat,
-) -> Option<f64> {
-    let n = y.len();
-    let q = eta.len();
-    let at = |j: usize, k: usize| g.get(k).and_then(|c| c.get(j)).copied().unwrap_or(f64::NAN);
-    let mut e = Vec::with_capacity(n);
-    for (j, (&yj, &fj)) in y.iter().zip(pred).enumerate() {
-        let shift: f64 = eta.iter().enumerate().map(|(k, x)| at(j, k) * x).sum();
-        e.push(yj - (fj - shift));
-    }
-    // G·Ω, n × q.
-    let mut g_omega = Mat::zeros(n, q);
-    for j in 0..n {
-        for l in 0..q {
-            let s: f64 = (0..q).map(|k| at(j, k) * omega.at(k, l)).sum();
-            g_omega.set(j, l, s);
-        }
-    }
-    let mut c = Mat::zeros(n, n);
-    for i in 0..n {
-        for j in 0..=i {
-            let mut s: f64 = (0..q).map(|l| g_omega.at(i, l) * at(j, l)).sum();
-            if i == j {
-                let sd = sigma.get(i).copied()?;
-                s += sd * sd;
-            }
-            c.set(i, j, s);
-            c.set(j, i, s);
-        }
-    }
-    let factor = dense::cholesky(&c)?;
-    let log_det: f64 = (0..n).map(|i| 2.0 * libm::log(factor.at(i, i))).sum();
-    let w = dense::forward(&factor, &e);
-    let distance: f64 = w.iter().map(|x| x * x).sum();
-    let core = log_det + distance;
-    core.is_finite().then_some(core)
 }

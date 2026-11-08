@@ -133,10 +133,15 @@ fn foce_i_on_a_linear_model_with_additive_error_is_the_marginal_likelihood() {
 }
 
 #[test]
-fn a_request_without_evaluate_only_is_not_available_yet() {
+fn a_request_without_evaluate_only_fits() {
     let mut request = linear_request();
     request.options.evaluate_only = false;
-    assert_eq!(run(&request).unwrap_err().code, PopErrorCode::NotAvailable);
+    let answer = run(&request).unwrap();
+    assert_ne!(answer.status, "evaluated");
+    let estimate = answer.estimate.unwrap();
+    assert!(estimate.theta.contains_key("theta1"));
+    assert!(answer.covariance.is_some());
+    assert!(!answer.trace.unwrap().is_empty());
 }
 
 #[test]
@@ -344,8 +349,9 @@ fn a_fixed_error_parameter_is_not_counted_as_free() {
         PopErrorCode::TooFewObservations
     );
     request.fixed.insert("a".to_string(), 0.4);
-    // The counts pass; what stops the run is the outer estimation, not built yet.
-    assert_eq!(run(&request).unwrap_err().code, PopErrorCode::NotAvailable);
+    // The counts pass and the fit runs (its covariance flags the small data set).
+    let answer = run(&request).unwrap();
+    assert_eq!(answer.estimate.unwrap().xi.get("a"), Some(&0.4));
 }
 
 #[test]
