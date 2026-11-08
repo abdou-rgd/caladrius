@@ -311,3 +311,15 @@ Added by T-158, the population-simulation oracle (`iter3/sim`, 5b6a184 to e6e5b4
 Bit-exact, with no tolerance: the KATs, the counters, the words, the uniforms, L, the central z, the type 7 quantiles, the counts and `cens`. The BLQ and zero ties cannot flip on a correct engine: the nearest y is 2e-3 of the scale from LLOQ and 1e-3 from 0.
 
 Decision taken meanwhile: the T-168 and T-158 rules stand for the new tests. Nothing is written in `AGENTS.md` without a yes here.
+
+## Q-027 (2026-11-08, orchestrator): the AS 241 constants in a published crate
+
+T-159 writes the inverse of the normal distribution (AS 241, Wichura 1988, Applied Statistics 37(3):477-484) in `crates/caladrius-fit/src/sim/normal.rs`, on `iter3/sim`. Its 48 coefficients come from the table in `specs/simulation.md`. That table was read from R's `src/nmath/qnorm.c`, which is under GPL-2 or GPL-3. The code itself is written from the spec, not taken from R. The T-159 review (Fable) checked that the 48 coefficients are the same doubles as the spec table.
+
+Q-004 does not cover this case. It rests on `oracle/` being outside every published crate, but `caladrius-fit` is published under MIT OR Apache-2.0.
+
+Decision taken meanwhile (2026-11-08), reversible by Abdou: keep the constants. They are the published coefficients of a published algorithm, numbers rather than code. `ATTRIBUTION.md` cites Wichura (1988) and points here.
+
+To confirm before the first release. Option (a): keep as is. Option (b): check the coefficients against the printed table of the 1988 paper and cite only the paper. Option (c): replace AS 241 with another published inverse.
+
+Answer (human): pending.
