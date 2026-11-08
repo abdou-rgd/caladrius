@@ -16,6 +16,7 @@
 //! - [`step3`]: loaders for the closed-form model values and the reference fits of step 3.
 //! - [`ml`]: loaders for the maximum-likelihood oracle (`oracle/expected/fit/ml/`, task T-148), the absolute tolerances of its tests and a naive double-precision maximum-likelihood fit.
 //! - [`pop`]: loaders for the population-fit oracle (`oracle/expected/pop/`, task T-152): the exact identification suite, the objective at fixed parameters with its diagnostics, the refusals, the sealed simulate-then-fit data and their SHA-256 check, and the absolute tolerances of those tests.
+//! - [`sim`]: loaders for the population-simulation oracle (`oracle/expected/sim/`, task T-158): generator vectors, normal transform grid, exact part, studies, distribution, quantile, invariance, round trip and refusals, with a second implementation of the generator, the transform and the exact part.
 //! - [`naive_pop`]: an independent double-precision population objective (second-order jets, Newton modes, five forms, diagnostics) that reproduces the 256-bit values.
 //! - [`naive`]: independent, deliberately simple computations (second implementation for cross-checks).
 //! - [`naive2c`]: the same for the two-compartment models (task T-032), in double precision.
@@ -34,6 +35,9 @@ pub mod naive_pop;
 pub mod oracle;
 pub mod pk2;
 pub mod pop;
+pub mod sim;
+pub mod sim_check;
+pub mod sim_ref;
 pub mod step3;
 pub mod tolerance;
 
