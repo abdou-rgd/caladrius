@@ -170,3 +170,10 @@
   - The reviewer re-implemented Philox and AS 241 on their own and agrees bit for bit. 10 planted faults all go red.
   - Every engine test fails with `not_built`, and the guards are green.
   - Not merged into `main` before 2026-11-18.
+- 2026-11-08 T-168 (oracle, Sonnet high; review on Sonnet, a test-layer fix round): the exact fit-level oracle for the balanced linear case, on branch `iter3/pop` (07b81f1, bd19a46).
+  - Six cases: H38 with q = 1, a q = 2 block, a q = 2 diagonal, and three boundaries (q = 1 on 0, a diagonal variance on 0, a rank-one block).
+  - Three references agree: 256-bit Rmpfr, nlme ML, and direct maximisation.
+  - The reviewer recomputed the closed forms at 256 bits (agreement to 1e-49) and checked KKT on the boundaries.
+  - The orchestrator re-ran the generator on a copy, and the output is byte-identical.
+  - The pr5_tlag control defect of `errors.json` is fixed.
+  - Not merged into `main` before 2026-11-18.
