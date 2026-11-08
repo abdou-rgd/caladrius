@@ -357,6 +357,17 @@ fn measure_the_sealed_design() {
             }
         };
         let seconds = clock.elapsed().as_secs_f64();
+        // The typical values and their standard errors as the oracle reads them (`estimate.<name>`,
+        // `se.<name>`), for the aggregates over every replicate.
+        let json = serde_json::to_value(&answer).unwrap();
+        for name in sealed.truth.typical_values.keys() {
+            println!(
+                "THETA {rep} {} {name} {} {}",
+                answer.status,
+                json["estimate"][name.as_str()],
+                json["se"][name.as_str()]
+            );
+        }
         if std::env::var("T154_TRACE").is_ok() {
             for row in answer.trace.iter().flatten() {
                 println!("TRACE {}", serde_json::to_string(row).unwrap());
