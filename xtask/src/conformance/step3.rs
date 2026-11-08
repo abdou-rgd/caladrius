@@ -29,8 +29,8 @@ use caladrius_fit::{
     Criterion, Derivatives, FitInput, FitOptions, FitResult, FitStatus, Weighting, run as run_fit,
 };
 use caladrius_models::{
-    Derivatives as ModelDerivatives, DoseEvent, ModelId, ModelInput, ModelOutput, Regimen,
-    jacobian, run as run_model,
+    Derivatives as ModelDerivatives, DoseEvent, ModelError, ModelId, ModelInput, ModelOutput,
+    Regimen, jacobian, run as run_model,
 };
 use caladrius_testkit::{
     FitCase, MdCase, ModelCase, Pk2ErrorCase, Pk2Kind, Pk3Kind, RegimenKind, Tolerance,
@@ -84,6 +84,7 @@ pub(super) fn model_reports() -> Result<Vec<CaseReport>> {
         let loaded = load_pk3_case(&name).map_err(oracle_error)?;
         out.push(match loaded.kind {
             Pk3Kind::Derivatives => evaluate_derivatives(&loaded.case),
+            Pk3Kind::Free => evaluate_free(&loaded.case),
             Pk3Kind::Values | Pk3Kind::Conditioning | Pk3Kind::Conversion => {
                 evaluate_model(&loaded.case)
             }
@@ -110,6 +111,19 @@ const PK3_ERRORS_CASE: &str = caladrius_testkit::pk3::PK3_ERRORS;
 /// The group of the rows held by Q-024 (`scalar_ill`: condition number above 1e3).
 const HELD_GROUP: &str = "scalar_ill";
 
+/// The group of the rows held to an ABSOLUTE tolerance (`scalar_abs`: w_beta at adjacent poles,
+/// MOD-3C-22), `Tolerance::MODEL_WEIGHT_ADJACENT_ABS`, as `check_abs` of `oracle_models_3c.rs` does.
+const ABS_GROUP: &str = "scalar_abs";
+
+/// Whether `actual` is within the tolerance of the group of the row `expected` belongs to.
+fn within(group: &str, actual: f64, expected: f64) -> bool {
+    if group == ABS_GROUP {
+        actual.is_finite() && (actual - expected).abs() <= Tolerance::MODEL_WEIGHT_ADJACENT_ABS
+    } else {
+        Tolerance::MODEL_VALUES.accepts(actual, expected)
+    }
+}
+
 /// Name of the multiple-dosing error suite in the table (its file name).
 const MD_ERRORS_CASE: &str = caladrius_testkit::MD_ERRORS;
 
@@ -119,7 +133,7 @@ const GRID_QUANTITIES: [&str; 4] = ["conc", "auc", "aumc", "accum_c"];
 
 /// The value the engine gives for one expected row of a model case.
 fn model_actual(case: &ModelCase, output: &ModelOutput, group: &str, name: &str) -> Option<f64> {
-    if group == "scalar" {
+    if group == "scalar" || group == ABS_GROUP {
         return output.get(name);
     }
     let index = case.time_keys.iter().position(|k| k == group)?;
@@ -244,7 +258,7 @@ fn evaluate_input(case: &ModelCase, input: &ModelInput) -> CaseReport {
     let parameters = count_rows(case, |group, name, expected| {
         let actual = model_actual(case, &output, group, name);
         match (expected, actual) {
-            (Some(e), Some(a)) => Tolerance::MODEL_VALUES.accepts(a, e),
+            (Some(e), Some(a)) => within(group, a, e),
             // Expected not available: the model must run and not have the quantity.
             (None, None) => true,
             _ => false,
@@ -256,6 +270,69 @@ fn evaluate_input(case: &ModelCase, input: &ModelInput) -> CaseReport {
         details: vec![case.model.clone()],
         parameters,
         errors: Vec::new(),
+    }
+}
+
+/// The micro constants a three-compartment model reports, which the oracle requires to be accepted
+/// as a micro input when the engine accepted the macro input of a free-zone case.
+const MICRO_NAMES: [&str; 6] = ["k10", "k12", "k21", "k13", "k31", "vc"];
+
+/// A free-zone case of MOD-3C-08 (zone (0) or (iii)), checked the way `check_free` of
+/// `oracle_models_3c.rs` does: the engine may refuse the macro input with `DegenerateExponents`,
+/// or accept it.
+///
+/// - Accepted: the rows are compared like the rows of a value case, and the micro set it reports
+///   must be accepted when fed back as a micro input. A refused round trip counts every row as
+///   not validated, with an error line.
+/// - Refused with `DegenerateExponents`: allowed by the spec, and the oracle test accepts it, but
+///   no value was produced. The rows are counted as *refused* (`Count::refused`): in neither the
+///   validated nor the expected totals, listed by name in the document, and kept in the floors so
+///   that a case the engine accepts today cannot be refused tomorrow unnoticed.
+/// - Refused with another error: not allowed; every row counts as not validated, with an error
+///   line.
+fn evaluate_free(case: &ModelCase) -> CaseReport {
+    let Some(model) = ModelId::from_id(&case.model) else {
+        return not_run(case, unknown_model(case));
+    };
+    let input = model_input(case, model);
+    let output = match run_model(&input) {
+        Ok(o) => o,
+        Err(ModelError::DegenerateExponents { .. }) => {
+            let mut report = not_run(case, String::new());
+            report.errors.clear();
+            for (_, count) in &mut report.parameters {
+                count.refused += count.expected;
+                count.expected = 0;
+            }
+            return report;
+        }
+        Err(e) => {
+            return not_run(
+                case,
+                format!("free zone, refused with a disallowed error: {e}"),
+            );
+        }
+    };
+    let micro: Option<BTreeMap<String, f64>> = MICRO_NAMES
+        .iter()
+        .map(|n| output.get(n).map(|v| ((*n).to_owned(), v)))
+        .collect();
+    let round_trip = match micro {
+        None => Err("the accepted model does not report its micro set".to_owned()),
+        Some(params) => run_model(&ModelInput {
+            model,
+            dose: case.dose,
+            params,
+            times: case.times.clone(),
+        })
+        .map(|_| ())
+        .map_err(|e| {
+            format!("the micro set reported by the accepted model is refused as input: {e}")
+        }),
+    };
+    match round_trip {
+        Ok(()) => evaluate_input(case, &input),
+        Err(e) => not_run(case, e),
     }
 }
 
@@ -596,10 +673,10 @@ mod tests {
     fn every_model_case_is_fully_validated() {
         let reports = model_reports().unwrap();
         // 21 one-compartment cases, 107 + 64 two-compartment cases and their error suite, 246
-        // multiple-dosing cases and their error suite, 360 three-compartment value, conditioning,
-        // conversion and derivative cases, 72 three-compartment multiple-dosing cases and their
+        // multiple-dosing cases and their error suite, 392 three-compartment value, conditioning,
+        // conversion, derivative and free-zone cases, 72 three-compartment multiple-dosing cases and their
         // error suite.
-        assert_eq!(reports.len(), 21 + 107 + 64 + 1 + 246 + 1 + 360 + 72 + 1);
+        assert_eq!(reports.len(), 21 + 107 + 64 + 1 + 246 + 1 + 392 + 72 + 1);
         for r in reports {
             let t = total(&r);
             assert!(r.errors.is_empty(), "{}: {:?}", r.name, r.errors);
@@ -609,7 +686,7 @@ mod tests {
             } else if r.name == MD_ERRORS_CASE {
                 assert_eq!(t.expected, 41, "{}", r.name);
             } else if r.name == PK3_ERRORS_CASE {
-                assert_eq!(t.expected, 254, "{}", r.name);
+                assert_eq!(t.expected, 290, "{}", r.name);
             } else if r.name.starts_with("model_pk3_cond_") || r.name.starts_with("model_pk3_conv_")
             {
                 // Scalars only.
@@ -674,8 +751,48 @@ mod tests {
                 assert_eq!(evaluate_model(&loaded.case), r, "{name}");
             }
         }
-        // One ignored test of `oracle_models_3c` per case with such rows: 47 cases.
-        assert_eq!((held_cases, held_rows), (47, 98));
+        // One ignored test of `oracle_models_3c` per case with such rows: 53 cases.
+        assert_eq!((held_cases, held_rows), (53, 108));
+    }
+
+    #[test]
+    fn free_zone_cases_are_validated_or_counted_as_refused_never_skipped() {
+        let (mut free, mut refused_cases, mut refused_rows) = (0, 0, 0);
+        for name in list_pk3_cases().unwrap() {
+            let loaded = load_pk3_case(&name).unwrap();
+            if loaded.kind != Pk3Kind::Free {
+                continue;
+            }
+            free += 1;
+            let r = evaluate_free(&loaded.case);
+            assert!(r.errors.is_empty(), "{name}: {:?}", r.errors);
+            let t = total(&r);
+            // Every row of the oracle is somewhere: expected, held or refused.
+            assert_eq!(
+                t.expected + t.held + t.refused,
+                loaded.case.expected.len(),
+                "{name}"
+            );
+            // Expected rows validate; refused rows are all of the case or none of it.
+            assert_eq!(t.validated, t.expected, "{name}");
+            assert!(t.refused == 0 || t.expected == 0, "{name}");
+            if t.refused > 0 {
+                refused_cases += 1;
+                refused_rows += t.refused;
+            }
+        }
+        assert_eq!(free, 11);
+        // The three `rho_1p1` inputs (alpha, beta or gamma within a rounding unit of a pole) are
+        // refused with DegenerateExponents by the engine of T-167.
+        assert_eq!((refused_cases, refused_rows), (3, 294));
+    }
+
+    #[test]
+    fn a_wrong_value_in_the_absolute_group_is_caught() {
+        assert!(within(ABS_GROUP, 1e-20, 1.5e-33));
+        assert!(!within(ABS_GROUP, 1e-8, 1.5e-33));
+        assert!(!within(ABS_GROUP, f64::NAN, 1.5e-33));
+        assert!(!within("scalar", 1e-20, 1.5e-33));
     }
 
     #[test]

@@ -19,6 +19,13 @@
 //! three-compartment cases, held by Q-024) is *held*: counted in its own column, in neither the
 //! validated nor the expected totals, and never a failure. The floors count it with the other rows
 //! the oracle has, so that a held row cannot be dropped silently.
+//!
+//! A value of a free-zone case of the three-compartment oracle (`Pk3Kind::Free`, zones (0) and (iii)
+//! of MOD-3C-08) that the engine does not produce because it refused the macro input, which the
+//! spec allows, is *refused*: counted in its own column, in neither the validated nor the expected
+//! totals, and not a failure either. The floors count it with the other rows, so that a case the
+//! engine used to accept and now refuses fails on its validated floor, and a refused row cannot be
+//! dropped silently.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -40,9 +47,10 @@ use crate::workspace;
 /// Output file, relative to the workspace root.
 const OUTPUT: &str = "docs/conformance.md";
 /// Marker of a floor line in the output file:
-/// `<!-- floor <case> <parameter> <validated> <expected> <documented> [<held>] -->` (the documented
+/// `<!-- floor <case> <parameter> <validated> <expected> <documented> [<held> [<refused>]] -->` (the documented
 /// count is optional when reading, for files written before documented differences existed; the
-/// held count is written only when it is not zero).
+/// held count is written only when it is not zero or when a refused count follows, and the refused
+/// count `<refused>` after it only when it is not zero).
 const FLOOR_MARK: &str = "<!-- floor ";
 /// Closing of a floor line.
 const FLOOR_END: &str = "-->";
@@ -56,6 +64,8 @@ struct Count {
     expected: usize,
     documented: usize,
     held: usize,
+    /// Rows of a free-zone case the engine refused (an outcome the spec allows): not compared.
+    refused: usize,
 }
 
 impl Count {
@@ -65,12 +75,13 @@ impl Count {
             expected: self.expected + other.expected,
             documented: self.documented + other.documented,
             held: self.held + other.held,
+            refused: self.refused + other.refused,
         }
     }
 
     /// Every row the oracle has for this parameter, whatever became of it.
     fn rows(self) -> usize {
-        self.expected + self.documented + self.held
+        self.expected + self.documented + self.held + self.refused
     }
 }
 
@@ -366,7 +377,7 @@ fn parse_floors(text: &str) -> Result<Floors> {
         let bad = |why: &str| {
             XtaskError::new(format!(
                 "{OUTPUT} line {}: malformed floor line ({why}): {line:?}; expected \
-`{FLOOR_MARK}<case> <parameter> <validated> <expected> <documented> [<held>] {FLOOR_END}`. Fix or restore the file \
+`{FLOOR_MARK}<case> <parameter> <validated> <expected> <documented> [<held> [<refused>]] {FLOOR_END}`. Fix or restore the file \
 from version control; floors are not dropped silently",
                 index + 1
             ))
@@ -383,7 +394,8 @@ from version control; floors are not dropped silently",
         match words.as_slice() {
             [case, parameter, validated, expected]
             | [case, parameter, validated, expected, _]
-            | [case, parameter, validated, expected, _, _] => {
+            | [case, parameter, validated, expected, _, _]
+            | [case, parameter, validated, expected, _, _, _] => {
                 let count = Count {
                     validated: number(validated)?,
                     expected: number(expected)?,
@@ -392,6 +404,10 @@ from version control; floors are not dropped silently",
                         None => 0,
                     },
                     held: match words.get(5) {
+                        Some(word) => number(word)?,
+                        None => 0,
+                    },
+                    refused: match words.get(6) {
                         Some(word) => number(word)?,
                         None => 0,
                     },
@@ -516,6 +532,12 @@ fn render(reports: &[CaseReport]) -> String {
             all.held
         ));
     }
+    if all.refused > 0 {
+        out.push_str(&format!(
+            " {} further values are on free-zone cases that the engine refused (column `refused`), neither validated nor failures.",
+            all.refused
+        ));
+    }
     out.push_str("\n\n");
     for kind in Kind::ALL {
         let of_kind: Vec<&CaseReport> = reports.iter().filter(|r| r.kind == kind).collect();
@@ -577,6 +599,23 @@ fn render(reports: &[CaseReport]) -> String {
             }
             out.push('\n');
         }
+        let refused: Vec<(&str, usize)> = of_kind
+            .iter()
+            .map(|r| (r.name.as_str(), r.total().refused))
+            .filter(|(_, n)| *n > 0)
+            .collect();
+        if !refused.is_empty() {
+            out.push_str(&format!(
+                "{} values on {} cases are free-zone rows (zone (0) or (iii) of MOD-3C-08, `oracle/expected/models/pk3/`, options kind `model_macro_free`) whose macro input the engine refused with `DegenerateExponents`. The spec leaves the engine free to refuse them, and the oracle test `check_free` accepts the refusal, so they are not failures; there is no value to compare, so they are not validated either. They are in none of the counts above, and the case tables below list them in a `refused` column. When the engine accepts one of these inputs its rows are compared and move to the validated counts; the floors do not let them go back.\n\n",
+                refused.iter().map(|(_, n)| n).sum::<usize>(),
+                refused.len()
+            ));
+            out.push_str("| case | refused values |\n|---|---|\n");
+            for (name, n) in &refused {
+                out.push_str(&format!("| {name} | {n} |\n"));
+            }
+            out.push('\n');
+        }
     }
     for r in reports {
         out.push_str(&format!("\n### {}\n\n", r.name));
@@ -587,43 +626,48 @@ fn render(reports: &[CaseReport]) -> String {
             out.push('\n');
         }
         let has_held = r.total().held > 0;
+        let has_refused = r.total().refused > 0;
+        let mut header = format!(
+            "| {} | validated | documented differences",
+            r.kind.parameter_title()
+        );
         if has_held {
-            out.push_str(&format!(
-                "| {} | validated | documented differences | held | status |\n|---|---|---|---|---|\n",
-                r.kind.parameter_title()
-            ));
-        } else {
-            out.push_str(&format!(
-                "| {} | validated | documented differences | status |\n|---|---|---|---|\n",
-                r.kind.parameter_title()
-            ));
+            header.push_str(" | held");
         }
+        if has_refused {
+            header.push_str(" | refused");
+        }
+        header.push_str(" | status |");
+        out.push_str(&header);
+        out.push_str("\n|---|---|---");
+        out.push_str(&"|---".repeat(usize::from(has_held) + usize::from(has_refused)));
+        out.push_str("|---|\n");
         for (name, c) in &r.parameters {
             let status = if c.validated == c.expected {
                 "ok"
             } else {
                 "FAILS"
             };
+            let mut row = format!(
+                "| `{name}` | {} / {} | {}",
+                c.validated, c.expected, c.documented
+            );
             if has_held {
-                out.push_str(&format!(
-                    "| `{name}` | {} / {} | {} | {} | {status} |\n",
-                    c.validated, c.expected, c.documented, c.held
-                ));
-            } else {
-                out.push_str(&format!(
-                    "| `{name}` | {} / {} | {} | {status} |\n",
-                    c.validated, c.expected, c.documented
-                ));
+                row.push_str(&format!(" | {}", c.held));
             }
+            if has_refused {
+                row.push_str(&format!(" | {}", c.refused));
+            }
+            out.push_str(&format!("{row} | {status} |\n"));
         }
     }
     out.push('\n');
     for r in reports {
         for (name, c) in &r.parameters {
-            let held = if c.held > 0 {
-                format!(" {}", c.held)
-            } else {
-                String::new()
+            let held = match (c.held, c.refused) {
+                (0, 0) => String::new(),
+                (held, 0) => format!(" {held}"),
+                (held, refused) => format!(" {held} {refused}"),
             };
             out.push_str(&format!(
                 "{FLOOR_MARK}{} {name} {} {} {}{held} {FLOOR_END}\n",
@@ -743,6 +787,7 @@ mod tests {
                 expected,
                 documented: 0,
                 held: 0,
+                refused: 0,
             },
         )
     }
@@ -809,7 +854,8 @@ mod tests {
                 validated: 3,
                 expected: 4,
                 documented: 0,
-                held: 0
+                held: 0,
+                refused: 0
             })
         );
         assert_eq!(
@@ -818,7 +864,8 @@ mod tests {
                 validated: 2,
                 expected: 2,
                 documented: 0,
-                held: 0
+                held: 0,
+                refused: 0
             })
         );
         assert!(get("b", "cmax").is_some());
@@ -843,6 +890,7 @@ mod tests {
                     expected,
                     documented,
                     held: 0,
+                    refused: 0,
                 },
             )],
         )
@@ -1077,6 +1125,7 @@ mod tests {
                     expected,
                     documented: 0,
                     held,
+                    refused: 0,
                 },
             )],
         )
@@ -1129,5 +1178,55 @@ mod tests {
             err.to_string().contains("4 expected rows, floor is 5"),
             "{err}"
         );
+    }
+
+    fn with_refused(name: &str, validated: usize, expected: usize, refused: usize) -> CaseReport {
+        report_of(
+            name,
+            vec![(
+                "conc".to_owned(),
+                Count {
+                    validated,
+                    expected,
+                    documented: 0,
+                    held: 0,
+                    refused,
+                },
+            )],
+        )
+    }
+
+    #[test]
+    fn refused_rows_have_their_own_listing_and_are_counted_in_no_total() {
+        let text = render(&[with_refused("a", 0, 0, 4), report("b", 2, 2)]);
+        assert!(
+            text.contains("**Overall: 2 of 2 values validated (100.0 %).**"),
+            "{text}"
+        );
+        assert!(
+            text.contains("4 further values are on free-zone cases that the engine refused"),
+            "{text}"
+        );
+        assert!(text.contains("| a | 4 |"), "{text}");
+        assert!(text.contains("| `conc` | 0 / 0 | 0 | 4 | ok |"), "{text}");
+        assert!(text.contains("<!-- floor a conc 0 0 0 0 4 -->"), "{text}");
+        let floors = parse_floors(&text).unwrap();
+        let floor = floors
+            .parameters
+            .get(&("a".to_owned(), "conc".to_owned()))
+            .unwrap();
+        assert_eq!((floor.expected, floor.held, floor.refused), (0, 0, 4));
+    }
+
+    #[test]
+    fn a_refused_row_cannot_be_dropped_and_may_become_a_validated_row() {
+        let floors = parse_floors(&render(&[with_refused("a", 0, 0, 4)])).unwrap();
+        assert!(check_floors(&floors, &[with_refused("a", 0, 0, 4)]).is_ok());
+        // The engine accepts the input and the rows validate.
+        assert!(check_floors(&floors, &[with_refused("a", 4, 4, 0)]).is_ok());
+        // The rows are accepted but wrong: the floor on unvalidated rows (none) catches it.
+        assert!(check_floors(&floors, &[with_refused("a", 3, 4, 0)]).is_err());
+        // A refused row dropped from the oracle is refused.
+        assert!(check_floors(&floors, &[with_refused("a", 0, 0, 3)]).is_err());
     }
 }
