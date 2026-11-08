@@ -113,11 +113,28 @@ impl fmt::Display for PopError {
 /// the call into `caladrius-fit`, building the engine's input from `request` and returning the answer in the
 /// shape described in the header of this file.
 fn population_fit(request: &Value) -> Result<Value, PopError> {
-    let _ = request;
-    Err(PopError {
-        code: "not_built".to_owned(),
-        message: "population fit not built".to_owned(),
-    })
+    let mut input: caladrius_fit::pop::PopRequest = serde_json::from_value(request.clone())
+        .map_err(|e| PopError {
+            code: "invalid_request".to_owned(),
+            message: e.to_string(),
+        })?;
+    if let Some(path) = &input.dataset_file {
+        let text = std::fs::read_to_string(path).map_err(|e| PopError {
+            code: "invalid_option".to_owned(),
+            message: format!("option `dataset_file`: the table `{path}` cannot be read ({e})"),
+        })?;
+        input.dataset_text = Some(text);
+    }
+    match caladrius_fit::pop::run(&input) {
+        Ok(answer) => serde_json::to_value(&answer).map_err(|e| PopError {
+            code: "invalid_answer".to_owned(),
+            message: e.to_string(),
+        }),
+        Err(e) => Err(PopError {
+            code: e.code.id().to_owned(),
+            message: e.message,
+        }),
+    }
 }
 
 // ---------------------------------------------------------------- building requests from the cases
