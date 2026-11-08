@@ -163,15 +163,15 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | done | T-149, T-150 |
 | T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | done | T-162 |
 | T-153 | The population objective at fixed parameters (FOCEI, FOCE, FO), the conditional modes, early refusals | engine | done | T-152, T-166 |
-| T-154 | The population estimation (BFGS on φ, two-stage start), the covariance (sandwich, r, s), shrinkage and criteria | engine | todo | T-153, T-168 |
+| T-154 | The population estimation (BFGS on φ, two-stage start), the covariance (sandwich, r, s), shrinkage and criteria | engine | in progress | T-153, T-168 |
 | T-157 | specs/simulation.md, population simulation (brick 4) | reader | done | T-162 |
 | T-158 | Oracle for the population simulation (Philox words, AS 241, exact part, distribution, refusals) | oracle | done | T-157 |
-| T-159 | The population simulator in the engine (caladrius-fit::sim) | engine | todo | T-157, T-158 |
+| T-159 | The population simulator in the engine (caladrius-fit::sim) | engine | in progress | T-157, T-158 |
 | T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | done | T-151 |
 | T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | done | T-150, T-149, T-151 |
 | T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | done | T-142 |
 | T-165 | pk3 oracle round 5: the F1 case, flags measured, pole claims asserted, round 4 nits | oracle | done | T-164 |
 | T-166 | Spec sync for the population fit: the Q-025 decisions and the questions of T-152 into specs/population.md | reader | done | T-152 |
-| T-167 | pk3 engine alignment round: N1 refusal code, adjacent-pole jacobian, the macro obligation | engine | todo | T-164, T-165 |
+| T-167 | pk3 engine alignment round: N1 refusal code, adjacent-pole jacobian, the macro obligation | engine | in progress | T-164, T-165 |
 | T-168 | Exact fit-level oracle for the balanced linear case (identity_linear, closed form, nlme ML) | oracle | done | T-166, T-152 |
 | T-169 | caladrius-fit minors left by T-149 and T-151 (error.rs:298, the stale 13c comments, the A2 test) | engine | done | T-149, T-151 |
