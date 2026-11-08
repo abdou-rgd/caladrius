@@ -319,6 +319,15 @@ impl fmt::Display for ModelError {
                 f,
                 "the macro set (a, b, c, alpha, beta, gamma) needs a dose > 0, since vc = dose / (a + b + c); give the dose or use the clearance set"
             ),
+            Self::DerivedOutOfRange { name, from, value }
+                if from.ends_with(BELOW_EVALUATION_FLOOR) =>
+            {
+                write!(
+                    f,
+                    "the derived `{name}` = {from} = {} is a normal number but lies below the range of the evaluation (an underflow of the intermediate quantities); rescale the parameters (for example change the units)",
+                    short(*value)
+                )
+            }
             Self::DerivedOutOfRange { name, from, value } => write!(
                 f,
                 "the derived `{name}` = {from} = {} is not a finite number > 0 (overflow or underflow); rescale the parameters (for example change the units)",
@@ -403,6 +412,12 @@ impl fmt::Display for ModelError {
 /// item 3, MOD-3C-08): its message says so and does not speak of overflow, underflow or rescaling.
 pub(crate) const NO_VALID_MACRO_MODEL: &str =
     "the macro set (a, b, c, alpha, beta, gamma) gives no valid three-compartment model";
+
+/// The end of the `from` of a derived quantity that lies below the floor of the double-double
+/// evaluation of the macro conversion (2^-969 relative to a + b + c): the value is finite and
+/// positive, so its message does not say it is not.
+pub(crate) const BELOW_EVALUATION_FLOOR: &str =
+    "below 2^-969 relative to a + b + c (the floor of the double-double evaluation)";
 
 /// A number for a message in a short round-trip form: plain decimal for the magnitudes people
 /// write (1e-4 up to 1e16, and 0), scientific (`1e-300`, `2.5e300`) beyond, so that no message

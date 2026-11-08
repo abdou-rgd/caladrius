@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use crate::ModelError;
 use crate::dd::Dd;
-use crate::error::NO_VALID_MACRO_MODEL;
+use crate::error::{BELOW_EVALUATION_FLOOR, NO_VALID_MACRO_MODEL};
 use crate::model::ModelId;
 use crate::roots3::{self, Exponents};
 
@@ -530,8 +530,16 @@ fn macro_roots(
         // whose N1 or N0 is below that floor is an underflow.
         let floor = f64::from_bits(54 << 52);
         for (name, from, quantity) in [
-            ("n1", "sum of w x (S - lambda)", n1_num),
-            ("n0", "sum of w x lambda x lambda", n0_num),
+            (
+                "n1",
+                &format!("sum of w x (S - lambda), {BELOW_EVALUATION_FLOOR}"),
+                n1_num,
+            ),
+            (
+                "n0",
+                &format!("sum of w x lambda x lambda, {BELOW_EVALUATION_FLOOR}"),
+                n0_num,
+            ),
         ] {
             if quantity.hi.abs() < floor {
                 return Err(ModelError::DerivedOutOfRange {
@@ -788,7 +796,7 @@ mod tests {
             [
                 ("a", 0.7),
                 ("b", 0.2),
-                ("c", 1e-18),
+                ("c", 0.1),
                 ("alpha", alpha),
                 ("beta", beta),
                 ("gamma", gamma),
@@ -1059,10 +1067,15 @@ mod tests {
             matches!(&e, ModelError::DerivedOutOfRange { name, .. } if name == "n0"),
             "{e}"
         );
+        let text = e.to_string();
+        assert!(
+            text.contains("2^-969") && text.contains("underflow"),
+            "{text}"
+        );
     }
 
     /// The order of the checks: the magnitude of the exponents (a product that is not a normal number)
-    /// is judged before the zone (i) of MOD-3C-08. The same set (a root within 2^-55 of a pole) is a
+    /// is judged before the zone (i) of MOD-3C-08. The same set (a root within 2^-55 of a pole: rho about 2e-18, a margin of 12 on 2^-55) is a
     /// `DegenerateExponents` at the scale of the model and an underflow of the product of the
     /// exponents when they are all multiplied by 2^-345.
     #[test]
@@ -1073,7 +1086,7 @@ mod tests {
                 &given(&[
                     ("a", 0.7),
                     ("b", 0.3),
-                    ("c", 1e-18),
+                    ("c", 1e-19),
                     ("alpha", 3.0 * f),
                     ("beta", 0.5 * f),
                     ("gamma", 0.05 * f),
