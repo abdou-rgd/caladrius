@@ -295,7 +295,7 @@ impl fmt::Display for FitError {
                 if *lag {
                     return write!(
                         f,
-                        "The {error_model} error model has no maximum likelihood here: observation(s) {rows} ({at}) are exactly 0 before the first nonzero observation, and with a lag the model predicts exactly 0 up to `tlag`, which the fit can move to those times, so the standard deviation can shrink to 0 there without cost. Exclude those observations, bound or fix `tlag` below the first of them, or use the additive error model."
+                        "The {error_model} error model has no maximum likelihood here: observation(s) {rows} ({at}) are exactly 0 before the first nonzero observation, and with a lag the model predicts exactly 0 up to `tlag`, which is, or which the fit can move to, at or beyond those times, so the standard deviation can shrink to 0 there without cost. Exclude those observations, bound or fix `tlag` below the first of them, or use the additive error model."
                     );
                 }
                 write!(

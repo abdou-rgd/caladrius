@@ -737,7 +737,7 @@ impl MlRun {
 /// FIT-ML-15, during the iteration: every error variable has fallen to `EXACT_FIT_SCALE` times its
 /// natural scale (Σ y²/N as a variance for the additive part, 1 for the proportional part), so the
 /// likelihood has no maximum. A component of a combined model alone at 0 is the collapse of
-/// FIT-ML-13c, not this.
+/// FIT-ML-13d, not this.
 fn collapsed(error_model: ErrorModel, p: usize, zeta: &[f64], y: &[f64]) -> bool {
     let xi = zeta.get(p..).unwrap_or_default();
     let mean_square = y.iter().map(|y| y * y).sum::<f64>() / y.len().max(1) as f64;
@@ -967,7 +967,7 @@ mod tests {
         assert!(!at(ErrorModel::Additive, &[1e-3]));
         assert!(at(ErrorModel::Proportional, &[1e-27]));
         assert!(!at(ErrorModel::Proportional, &[1e-3]));
-        // A combined model with one component at 0 is the collapse of FIT-ML-13c, not an exact fit.
+        // A combined model with one component at 0 is the collapse of FIT-ML-13d, not an exact fit.
         assert!(at(ErrorModel::Combined, &[1e-30, 1e-30]));
         assert!(!at(ErrorModel::Combined, &[0.0, 1e-3]));
         assert!(!at(ErrorModel::Combined, &[1e-3, 0.0]));
@@ -1032,7 +1032,10 @@ mod tests {
     }
 
     /// A polish trial whose free set differs from the current one (a variable projected onto a
-    /// bound that holds it) is not comparable by Δ and is rejected.
+    /// bound that holds it) is not comparable by Δ and is rejected. The test keeps only trials
+    /// that meet the other two clauses of the rule (−2LL does not increase, Δ strictly
+    /// decreases), so the free set is the only clause that can reject them: with the guard
+    /// removed, `newton_step` would accept every one of them.
     #[test]
     fn a_polish_trial_with_another_free_set_is_rejected() {
         let mut data = input(&Y);
@@ -1056,26 +1059,39 @@ mod tests {
         let (lower, upper) = (run.frame.lower.clone(), run.frame.upper.clone());
         // The unconstrained step is accepted.
         run.pending = None;
-        let accepted_free = run.newton_step(&problem).map(|p| p.free);
-        assert!(accepted_free.is_some(), "the polish moves this fit");
-        let mut projected = 0;
-        for j in 0..zeta.len() {
-            // A box so narrow that the Newton step leaves it, on variable j.
-            run.frame.lower = lower.clone();
-            run.frame.upper = upper.clone();
-            let x = zeta[j];
-            run.frame.lower[j] = x - 1e-12 * x.abs();
-            run.frame.upper[j] = x + 1e-12 * x.abs();
-            let ev = evaluate(&problem, em, &zeta).unwrap();
-            run.point = point(&problem, &run.frame, em, ev).unwrap();
-            let Some(trial) = run.newton_point(&problem, em) else {
-                continue;
-            };
-            if trial.free != run.point.free {
-                projected += 1;
-                assert!(run.newton_step(&problem).is_none(), "variable {j}");
+        assert!(
+            run.newton_step(&problem).is_some(),
+            "the polish moves this fit"
+        );
+        let mut tested = 0;
+        for width in [1e-12, 1e-10, 1e-9, 1e-8] {
+            for j in 0..zeta.len() {
+                // A box so narrow that the Newton step leaves it, on variable j.
+                run.frame.lower = lower.clone();
+                run.frame.upper = upper.clone();
+                let x = zeta[j];
+                run.frame.lower[j] = x - width * x.abs();
+                run.frame.upper[j] = x + width * x.abs();
+                let ev = evaluate(&problem, em, &zeta).unwrap();
+                run.point = point(&problem, &run.frame, em, ev).unwrap();
+                let Some(trial) = run.newton_point(&problem, em) else {
+                    continue;
+                };
+                let before = run.point.decrement().unwrap();
+                let not_worse = trial.ev.m2ll <= run.point.ev.m2ll;
+                let score_decreases = trial.decrement().is_some_and(|after| after < before);
+                if trial.free != run.point.free && not_worse && score_decreases {
+                    tested += 1;
+                    assert!(
+                        run.newton_step(&problem).is_none(),
+                        "variable {j}, width {width}: accepted although the free set changed"
+                    );
+                }
             }
         }
-        assert!(projected > 0, "no trial changed the free set");
+        assert!(
+            tested > 0,
+            "no trial changed the free set while meeting the other two clauses"
+        );
     }
 }
