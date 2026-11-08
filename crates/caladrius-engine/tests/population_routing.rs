@@ -324,6 +324,10 @@ fn a_subject_with_several_dose_rows_is_refused_alone() {
     let without_two = by_subject(&nca_subjects(&mut r, json!({ "route": "extravascular" })));
     assert_eq!(map["1"], without_two["1"]);
     assert_eq!(map["3"], without_two["3"]);
+    // `data.describe` lists the data checks only: the subject with two dose rows is refused by the
+    // analysis, not listed there.
+    let described = ok(&mut e, "data.describe", json!({ "worksheet": 1 }));
+    assert!(described.get("refused").is_none(), "{described}");
 }
 
 #[test]
@@ -1359,4 +1363,69 @@ fn several_subjects_with_the_same_problem_each_carry_their_own_sentence() {
         all[2]["outcome"]["error"],
         subjects["3"]["outcome"]["error"]
     );
+}
+
+#[test]
+fn a_partial_initial_refuses_only_the_subject_whose_dose_row_lacks_the_duration() {
+    // The estimates of `k` and `v` are given, `dur` is not: it comes from each subject's dose row.
+    // Subject 3 has no duration on its dose row, so for that subject alone `dur` is missing. That
+    // is the data of one subject; the other subjects must be fitted.
+    let mut table = String::new();
+    for (i, line) in read_file("data/population/event_indometh.csv")
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim().is_empty())
+    {
+        let cells: Vec<&str> = line.split(',').collect();
+        let extra = if i == 0 {
+            "DUR"
+        } else if cells[4] == "1" && cells[0] != "3" {
+            "2"
+        } else {
+            ""
+        };
+        table.push_str(&format!(
+            "{line},{extra}
+"
+        ));
+    }
+    let mut e = engine_with(&table, &[]);
+    let model = "pk1.iv_infusion";
+    let generated = ok(
+        &mut e,
+        "fit.initial_estimates",
+        json!({ "worksheet": 1, "subject": "1", "model": model }),
+    )["initial"]
+        .clone();
+    let mut initial = serde_json::Map::new();
+    for name in ["k", "v"] {
+        assert!(generated.get(name).is_some(), "{generated}");
+        initial.insert(name.to_owned(), generated[name].clone());
+    }
+    let result = ok(
+        &mut e,
+        "fit.run",
+        json!({ "worksheet": 1, "subject": "all", "model": model, "initial": initial }),
+    )["result"]
+        .clone();
+    let fits = entries(&result);
+    assert_eq!(fits.len(), 6, "{result}");
+    for fit in &fits {
+        let id = fit["subject"].as_str().unwrap();
+        if id == "3" {
+            let error = fit["outcome"]["error"].as_str().unwrap();
+            assert!(error.contains("dur"), "{error}");
+            assert_eq!(fit["dose"], 25.0, "the subject keeps its dose and counts");
+        } else {
+            assert!(fit["outcome"].get("ok").is_some(), "subject {id}: {fit}");
+        }
+    }
+
+    // An estimate that is wrong for every subject is still the request's: `v` out of its domain
+    // refuses the whole request.
+    let wrong = json!({ "worksheet": 1, "subject": "all", "model": model, "initial": { "k": 0.2, "v": -1.0 } });
+    let before = e.project().analyses().len();
+    let refused = e.execute("fit.run", wrong).unwrap_err();
+    assert_eq!(refused.code, "fit_error");
+    assert_eq!(e.project().analyses().len(), before);
 }

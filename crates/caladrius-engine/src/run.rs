@@ -397,16 +397,42 @@ pub(crate) struct StartFailure {
 }
 
 /// Whether a fit error comes from the request and not from the data of one subject.
-fn is_request_error(error: &caladrius_fit::FitError, initial_given: bool) -> bool {
+///
+/// Estimates and fixed values the person gave are the same for every subject, so an error that
+/// names one of them refuses the whole request. An estimate that comes from the data (generated
+/// when `initial` is empty) and the `dur` that comes from the dose row differ from subject to
+/// subject: an error about them is that subject's own.
+fn is_request_error(error: &caladrius_fit::FitError, spec: &FitSpec) -> bool {
     use caladrius_fit::FitError as E;
     match error {
         E::NoParameters
         | E::InvalidOption { .. }
         | E::AnalyticDerivativesUnavailable { .. }
         | E::RegimenDerivativesUnavailable { .. } => true,
-        // Estimates the person gave are the same for every subject; generated ones are not.
-        E::InitialEstimates { .. } | E::InitialOutsideBounds { .. } => initial_given,
+        E::InitialOutsideBounds { parameter, .. } => spec.initial.contains_key(parameter),
+        E::InitialEstimates { source } => match model_error_parameter(source) {
+            Some(name) => {
+                spec.initial.contains_key(name)
+                    || spec.options.fixed.contains_key(name)
+                    // With estimates given, the fitted parameters are exactly the ones named and
+                    // the rest is fixed by the person; only the file can supply `dur`.
+                    || (!spec.initial.is_empty() && name != "dur")
+            }
+            None => !spec.initial.is_empty(),
+        },
         _ => false,
+    }
+}
+
+/// The parameter a model error names, when it names one.
+fn model_error_parameter(error: &caladrius_models::ModelError) -> Option<&str> {
+    use caladrius_models::ModelError as M;
+    match error {
+        M::UnknownParameter { name, .. }
+        | M::ParameterNotInModel { name, .. }
+        | M::MissingParameter { name, .. }
+        | M::ParameterOutOfDomain { name, .. } => Some(name),
+        _ => None,
     }
 }
 
@@ -447,7 +473,7 @@ fn start_data(
     match caladrius_fit::start(&input) {
         Ok(run) => Ok((run, meta)),
         Err(e) => Err(Box::new(StartFailure {
-            request_level: is_request_error(&e, !spec.initial.is_empty()),
+            request_level: is_request_error(&e, spec),
             error: CommandError::new("fit_error", e.to_string()),
             meta,
         })),

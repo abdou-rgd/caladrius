@@ -302,7 +302,7 @@ fn describe(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
 pub(crate) const DESCRIBE: CommandDef = CommandDef {
     id: "data.describe",
     title: "Describe a worksheet",
-    description: "Columns with role, unit, type, missing count and range; subjects (the labels of the subject column, in order of appearance: a table with several subjects is analysed by `nca.run` for all of them and by `fit.run` with `subject` = all); unit warnings (dose, concentration and time checked together); the derived units (AUC, clearance, volume); and the first rows. `refused` (only when there is one) lists the subjects that an analysis refuses because of their data, each with the code and the sentence of the check; the other subjects run. A subject with more than one dose row is refused by the analysis itself, which says so.",
+    description: "Columns with role, unit, type, missing count and range; subjects (the labels of the subject column, in order of appearance: a table with several subjects is analysed by `nca.run` for all of them and by `fit.run` with `subject` = all); unit warnings (dose, concentration and time checked together); the derived units (AUC, clearance, volume); and the first rows. `refused` (only when there is one) lists the subjects that an analysis refuses because of the data checks only, each with the code and the sentence of the check; the other subjects run. A subject with more than one dose row is refused by the analysis itself, not by a data check, so it is not listed there; the analysis says so.",
     mutates: false,
     params: || {
         root(
