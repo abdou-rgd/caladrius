@@ -5,8 +5,8 @@
 //! `hi`, so that it carries about 106 bits. Everything here is FMA-free: a product is split by
 //! Veltkamp's method and summed by Dekker's, using only `+`, `-` and `*`, each rounded to nearest
 //! (the evaluation order is written in the code and is the same on every platform, the wasm build
-//! included). A result is not finite when an operand is near the overflow threshold (the split
-//! multiplies by 2^27 + 1); the caller checks for that.
+//! included). A result is not finite when a factor of a product exceeds MAX / (2^27 + 1), about
+//! 1.34e300 (the split multiplies by 2^27 + 1); the caller checks for that.
 
 /// The exact sum of two doubles: (s, e) with s = fl(a + b) and s + e = a + b (Knuth).
 pub(crate) fn two_sum(a: f64, b: f64) -> (f64, f64) {
@@ -89,6 +89,14 @@ impl Dd {
         let (p, e) = two_prod(self.hi, o.hi);
         let (hi, lo) = fast_two_sum(p, e + (self.hi * o.lo + self.lo * o.hi));
         Dd { hi, lo }
+    }
+
+    /// Four times the value, exactly (a power of two), without the split of a product.
+    pub fn times_four(self) -> Dd {
+        Dd {
+            hi: 4.0 * self.hi,
+            lo: 4.0 * self.lo,
+        }
     }
 
     pub fn mul_f(self, x: f64) -> Dd {

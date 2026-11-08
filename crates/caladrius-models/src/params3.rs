@@ -364,7 +364,14 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     // The gap of the poles is the square root of the discriminant. A discriminant that is not
     // positive cannot come from a macro set with a, b, c > 0 in exact arithmetic (MOD-3C-06
     // item 3): it is the rounding of a set whose poles are too close to be told apart.
-    if !(gap > 0.0 && gap.is_finite()) {
+    if !gap.is_finite() {
+        return Err(ModelError::DerivedOutOfRange {
+            name: "k21 - k31".to_string(),
+            from: "the square root of the discriminant of the poles".to_string(),
+            value: gap,
+        });
+    }
+    if gap <= 0.0 {
         return Err(no_valid_model(
             id,
             "k21",
@@ -374,14 +381,14 @@ fn from_macro(id: &str, dose: f64, p: [f64; 6]) -> Result<Disposition, ModelErro
     }
     let k21 = (n1 + gap) / 2.0;
     let k31 = n0 / k21;
-    let offsets = macro_offsets(lambda, [a, b, c], weight, gap, dd, k21, k31);
+    let offsets = macro_offsets(lambda, weight, gap, dd, k21, k31);
     // The exponent next to a pole, judged from the offsets (zone (i) of MOD-3C-08).
     check_macro_offsets(id, offsets, k21, k31)?;
     let coupling = |name: &str, pole: &str, magnitudes: [f64; 3], k: f64| {
         let value = magnitudes.iter().product::<f64>() / (gap * k);
         if value.is_finite() && value > 0.0 {
             Ok(value)
-        } else if value == 0.0 {
+        } else if !value.is_finite() || value == 0.0 {
             Err(ModelError::DerivedOutOfRange {
                 name: name.to_string(),
                 from: format!("the offsets of the exponents to the pole {pole}"),
@@ -462,8 +469,24 @@ fn no_valid_model(id: &str, pole: &str, coupling: &str, what: &str) -> ModelErro
 /// quantity below is a sum of terms that do not cancel.
 #[derive(Debug, Clone, Copy)]
 struct MacroDd {
+    /// The coefficients a, b, c times the power of two that brings T near 1 (exact).
+    scaled: [f64; 3],
     total: Dd,
     delta: Dd,
+    /// N1 − 2·β·T in the same scale: its sign says which pole β lies nearer to.
+    mid: f64,
+}
+
+/// The power of two 2^-e with 2^e <= t < 2^(e+1), built from the exponent bits of `t` (1 when `t`
+/// is zero, subnormal or not finite): multiplying the macro coefficients by it is exact and
+/// brings T = a + b + c near 1, so that the double-double quantities below (of the order of T,
+/// T·n1 and T³) neither underflow nor overflow whatever the absolute size of the coefficients.
+fn unit_scale(t: f64) -> f64 {
+    let field = (t.to_bits() >> 52) & 0x7ff;
+    if field == 0 || field == 0x7ff {
+        return 1.0;
+    }
+    f64::from_bits((2046 - field).max(1) << 52)
 }
 
 /// n1 = Σ wi·(S − λi), n0 = Σ wi·λj·λk and the gap √(n1² − 4·n0) of the two poles, from the macro
@@ -477,8 +500,10 @@ fn macro_roots(
     weight: [f64; 3],
     lambda: [f64; 3],
 ) -> (f64, f64, f64, Option<MacroDd>) {
-    let [a, b, c] = coefficient;
     let [alpha, beta, gamma] = lambda;
+    let scale = unit_scale(coefficient[0] + coefficient[1] + coefficient[2]);
+    let scaled = coefficient.map(|x| x * scale);
+    let [a, b, c] = scaled;
     let total = Dd::sum(a, b).add_f(c);
     let sum = Dd::sum(alpha, beta).add_f(gamma);
     let term = |w: f64, minus: f64, j: f64, k: f64| {
@@ -489,8 +514,14 @@ fn macro_roots(
     let (x2, y2) = term(c, gamma, alpha, beta);
     let n1_num = x0.add(x1).add(x2);
     let n0_num = y0.add(y1).add(y2);
-    let delta = n1_num.mul(n1_num).sub(n0_num.mul(total).mul_f(4.0));
-    if total.is_finite() && n1_num.is_finite() && n0_num.is_finite() && delta.is_finite() {
+    let delta = n1_num.mul(n1_num).sub(n0_num.mul(total).times_four());
+    let mid = n1_num.sub(total.mul_f(2.0 * beta));
+    if total.is_finite()
+        && n1_num.is_finite()
+        && n0_num.is_finite()
+        && delta.is_finite()
+        && mid.is_finite()
+    {
         let t = total.value();
         let gap = if delta.value() > 0.0 {
             libm::sqrt(delta.value()) / t
@@ -501,7 +532,12 @@ fn macro_roots(
             n1_num.value() / t,
             n0_num.value() / t,
             gap,
-            Some(MacroDd { total, delta }),
+            Some(MacroDd {
+                scaled,
+                total,
+                delta,
+                mid: mid.value(),
+            }),
         );
     }
     let [wa, wb, wc] = weight;
@@ -521,7 +557,6 @@ fn macro_roots(
 /// middle of the poles: it is formed in double-double, as (Δ·T² + 4·ai·Π(λi − λj)·T)/T².
 fn macro_offsets(
     lambda: [f64; 3],
-    coefficient: [f64; 3],
     weight: [f64; 3],
     gap: f64,
     dd: Option<MacroDd>,
@@ -529,14 +564,14 @@ fn macro_offsets(
     k31: f64,
 ) -> [(f64, f64); 3] {
     let [alpha, beta, gamma] = lambda;
-    let [a, b, c] = coefficient;
     let [wa, wb, wc] = weight;
     // (N, √(g² + 4N)) for the exponent `li` with the others `lj`, `lk` and its coefficient.
-    let at = |coefficient: f64, w: f64, li: f64, lj: f64, lk: f64| -> (f64, f64) {
+    let at = |index: usize, w: f64, li: f64, lj: f64, lk: f64| -> (f64, f64) {
         let plain_n = w * (li - lj) * (li - lk);
         let exact = dd.and_then(|m| {
+            let coefficient = *m.scaled.get(index)?;
             let product = Dd::sum(li, -lj).mul(Dd::sum(li, -lk)).mul_f(coefficient);
-            let radicand = m.delta.add(product.mul(m.total).mul_f(4.0));
+            let radicand = m.delta.add(product.mul(m.total).times_four());
             let t = m.total.value();
             (radicand.is_finite() && t > 0.0).then(|| {
                 (
@@ -548,18 +583,21 @@ fn macro_offsets(
         exact.unwrap_or_else(|| (plain_n, libm::sqrt((gap * gap + 4.0 * plain_n).max(0.0))))
     };
     // α: both offsets positive, o31 = o21 + g.
-    let (n, s) = at(a, wa, alpha, beta, gamma);
+    let (n, s) = at(0, wa, alpha, beta, gamma);
     let big = (gap + s) / 2.0;
     let alpha_offsets = (n / big, big);
     // γ: both offsets negative, |o21| = |o31| + g.
-    let (n, s) = at(c, wc, gamma, alpha, beta);
+    let (n, s) = at(2, wc, gamma, alpha, beta);
     let big = (gap + s) / 2.0;
     let gamma_offsets = (-big, -(n / big));
     // β: o21 <= 0 <= o31 with o31 − o21 = g.
-    let (n, s) = at(b, wb, beta, alpha, gamma);
+    let (n, s) = at(1, wb, beta, alpha, gamma);
     let big = (gap + s) / 2.0;
     let small = -n / big;
-    let beta_offsets = if k21 - beta <= beta - k31 {
+    // β is nearer the upper pole k21 when k21 + k31 = n1 <= 2β: decided in double-double when it is
+    // available, from the rounded poles otherwise.
+    let nearer_upper = dd.map_or(k21 - beta <= beta - k31, |m| m.mid <= 0.0);
+    let beta_offsets = if nearer_upper {
         (-small, big)
     } else {
         (-big, small)
@@ -819,6 +857,71 @@ mod tests {
             }
         }
         assert!(accepted >= 10, "only {accepted} sets accepted");
+    }
+
+    /// The micro constants a macro set resolves to (dose 100·f for coefficients multiplied by f).
+    fn micro_of_macro(m: &[(&str, f64)], f: f64) -> [f64; 6] {
+        let scaled: Vec<(&str, f64)> = m
+            .iter()
+            .map(|&(n, v)| if n.len() == 1 { (n, v * f) } else { (n, v) })
+            .collect();
+        let d = resolve(ModelId::Pk3IvBolus, &given(&scaled), 100.0 * f).unwrap();
+        [d.k10, d.k12, d.k21, d.k13, d.k31, d.vc]
+    }
+
+    /// The conversion depends on the coefficients only through their ratios: multiplying a, b, c and
+    /// the dose by a power of two, however far (past the underflow of T·n1 and the overflow of the
+    /// split of 4·N0·T), gives the same micro constants to the bit (vc included: dose and coefficients scale together).
+    #[test]
+    fn the_conversion_does_not_depend_on_the_absolute_size_of_the_coefficients() {
+        let base = macro_of(micro_set(1.0, 0.2, 0.9, 0.5));
+        let tau = 1.1 * libm::pow(2.0, -20.0);
+        let edge_tau = macro_of(micro_set(1.0, (1.0 - tau) / (1.0 + tau), 0.9, 0.5));
+        for (label, m) in [("base", &base), ("edge_tau", &edge_tau)] {
+            let unit = micro_of_macro(m, 1.0);
+            for exp in [500.0, -500.0, -600.0, 900.0] {
+                let f = libm::pow(2.0, exp);
+                let got = micro_of_macro(m, f);
+                for (g, u) in got.iter().zip(unit) {
+                    assert_eq!(
+                        g.to_bits(),
+                        u.to_bits(),
+                        "{label} x 2^{exp}: {g} against {u}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// A constructed row of the band: tau = 1/2 and a root next to a pole at rho = 2.2·2^-48
+    /// (rho·tau about 1.1·2^-48, k13 = 3e-15). The macro set is accepted, the constants come back to
+    /// 1e-12 and are accepted when fed back as a micro set (MOD-3C-08).
+    #[test]
+    fn a_row_at_the_edge_of_the_band_is_re_accepted_as_micro_input() {
+        let micro = micro_set(1.0, 1.0 / 3.0, 0.9, 3.0e-15);
+        let m = macro_of(micro);
+        let d = resolve(ModelId::Pk3IvBolus, &given(&m), 100.0).unwrap();
+        for (name, got) in [
+            ("k21", d.k21),
+            ("k31", d.k31),
+            ("k12", d.k12),
+            ("k10", d.k10),
+        ] {
+            let want = micro.iter().find(|(n, _)| *n == name).unwrap().1;
+            assert!(
+                (got - want).abs() <= 1e-12 * want,
+                "{name} {got} against {want}"
+            );
+        }
+        let reported = [
+            ("k10", d.k10),
+            ("k12", d.k12),
+            ("k21", d.k21),
+            ("k13", d.k13),
+            ("k31", d.k31),
+            ("vc", d.vc),
+        ];
+        assert!(resolve(ModelId::Pk3IvBolus, &given(&reported), 100.0).is_ok());
     }
 
     fn given_owned(pairs: &[(&str, f64)]) -> BTreeMap<String, f64> {
