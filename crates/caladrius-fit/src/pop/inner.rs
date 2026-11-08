@@ -29,6 +29,20 @@ const MAX_ITERATIONS: usize = 500;
 const POLISH_STEPS: usize = 12;
 /// The polish stops below this decrement (FIT-ML-08).
 const POLISH_FLOOR: f64 = 1e-26;
+/// The rounding allowed on h by the polish condition "h does not increase", in units of
+/// `f64::EPSILON · max(Σ|terms of h|, 1)` (the terms ln σ², z² and (L⁻¹η)², whose sum h is: the
+/// rounding of a sum follows the size of its terms, not of the sum, and h near 0 is a sum of
+/// terms of a few units that cancel). OP-11, waits for Q-026. Measured (T-154): near the mode a
+/// Newton step that lowers the decrement from about 1e-15 to about 1e-29 raised h by up to 8.1 of
+/// these units (replicate 1 of the sealed design `accurate`; 6.3 on replicate 83 of `limits`) and
+/// by up to 757 units of `f64::EPSILON · max(|h|, 1)` (h = 0.66 there). With that second scale
+/// the polish stopped early (Δ = 3.8e-15 left on subject 16 of `limits` replicate 83 at one point
+/// of a difference quotient), which made a jump of 2.8e-8 in the OFV, a gradient in ξ_a of +3.57
+/// where it is −0.068, and the fit ended `no_decrease` (replicates 54, 83 and 97 of `limits`);
+/// with this scale the three converge. Decision taken meanwhile (2026-11-08), reversible by Abdou:
+/// an increase of h within this rounding does not count as an increase; Δ must still strictly
+/// decrease.
+const H_ROUNDING: f64 = 16.0;
 /// The step of the central differences of the score, relative to the prior standard deviation √Ω_kk
 /// of each random effect.
 pub(crate) const POLISH_H: f64 = 1e-5;
@@ -48,6 +62,8 @@ pub(crate) struct InnerProblem<'a> {
     pub l_inv: &'a Mat,
     /// The steps of the central differences of the polish, one per random effect.
     pub steps: &'a [f64],
+    /// The decrement below which the scoring iteration stops and the polish starts ([`EPS_IN`]).
+    pub eps: f64,
 }
 
 /// A point of the inner problem with its stacked system.
@@ -59,6 +75,8 @@ pub(crate) struct Point {
     pub sigma: Vec<f64>,
     /// h(η).
     pub h: f64,
+    /// Σ of the absolute values of the terms of h (the scale of its rounding, [`H_ROUNDING`]).
+    h_terms: f64,
     a: Mat,
     r: Vec<f64>,
     /// g = 𝒥ᵀR, half the negative gradient of h.
@@ -123,12 +141,17 @@ impl InnerProblem<'_> {
         let mut a = Mat::zeros(rows, q);
         let mut r = vec![0.0; rows];
         let mut h = 0.0;
+        // Σ of the absolute values of the terms of h, the scale of its rounding.
+        let mut h_terms = 0.0;
         for (j, ((&y, &f), &s)) in self.y.iter().zip(&ev.pred).zip(&sigma).enumerate() {
             let z = (y - f) / s;
             if both {
-                h += libm::log(s * s);
+                let log_var = libm::log(s * s);
+                h += log_var;
+                h_terms += log_var.abs();
             }
             h += z * z;
+            h_terms += z * z;
             if let Some(slot) = r.get_mut(j) {
                 *slot = z;
             }
@@ -159,6 +182,7 @@ impl InnerProblem<'_> {
                 li_eta += lik * e;
             }
             h += li_eta * li_eta;
+            h_terms += li_eta * li_eta;
             if let Some(slot) = r.get_mut(offset + i) {
                 *slot = -li_eta;
             }
@@ -183,6 +207,7 @@ impl InnerProblem<'_> {
             ev,
             sigma,
             h,
+            h_terms,
             a,
             r,
             g,
@@ -221,15 +246,27 @@ impl InnerProblem<'_> {
     }
 
     /// The scoring iteration from one start, then the polish; `None` when it does not converge.
+    ///
+    /// When the scoring stops above `eps` (its iteration limit, or no step that lowers h), the
+    /// polish is tried from the last point, and the point is kept if the polish brings the decrement
+    /// down to `eps` (decision taken meanwhile, 2026-11-08, reversible by Abdou). Measured (T-154):
+    /// on replicate 44 of the sealed design `limits`, subject 2 at the starting values, the scoring
+    /// creeps for 500 iterations and ends with a decrement between 1.3e-9 and 4.0e-6 from each of the
+    /// nine starts of the ladder, while the Newton polish from the point of the first start reaches
+    /// 9.6e-31 with h lower by 1.1e-8; without this the fit was refused with `inner_failed`.
     fn solve_from(&self, start: Vec<f64>) -> Option<Point> {
         let mut current = self.point(start)?;
         for _ in 0..MAX_ITERATIONS {
-            if current.decrement <= EPS_IN {
+            if current.decrement <= self.eps {
                 return Some(self.polish(current));
             }
-            current = self.step(&current)?;
+            match self.step(&current) {
+                Some(next) => current = next,
+                None => break,
+            }
         }
-        None
+        let polished = self.polish(current);
+        (polished.decrement <= self.eps).then_some(polished)
     }
 
     /// The conditional mode, from the warm start then down the ladder (POP-INN-02 requirement 3).
@@ -253,15 +290,16 @@ impl InnerProblem<'_> {
     }
 
     /// The Newton polish of FIT-ML-08 with the condition added by POP-INN-02: a step is taken only if
-    /// the observed Hessian is positive definite at the point, h does not increase and Δ strictly
-    /// decreases; at most [`POLISH_STEPS`] steps, down to [`POLISH_FLOOR`].
+    /// the observed Hessian is positive definite at the point, h does not increase (up to
+    /// [`H_ROUNDING`]) and Δ strictly decreases; at most [`POLISH_STEPS`] steps, down to [`POLISH_FLOOR`].
     fn polish(&self, mut current: Point) -> Point {
         let mut taken = 0;
         while taken < POLISH_STEPS && current.decrement > POLISH_FLOOR {
             let Some(trial) = self.newton_point(&current) else {
                 break;
             };
-            if trial.h <= current.h && trial.decrement < current.decrement {
+            let rounding = H_ROUNDING * f64::EPSILON * current.h_terms.max(1.0);
+            if trial.h <= current.h + rounding && trial.decrement < current.decrement {
                 current = trial;
                 taken += 1;
             } else {
