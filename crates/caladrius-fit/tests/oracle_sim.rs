@@ -19,11 +19,10 @@
 //! * `oracle/expected/sim/roundtrip/`: simulate then fit (SIM-ORA-06), `#[ignore]`d until the population fit
 //!   (T-154) exists.
 //!
-//! Written before the engine exists: every engine test fails at run time with "simulation not built", from the
-//! one function below, `simulation`. **The engine card (T-159) replaces the body of that function and nothing
-//! else.** The guards at the end are green today. The checks live in `caladrius_testkit::sim_check` and are run
-//! against an independent reference (`caladrius_testkit::sim_ref`) by `crates/caladrius-testkit/tests/
-//! sim_consistency.rs`, so a failing engine test fails because of the engine.
+//! Written before the engine existed; the engine (T-159) is now behind the one function below, `simulation`,
+//! whose body is the only thing that card changed here. The guards at the end are green. The checks live in
+//! `caladrius_testkit::sim_check` and are run against an independent reference (`caladrius_testkit::sim_ref`) by
+//! `crates/caladrius-testkit/tests/sim_consistency.rs`, so a failing engine test fails because of the engine.
 //!
 //! # The request and the answer (assumed; the plainest name where `specs/simulation.md` is silent)
 //!
@@ -816,25 +815,6 @@ fn the_checks_pass_on_the_reference() {
     for n in SIM_ACCEPTED {
         ok(check::check_accepted(&reference_simulation, n));
     }
-}
-
-/// Today the engine adapter reports `not_built` and nothing else, which is why every engine test is red, and the
-/// checks turn it into a failure (a refusal row whose request is refused with the wrong code would pass the
-/// guard above and fail here).
-#[test]
-fn the_adapter_says_not_built() {
-    let e = simulation(&json!({ "op": "quantile", "x": [1], "p": [0.5] })).unwrap_err();
-    assert_eq!(e.code, "not_built");
-    assert!(
-        check::check_quantile(&simulation, SIM_QUANTILE[0])
-            .unwrap_err()
-            .contains("not_built")
-    );
-    assert!(
-        check::check_exact(&simulation, SIM_EXACT[0])
-            .unwrap_err()
-            .contains("not_built")
-    );
 }
 
 /// The round trip: a short simulation by the reference (3 replicates of the call) gives datasets whose fit
