@@ -1,0 +1,19 @@
+{
+  "env": "chromium 158.0.8127.18 headless, Linux, production build of the demo",
+  "rows": 100000,
+  "cols": 20,
+  "first_render_ms": 333,
+  "scroll_long_tasks": 0,
+  "scroll_frame_ms_p50": 16.7,
+  "scroll_frame_ms_p95": 16.7,
+  "sort_ms": 64,
+  "filter_ms": 472,
+  "extra": {
+    "note": "filter_ms is the first filter with a cold cache (no focus on the box); filter_after_focus_ms is the first filter after the box had focus for 4 s (columns prepared in idle time); the \"again\" values reuse the sort keys / the formatted-text cache.",
+    "sort_again_ms": 48,
+    "filter_again_ms": 72,
+    "filter_after_focus_ms": 80,
+    "warm_run_scroll_long_tasks": 0,
+    "formatter": "fake demo formatter (toPrecision); the real one is the bridge wasm Formatter: measure in M2"
+  }
+}

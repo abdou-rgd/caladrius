@@ -5,12 +5,22 @@
   "license": "MIT OR Apache-2.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./table.css": "./src/table.css" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./table.css": "./src/table.css"
+  },
   "scripts": {
     "test": "tsc --noEmit -p tsconfig.json && node --experimental-strip-types --no-warnings --test \"test/*.test.ts\"",
-    "demo": "vite demo"
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "demo": "vite demo",
+    "demo:build": "vite build demo --outDir ../dist-demo --emptyOutDir",
+    "test:dom": "node test/dom-check.mjs",
+    "measure": "node test/measure.mjs"
   },
-  "peerDependencies": { "react": "19.3.1", "react-dom": "19.3.1" },
+  "peerDependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
   "dependencies": {
     "@tanstack/react-table": "9.3.1",
     "@tanstack/react-virtual": "3.14.26"
