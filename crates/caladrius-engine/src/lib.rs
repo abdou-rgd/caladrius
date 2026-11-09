@@ -29,6 +29,7 @@ mod job;
 mod plot;
 pub mod replay;
 mod run;
+pub mod scene;
 mod schema;
 pub mod seal;
 mod svg;
@@ -40,6 +41,8 @@ mod tests_compare;
 #[cfg(test)]
 mod tests_job;
 #[cfg(test)]
+mod tests_golden_plot;
+#[cfg(test)]
 mod tests_pk2;
 #[cfg(test)]
 mod tests_pk3;
@@ -47,6 +50,8 @@ mod tests_pk3;
 mod tests_plot;
 #[cfg(test)]
 mod tests_replay;
+#[cfg(test)]
+mod tests_scene;
 #[cfg(test)]
 mod tests_seal;
 #[cfg(test)]

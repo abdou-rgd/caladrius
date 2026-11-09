@@ -79,7 +79,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-066 | Benchmark scorer: score precision, sign, negation, contradiction and the acceptability verdict (RT-B3) | apothicaire | done | |
 | T-067 | Apothicaire: flag or refuse a reference to a superseded analysis (RT-C3) | apothicaire | todo | |
 | T-068 | Apothicaire: invalidate stored references when the engine restarts (RT-C9) | apothicaire | todo | |
-| T-069 | Apothicaire: fixed seed and an exportable trace per answer (RT-E5) | apothicaire | in progress | |
+| T-069 | Apothicaire: fixed seed and an exportable trace per answer (RT-E5) | apothicaire | todo | |
 | T-070 | Frozen set: write the aggregation, the success definition and the precision target; align 25 and 60 (RT-B5) | apothicaire | done | |
 | T-071 | Benchmark: a turn that fails with an error counts as wrong (RT-B9) | apothicaire | done | |
 | T-072 | Frozen set: choose the demo gate outside the frozen set (RT-B10) | apothicaire | done | |
@@ -92,7 +92,7 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-079 | NCA: show the area_past_tlast flag in answers and decide O-18 (RT-D7) | reader, apothicaire | todo | |
 | T-080 | CI: test on the demo platform, test before release, pin the Rust toolchain (RT-E9) | interface | todo | |
 | T-081 | docs/validation.md: write the real rule for interval bounds (RT-D6) | oracle | todo | |
-| T-082 | Freeze the scorer and labels by tag before the frozen run (RT-B1) | apothicaire | in progress | T-066, T-070, T-071, T-072 |
+| T-082 | Freeze the scorer and labels by tag before the frozen run (RT-B1) | apothicaire | blocked | T-066, T-070, T-071, T-072 |
 | T-083 | Benchmark statistics at the exercise level; retire the per-number 0.32 % bound (RT-B4) | apothicaire | done | |
 | T-084 | Say 'never computes' in its narrow sense, and check tool-call arguments (RT-D1) | orchestrator, apothicaire | todo | |
 | T-085 | validation.md: say what is internal, tighten the independent cross-checks, require nls convergence (RT-D2) | oracle | todo | |
@@ -148,9 +148,38 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-135 | NCA screen prototype in egui 0.37 | interface | done | T-133, T-134 |
 | T-136 | NCA screen prototype in React 19 with Tauri 2 | interface | done | T-133, T-134 |
 | T-137 | NCA screen prototype in Leptos 0.8 with Tauri 2 | interface | done | T-133, T-134, T-136 |
-| T-139 | Iteration 3: the missing PK bricks of the engine | orchestrator | in progress | Q-020 |
+| T-139 | Iteration 3: the missing PK bricks of the engine | orchestrator | blocked | Q-020 |
 | T-140 | specs/models.md, three-compartment models | reader | done | Q-020 |
 | T-141 | docs/long-running-commands.md, the protocol of a long computation over the bridge | interface | done | T-134 |
-| T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | in progress | T-140 |
+| T-142 | Oracle for the three-compartment models (256-bit grids, ODE, derivatives, refusals, failing tests) | oracle | done | T-140 |
 | T-143 | Progress and cancel in caladrius-fit, one stepper under solve | engine | done | T-141 |
+| T-144 | caladrius-models three-compartment models (pk3.*), root solver, derivatives, multiple dosing | engine | done | T-142 |
+| T-145 | pk3 reachable from the engine, the CLI, the MCP server and the conformance report | interface | done | T-144 |
 | T-146 | Progress and cancel in the engine and the CLI (Engine::begin and finish, one running job) | interface | done | T-143 |
+| T-147 | Specs for brick 2: maximum-likelihood fit with an estimated error model, IWRES, the population dataset | reader | done | T-139 |
+| T-148 | Oracle for brick 2: maximum-likelihood fits, IWRES, population dataset files, failing tests | oracle | done | T-147 |
+| T-149 | caladrius-fit maximum likelihood with an estimated error model (objective = ml), IWRES | engine | done | T-148 |
+| T-150 | caladrius-project population dataset, the event table (DAT-*) | interface | done | T-148 |
+| T-151 | Spec sync for brick 2: what T-148 to T-150 decided, written into `specs/fit.md` and `specs/data.md` | reader | done | T-149, T-150 |
+| T-152 | Oracle for the population fit: exact identities, objectives at fixed parameters, diagnostics, refusals, sealed data, failing tests | oracle | done | T-162 |
+| T-153 | The population objective at fixed parameters (FOCEI, FOCE, FO), the conditional modes, early refusals | engine | done | T-152, T-166 |
+| T-154 | The population estimation (BFGS on φ, two-stage start), the covariance (sandwich, r, s), shrinkage and criteria | engine | to review | T-153, T-168 |
+| T-157 | specs/simulation.md, population simulation (brick 4) | reader | done | T-162 |
+| T-158 | Oracle for the population simulation (Philox words, AS 241, exact part, distribution, refusals) | oracle | done | T-157 |
+| T-159 | The population simulator in the engine (caladrius-fit::sim) | engine | done | T-157, T-158 |
+| T-162 | specs/population.md, the population fit (FOCEI, with FO as its special case) | reader | done | T-151 |
+| T-163 | The population dataset routed into the analyses (DAT-USE), engine side | interface | done | T-150, T-149, T-151 |
+| T-164 | specs/models.md sentences after T-142: MOD-3C-06 item 5, MOD-3C-08 (beta, the macro band), MOD-3C-22 | reader | done | T-142 |
+| T-165 | pk3 oracle round 5: the F1 case, flags measured, pole claims asserted, round 4 nits | oracle | done | T-164 |
+| T-166 | Spec sync for the population fit: the Q-025 decisions and the questions of T-152 into specs/population.md | reader | done | T-152 |
+| T-167 | pk3 engine alignment round: N1 refusal code, adjacent-pole jacobian, the macro obligation | engine | done | T-164, T-165 |
+| T-168 | Exact fit-level oracle for the balanced linear case (identity_linear, closed form, nlme ML) | oracle | done | T-166, T-152 |
+| T-169 | caladrius-fit minors left by T-149 and T-151 (error.rs:298, the stale 13c comments, the A2 test) | engine | done | T-149, T-151 |
+| T-170 | specs/simulation.md round 2 after the simulator (T-158 and T-159 review items) | reader | done | T-159 |
+| T-171 | pk3 subnormal guards: unit_scale for a subnormal a+b+c, derived quantities must be normal numbers | engine | done | T-167 |
+| T-172 | Integrate brick 1 and brick 2: iter3/pk3 merged with iter3/ml on iter3/int | engine | to review | T-171, T-169 |
+| T-173 | Oracle answers to the T-154 notes: at_bound counted as converged in the sealed recovery, q1 off-diagonal guard | oracle | done | T-154 |
+| T-174 | Triage of the cl bias of design A: independent FOCEI fit in R and saemix on the 200 sealed replicates | oracle | todo | T-154, T-152 |
+| T-175 | specs/models.md, the round left by T-167 and T-171 (pk3 macro path: magnitude rules, double-double floor, DerivedOutOfRange arms) | reader | done | T-167, T-171 |
+| T-176 | The published fit.run schema says what the ML fit takes and returns (objective, error_model, error_init, information, exact_fit) | engine | todo | T-172 |
+| T-160 | specs/vpc.md, the visual predictive check (brick 4, if time allows) | reader | done | T-157, T-170, T-162 |

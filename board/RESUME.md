@@ -1,31 +1,58 @@
-# How to resume (state of 2026-11-07, afternoon)
+# How to resume (state of 2026-11-08, afternoon)
+
+**The project is paused.** The usage budget for the iterations is spent, and Abdou is changing how the project is run. The steps below describe the setup as it was on 2026-11-08. If the new setup replaces them, follow the new one; the state further down still holds.
 
 1. Open Claude Code in `C:\Users\abdou\apothicaire\caladrius`: the agent files of `.claude/agents/` load only when a session starts here. Say: "Reprends le rôle d'orchestrateur : lis AGENTS.md, board/RESUME.md, board/INDEX.md et la carte d'itération ouverte, puis continue."
-2. One session = one iteration (`AGENTS.md` section 9). The open iteration card holds the brief, the plan and the state of each card; if none is open, propose the next one to Abdou from the bolder next step of the last outcome.
-3. Subagents do not survive a session: start one per card, with its role file, its allowed files and an absolute `CARGO_TARGET_DIR` under `target/agent-<role>`. At most two at a time, one on Fable.
+2. One session = one iteration (`AGENTS.md` section 9). The open iteration card holds the brief, the plan and the state of each card.
+3. Subagents do not survive a session. Start one per card, with its role file, its allowed files, and an absolute `CARGO_TARGET_DIR` under `target/agent-<role>`. At most two at a time, one of them on Fable.
 4. A subagent's report is a claim: re-run the card's completion command before marking it done.
+5. No worktree exists any more. To work on a branch, create one again with `git worktree add C:\Users\abdou\caladrius-iter3\<name> iter3/<branch>`.
 
 ## State
 
-- **Iteration 3 is open: T-139**, the missing PK bricks of the engine (three compartments, what individual fitting lacks, population PK with FOCEI, population simulation, the long-running command protocol). Abdou gave his go on 2026-11-07 ("oui lance") and left the running to the orchestrator. Q-020 points 3 to 5 (engine scope) are applied in `AGENTS.md` (8773e52); points 1, 2 and 6 (interface stack) are held until the stack is retested after population PK. Q-021 (Rtools) and Q-022 (pushing `iter3/*`) stand as decided: no installer, branches local. Brick 2: the orchestrator's pick is recorded in the T-139 thread. **Wave 1 is done:** T-140 (section 14 of `specs/models.md`, on `iter3/pk3`) and T-141 (`docs/long-running-commands.md`, merged into `main`). **Wave 2:** T-142 (`oracle`, worktree `C:\Users\abdou\caladrius-iter3\pk3`, branch `iter3/pk3`) and T-143 (`engine`, worktree `C:\Users\abdou\caladrius-iter3\progress`, branch `iter3/progress`; done after two Fable rounds, at fa306d4). **Wave 4, started early:** T-146 (`interface`, the same worktree and branch; done after two Sonnet rounds, at 611e0fe), because it needs only T-143. Use one `CARGO_TARGET_DIR` per worktree: `cargo xtask` finds its workspace from a path compiled into it. Subagents do not survive a session: if this one ended, look at the commits on those branches and at the card threads before starting a card again.
-- **Iteration 2 is paused: T-130** (`blocked`, the board has no `paused` state) until population PK with an OFV exists. Waves 1 to 3 are done: T-131 (inventory), T-132 (three mockups, local files in `../notes/iteration-2-mockups/`), T-133 (the plot scene), T-134 (the engine bridge), T-135 to T-137 (the prototypes). Left: wave 4, T-138, the audit and the outcome.
-- **Code of the iteration** is on branches, pushed under Q-019: `iter2/base` (T-133 and T-134 merged), `iter2/scene` and `iter2/bridge`. Their worktrees are `C:\Users\abdou\caladrius-iter2\scene` (now on `iter2/base`) and `C:\Users\abdou\caladrius-iter2\bridge`. Only `docs/` and `board/` reach `main` before 2026-11-18.
-- **CI on the branches:** `iter2/base` adds a push trigger for `iter2/**` to `.github/workflows/ci.yml`. Remove it before the iteration is merged into `main`.
-- **Wave 3 is done** without a visual direction (Abdou turned down the three mockups on 2026-11-07): T-135 (egui 0.37, `iter2/egui`), T-136 (React 19 + Tauri 2, `iter2/react`) and T-137 (Leptos 0.8 + Tauri 2, `iter2/leptos`), worktrees under `C:\Users\abdou\caladrius-iter2`, not pushed. Shared brief: `board/messages/2026-11-07-orchestrator-interface-wave3-brief.md`. Leptos is Abdou's favourite so far. Wave 4 (aligned measures, heavy scenario, T-138) waits until population PK with OFV is in the engine (Abdou, 2026-11-07).
-- Iteration 1 (T-124, done 2026-10-29): READMEs that do not drift. The site redesign (T-123) comes after iteration 2.
-- **First deadline:** the demo of 2026-11-17 stays on the current egui interface. If the quota runs short, demo prep comes before waves 3 to 5.
+- **Iteration 3, T-139: paused** (`blocked`) on 2026-11-08. It covers the missing PK bricks of the engine: three compartments, the individual ML fit, population PK with FOCEI, and population simulation.
+  - 30 cards are `done`. Brick 1 (pk3) and brick 2 (ML fit) are complete and merged on `iter3/int`. Brick 4 (the simulator) is complete on `iter3/sim`.
+  - Brick 3 (population): the objective (T-153) is done and reviewed. The estimation (T-154) is written but not verified.
+  - **T-154** `to review`: code on `iter3/pop` (up to 712ad97), with no agent report, no verify and no review. The cl bias of design A is not triaged. Its thread says how to resume.
+  - **T-172** `to review`: the integration on `iter3/int` (fix 907b283, then the T-175 merge ea98dd2). It waits for the Fable re-check, after a one-line fix of a duplicate "## 14" heading in `specs/sources.md`.
+  - **T-174** `todo`: the triage of the cl bias in R and saemix. Unfinished scripts are on `iter3/pop-triage` (963dbd1). It waits for the verify of T-154.
+  - **T-176** `todo`: the published `fit.run` schema lacks the ML options. It comes after T-172.
+  - **Not written yet:** T-155 (CWRES; 40 `oracle_pop` tests wait for it), T-156 (`pop.fit` as a long-running command), T-161 (the wave 4 datasets), the `specs/population.md` round, the merges of `iter3/pop` and `iter3/sim` into `iter3/int`, and un-ignoring SIM-ORA-06.
+  - **Estimate** given to Abdou on 2026-11-08: 12 to 21 hours of agent work to close the iteration. This is an estimate, not a measure.
+- **Branches of iteration 3**, all pushed (Q-022):
+
+  | Branch | What it holds |
+  |---|---|
+  | `iter3/int` | bricks 1 and 2 (T-172, T-175) |
+  | `iter3/pop` | brick 3 so far (T-152, T-153, T-154) |
+  | `iter3/pop-ora` | T-173, not merged into `iter3/pop` yet |
+  | `iter3/pop-triage` | T-174 work in progress |
+  | `iter3/sim` | brick 4 (T-157 to T-160) |
+
+  The eleven other `iter3/*` branches were deleted on 2026-11-08, because each one is contained in `iter3/int` or `iter3/pop`. Their tips are in `LOG.md`.
+- **Iteration 2, T-130: paused** (`blocked`) until population PK with an OFV is in the engine. Waves 1 to 3 are done. Left: wave 4, T-138, the audit and the outcome. Wave 3 has no visual direction, since Abdou turned down the three mockups; Leptos is his favourite so far.
+  - Branches, pushed under Q-019: `iter2/base` (T-133 and T-134), `iter2/egui`, `iter2/react` and `iter2/leptos`.
+  - `iter2/scene` and `iter2/bridge` were deleted, since `iter2/base` contains them.
+  - `iter2/base` adds a CI push trigger for `iter2/**`. Remove it before merging into `main`.
+- Only `docs/` and `board/` reach `main` before 2026-11-18.
+- **First deadline:** the Sanofi demo of 2026-11-17 stays on the current egui interface of `main`.
 
 ## This PC
 
-- Programs under `target/` are refused file writes (os error 5). `cargo test --workspace --no-fail-fast` gives 25 failures for that reason alone, the same on `main` and on `iter2/base` (2026-11-07). The linker started by `cargo xtask` can hit LNK1104 on a cold target. Build first with plain `cargo`: for `cargo xtask bridge`, run `cargo test --no-run --manifest-path apps/caladrius-tauri/Cargo.toml` with `CARGO_TARGET_DIR=<target>/bridge/tauri-target`.
-- `caladrius-mcp` was rebuilt from `main` into `target/agent-apothicaire` on 2026-11-07. The code is that of f8d1c1a, after T-111 and T-129; sha256 b72beca797749eb3f5abf78c0f5ec10d7188e2fbebfeeb0da25610695cd0e678. The frozen-set freeze hashes this binary.
-- Frozen set, case freeze: it waits for `../agent/bench/frozen/demo/wordings.json`, written by Abdou (2 per turn kind) and dsh (1 per kind) from `wordings.template.json`; Claude never opens it. Then follow the "Commands" section of `../agent/bench/frozen/README.md`, with C1 = v1 and C2 = v2.
+- Programs under `target/` are refused file writes (os error 5). `cargo test --workspace --no-fail-fast` gives 25 failures for that reason alone. The linker started by `cargo xtask` can hit LNK1104 on a cold target, so build first with plain `cargo`.
+- `cargo xtask digest` and `lint` are run from a copy of the xtask binary outside `target/`.
+- On 2026-11-08 the agent build directories under `target/` were deleted. Kept: `target/human-release` (a release build of the application and the CLI), `target/snapshots` (the UI screenshots), and `target/agent-apothicaire`: `caladrius-mcp` built from `main` f8d1c1a, sha256 b72beca797749eb3f5abf78c0f5ec10d7188e2fbebfeeb0da25610695cd0e678. The frozen-set freeze hashes this binary. Every other build starts cold.
+- Frozen set, case freeze: it waits for `../agent/bench/frozen/demo/wordings.json`, written by Abdou (2 per turn kind) and dsh (1 per kind) from `wordings.template.json`. Claude never opens that file. Then follow the "Commands" section of `../agent/bench/frozen/README.md`, with C1 = v1 and C2 = v2.
 
 ## Waiting for Abdou
 
-- **Iteration 3:** Q-020 points 1, 2 and 6 (the interface lines of `AGENTS.md` and the README), after the stack is retested on population PK; Rtools 4.5 (Q-021), needed from wave 6; pushing `iter3/*` (Q-022).
-- **Iteration 2 (paused):** a new visual direction (the three mockups were turned down on 2026-11-07), applied to the chosen stack later.
-- Q-015, answered (delete): Abdou deletes `C:\Users\abdou\.claude\commands\onizuka.md` by hand.
+- **The new way of running the project.** It is to be imported from the ols-prime setup in a separate session. The description of the setup as it stands is in `board/messages/2026-11-08-how-the-project-is-run.md`.
+- **Iteration 3:**
+  - whether to resume it, and with what budget;
+  - Q-020 points 1, 2 and 6 (the interface lines of `AGENTS.md` and of the README), after the stack is retested on population PK;
+  - Q-021: no Rtools, nlmixr2 or other R package is installed;
+  - Q-023 to Q-027.
+- **Iteration 2:** a new visual direction.
 - Ideas that wait for Abdou:
   - the Fisher-information design, which needs an amendment of `AGENTS.md` section 1;
   - `qc.nca`;
@@ -36,5 +63,5 @@
 
 ## Places
 
-- Publication: https://github.com/abdou-rgd/caladrius. Q-013 authorises pushes of this repository; push after each closed task.
-- Apothicaire is `..\agent\` (github.com/abdou-rgd/apothicaire), OptChat `..\optchat\` (github.com/abdou-rgd/optchat). The umbrella is `..\` (`README.md`, `notes/`); its repository github.com/abdou-rgd/officina is checked out in `C:\Users\abdou\officina-umbrella`.
+- Publication: https://github.com/abdou-rgd/caladrius (public). Q-013 authorises pushes of this repository.
+- Apothicaire is `..\agent\` (github.com/abdou-rgd/apothicaire), OptChat is `..\optchat\` (github.com/abdou-rgd/optchat). The umbrella is `..\` (`README.md`, `notes/`); its repository github.com/abdou-rgd/officina is checked out in `C:\Users\abdou\officina-umbrella`.

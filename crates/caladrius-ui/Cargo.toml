@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 caladrius-engine = { path = "../caladrius-engine" }
+caladrius-format = { path = "../caladrius-format" }
 egui = { version = "0.32.3", default-features = false, features = ["default_fonts"] }
 egui_plot = "0.33.0"
 # Decodes the embedded logo renderings (`assets/icons/`); already in the tree through the test tools.

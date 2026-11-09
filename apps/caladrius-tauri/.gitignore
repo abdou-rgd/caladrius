@@ -1,0 +1,3 @@
+# Built apart from the workspace.
+/target/
+# gen/schemas is written by tauri-build and is kept in git: a build that may not write into the tree finds the same bytes and writes nothing.

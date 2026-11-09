@@ -73,6 +73,7 @@ fn the_commands_are_the_documented_ones() {
             "project.save",
             "history.list",
             "project.replay",
+            "plot.scene",
             "analysis.remove",
             "data.remove",
             "project.new",

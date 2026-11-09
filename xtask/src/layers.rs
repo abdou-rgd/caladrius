@@ -73,6 +73,7 @@ pub const LAYER_TABLE: &[(&str, Layer)] = &[
     ("caladrius-models", Layer::L0),
     ("caladrius-fit", Layer::L0),
     ("caladrius-project", Layer::L1),
+    ("caladrius-format", Layer::L1),
     ("caladrius-engine", Layer::L2),
     ("caladrius-ui", Layer::L3),
     ("caladrius-testkit", Layer::Test),
@@ -81,6 +82,7 @@ pub const LAYER_TABLE: &[(&str, Layer)] = &[
     ("caladrius-cli", Layer::App),
     ("caladrius-mcp", Layer::App),
     ("caladrius-web", Layer::App),
+    ("caladrius-bridge", Layer::App),
     ("xtask", Layer::Tool),
 ];
 
@@ -362,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn the_table_registers_each_crate_once_and_six_crates_compile_to_wasm() {
+    fn the_table_registers_each_crate_once_and_seven_crates_compile_to_wasm() {
         let mut names: Vec<&str> = LAYER_TABLE.iter().map(|(name, _)| *name).collect();
         names.sort_unstable();
         names.dedup();
@@ -371,7 +373,7 @@ mod tests {
             .iter()
             .filter(|(_, layer)| layer.compiles_to_wasm())
             .count();
-        assert_eq!(wasm, 6);
+        assert_eq!(wasm, 7);
     }
 
     #[test]

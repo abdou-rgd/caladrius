@@ -1,12 +1,16 @@
 # Caladrius workspace. Layers and their rules: AGENTS.md section 4, checked by `cargo xtask layers`.
 [workspace]
 resolver = "3"
+# The Tauri shell has its own Cargo.lock and is built apart (apps/caladrius-tauri): the workspace, its CI and
+# its clippy run do not compile Tauri.
+exclude = ["apps/caladrius-tauri"]
 members = [
     # L0 to L3: compile for wasm32-unknown-unknown (`cargo xtask wasm`).
     "crates/caladrius-nca",
     "crates/caladrius-models",
     "crates/caladrius-fit",
     "crates/caladrius-project",
+    "crates/caladrius-format",
     "crates/caladrius-engine",
     "crates/caladrius-ui",
     # Test layer: oracles, tolerances, table comparison.
@@ -17,6 +21,7 @@ members = [
     "apps/caladrius-cli",
     "apps/caladrius-mcp",
     "apps/caladrius-web",
+    "apps/caladrius-bridge",
     # Developer tasks.
     "xtask",
 ]

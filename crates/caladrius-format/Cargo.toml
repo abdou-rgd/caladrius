@@ -1,0 +1,16 @@
+[package]
+name = "caladrius-format"
+description = "Layer L1: how numbers and parameter names are shown, the same in the egui interface, the browser and the desktop webview."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+# Pure Rust log10 and floor: the digits shown must not depend on the maths library of the platform
+# (clippy.toml bans the standard ones). Same pin as the engine, so the workspace has one version.
+libm = "=0.2.16"
+
+[lints]
+workspace = true

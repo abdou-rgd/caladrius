@@ -1,8 +1,9 @@
-//! `plot.xy` and `export.plot`: XY plots as objects of the workflow (T-110).
+//! `plot.xy`, `plot.scene` and `export.plot`: XY plots as objects of the workflow (T-110), and
+//! the scene that the screen and the export both draw (T-133).
 
 use caladrius_project::{
-    AnalysisId, AnalysisResult, AnalysisSpec, AnalysisStatus, FitView, PlotLayout, PlotScale,
-    PlotSource, PlotSpec, WorksheetId,
+    AnalysisId, AnalysisResult, AnalysisSpec, AnalysisStatus, ColumnRole, FitView, Outcome,
+    PlotLayout, PlotRun, PlotScale, PlotSource, PlotSpec, WorksheetId,
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -13,8 +14,10 @@ use crate::Engine;
 use crate::error::CommandError;
 use crate::export;
 use crate::run;
+use crate::scene::{self, NcaDrawing, PlotScene};
 use crate::schema::{
-    array_of, described, integer, nullable, object, one_of_strings, reference, root, string,
+    array_of, boolean, described, integer, nullable, object, one_of_strings, reference, root,
+    string,
 };
 use crate::svg;
 
@@ -146,6 +149,255 @@ pub(crate) const PLOT_XY: CommandDef = CommandDef {
     run: plot_xy,
 };
 
+// ---- the scene of a plot, for plot.scene and export.plot -----------------------------------
+
+/// What `plot.scene` and `export.plot` draw: the scene of a plot analysis, or of one subject of
+/// an NCA analysis.
+struct Drawing {
+    scene: PlotScene,
+    /// `plot` or `nca`.
+    kind: &'static str,
+    /// The subject of an NCA scene.
+    subject: Option<String>,
+    status: &'static str,
+}
+
+/// The panels of `run` on the axis that `log` asks for (`None`: all of them).
+fn panels_on(
+    run: &PlotRun,
+    log: Option<bool>,
+    analysis: AnalysisId,
+) -> Result<PlotRun, CommandError> {
+    let Some(log) = log else {
+        return Ok(run.clone());
+    };
+    let panels: Vec<_> = run
+        .panels
+        .iter()
+        .filter(|p| p.y.log == log)
+        .cloned()
+        .collect();
+    if panels.is_empty() {
+        return Err(CommandError::new(
+            "no_such_panel",
+            format!(
+                "plot {analysis} has no {} panel; draw it with scale `{}` or `both` (plot.xy), or leave `log` out",
+                if log { "logarithmic" } else { "linear" },
+                if log { "log" } else { "linear" },
+            ),
+        ));
+    }
+    Ok(PlotRun {
+        title: run.title.clone(),
+        panels,
+        notes: run.notes.clone(),
+    })
+}
+
+fn drawing(
+    engine: &Engine,
+    command: &str,
+    analysis: AnalysisId,
+    subject: Option<&str>,
+    log: Option<bool>,
+) -> Result<Drawing, CommandError> {
+    let project = &engine.project;
+    let stored = project.analysis(analysis)?;
+    let result = stored.result().ok_or_else(|| {
+        CommandError::new(
+            "no_result",
+            format!(
+                "analysis {analysis} has no result to draw; run it (plot.xy, nca.run or analysis.run) before {command}"
+            ),
+        )
+    })?;
+    let status = match project.status(analysis)? {
+        AnalysisStatus::Fresh => "fresh",
+        AnalysisStatus::Stale { .. } => "stale",
+        AnalysisStatus::NoResult => "no_result",
+    };
+    match result {
+        AnalysisResult::Plot(run) => {
+            if subject.is_some() {
+                return Err(CommandError::invalid(
+                    command,
+                    format!(
+                        "analysis {analysis} is a plot; `subject` names a subject of an NCA analysis"
+                    ),
+                ));
+            }
+            let run = panels_on(run, log, analysis)?;
+            Ok(Drawing {
+                scene: scene::from_run(&run),
+                kind: "plot",
+                subject: None,
+                status,
+            })
+        }
+        AnalysisResult::Nca { subjects } => {
+            let AnalysisSpec::Nca(spec) = stored.spec() else {
+                return Err(CommandError::new(
+                    "internal_error",
+                    format!("analysis {analysis} holds an NCA result without an NCA spec"),
+                ));
+            };
+            let names = || {
+                subjects
+                    .iter()
+                    .map(|s| s.subject.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            let one = match (subject, subjects.as_slice()) {
+                (Some(wanted), _) => subjects.iter().find(|s| s.subject == wanted).ok_or_else(|| {
+                    CommandError::new(
+                        "unknown_subject",
+                        format!(
+                            "analysis {analysis} has no subject `{wanted}`; the subjects are: {}",
+                            names()
+                        ),
+                    )
+                })?,
+                (None, [only]) => only,
+                (None, _) => {
+                    return Err(CommandError::invalid(
+                        command,
+                        format!(
+                            "analysis {analysis} is an NCA of {} subjects; give `subject`, one of: {}",
+                            subjects.len(),
+                            names()
+                        ),
+                    ));
+                }
+            };
+            let Outcome::Ok(nca) = &one.outcome else {
+                let why = match &one.outcome {
+                    Outcome::Error(message) => message.as_str(),
+                    Outcome::Ok(_) => "",
+                };
+                return Err(CommandError::new(
+                    "no_result",
+                    format!(
+                        "subject {} of analysis {analysis} has no result to draw: {why}",
+                        one.subject
+                    ),
+                ));
+            };
+            // The units the analysis ran with, else those of the worksheet columns.
+            let sheet = project.worksheet(spec.worksheet).ok();
+            let units = spec.options.units.as_ref();
+            let time_unit = units
+                .map(|u| u.time.as_str())
+                .or_else(|| sheet.and_then(|w| w.unit_of(ColumnRole::Time)));
+            let concentration_unit = units
+                .map(|u| u.concentration.as_str())
+                .or_else(|| sheet.and_then(|w| w.unit_of(ColumnRole::Concentration)));
+            Ok(Drawing {
+                scene: scene::nca(&NcaDrawing {
+                    subject: &one.subject,
+                    result: nca,
+                    options: &spec.options,
+                    time_unit,
+                    concentration_unit,
+                    log: log.unwrap_or(false),
+                }),
+                kind: "nca",
+                subject: Some(one.subject.clone()),
+                status,
+            })
+        }
+        _ => Err(CommandError::new(
+            "not_a_plot",
+            format!(
+                "analysis {analysis} is a {} analysis; {command} draws a plot (make one with plot.xy) or an NCA analysis",
+                stored.spec().kind()
+            ),
+        )),
+    }
+}
+
+// ---- plot.scene --------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PlotSceneParams {
+    analysis: AnalysisId,
+    #[serde(default, deserialize_with = "super::label")]
+    subject: Option<String>,
+    #[serde(default)]
+    log: Option<bool>,
+}
+
+fn plot_scene(engine: &mut Engine, params: Value) -> Result<Value, CommandError> {
+    let p: PlotSceneParams = parse("plot.scene", params)?;
+    let d = drawing(
+        engine,
+        "plot.scene",
+        p.analysis,
+        p.subject.as_deref(),
+        p.log,
+    )?;
+    let mut answer = json!({
+        "analysis": p.analysis,
+        "kind": d.kind,
+        "status": d.status,
+        "scene": respond(&d.scene)?,
+    });
+    if let (Some(subject), Some(map)) = (d.subject, answer.as_object_mut()) {
+        map.insert("subject".to_owned(), json!(subject));
+    }
+    Ok(answer)
+}
+
+pub(crate) const PLOT_SCENE: CommandDef = CommandDef {
+    id: "plot.scene",
+    title: "The scene of a plot",
+    description: "The drawing of a plot analysis, or of one subject of an NCA analysis, as data that any front can draw: panels with their axes, ticks (value and label), range and series, the points a logarithmic axis cannot show with the sentence that says so, the reference lines and the legend. No pixel and no colour: a series has a role (`subject`, `observed`, `predicted`; for an NCA profile `profile`, `lambda_z_used`, `lambda_z_start`, `lambda_z_fit`, `excluded`, `replaced`) and the theme of whoever draws decides how it looks. A logarithmic axis is already in log10 (its range, its ticks and its points), so a front only maps scene units to pixels. For an NCA analysis `subject` names the subject (it may be left out when there is one) and `log` chooses the semi-logarithmic axis (default linear); the lambda z line is drawn from the intercept and lambda z of the answer, with no new estimate. For a plot analysis `log` keeps only the panels of that axis. `status` says whether the analysis is fresh or stale.",
+    mutates: false,
+    params: || {
+        root(
+            "plot.scene parameters",
+            object(
+                vec![
+                    ("analysis", reference("Id")),
+                    (
+                        "subject",
+                        described(
+                            crate::schema::subject(),
+                            "NCA analysis only: the subject to draw (omitted: the only one).",
+                        ),
+                    ),
+                    (
+                        "log",
+                        described(
+                            nullable(boolean()),
+                            "NCA analysis: a semi-logarithmic concentration axis (default linear). Plot analysis: keep only the logarithmic (true) or the linear (false) panels.",
+                        ),
+                    ),
+                ],
+                &["analysis"],
+            ),
+        )
+    },
+    result: || {
+        root(
+            "plot.scene result",
+            object(
+                vec![
+                    ("analysis", reference("Id")),
+                    ("kind", one_of_strings(&["plot", "nca"])),
+                    ("status", one_of_strings(&["fresh", "stale", "no_result"])),
+                    ("subject", string()),
+                    ("scene", reference("PlotScene")),
+                ],
+                &["analysis", "kind", "status", "scene"],
+            ),
+        )
+    },
+    example: || json!({ "analysis": 4 }),
+    run: plot_scene,
+};
+
 // ---- export.plot -------------------------------------------------------------------------
 
 #[derive(Deserialize)]
@@ -158,6 +410,10 @@ struct ExportPlotParams {
     width: Option<u32>,
     #[serde(default)]
     height: Option<u32>,
+    #[serde(default, deserialize_with = "super::label")]
+    subject: Option<String>,
+    #[serde(default)]
+    log: Option<bool>,
 }
 
 fn svg_format() -> String {
@@ -190,49 +446,41 @@ fn export_plot(engine: &mut Engine, params: Value) -> Result<Value, CommandError
         width: side(p.width, svg::PANEL.width, "width")?,
         height: side(p.height, svg::PANEL.height, "height")?,
     };
-    let project = &engine.project;
-    let analysis = project.analysis(p.analysis)?;
-    let run = match analysis.result() {
-        Some(AnalysisResult::Plot(run)) => run,
-        Some(_) => {
-            return Err(CommandError::new(
-                "not_a_plot",
-                format!(
-                    "analysis {} is a {} analysis; export.plot exports a plot (make one with plot.xy)",
-                    p.analysis,
-                    analysis.spec().kind()
-                ),
-            ));
+    let d = drawing(
+        engine,
+        "export.plot",
+        p.analysis,
+        p.subject.as_deref(),
+        p.log,
+    )?;
+    let label = engine.project.label_of(p.analysis)?;
+    // A plot keeps the name it always had; an NCA profile names its subject and its axis.
+    let mut name = export::slug(&label);
+    if let Some(subject) = &d.subject {
+        name = format!("{name}-subject-{}", export::slug(subject));
+        match p.log {
+            Some(true) => name.push_str("-semi-log"),
+            Some(false) => name.push_str("-linear"),
+            None => {}
         }
-        None => {
-            return Err(CommandError::new(
-                "no_result",
-                format!(
-                    "plot {} has not been drawn; run it before exporting it",
-                    p.analysis
-                ),
-            ));
-        }
-    };
-    let status = match project.status(p.analysis)? {
-        AnalysisStatus::Fresh => "fresh",
-        AnalysisStatus::Stale { .. } => "stale",
-        AnalysisStatus::NoResult => "no_result",
-    };
-    let label = project.label_of(p.analysis)?;
-    respond(&json!({
+    }
+    let mut answer = json!({
         "format": "svg",
-        "file_name": format!("{}.svg", export::slug(&label)),
-        "status": status,
-        "panels": run.panels.len(),
-        "svg": svg::render(run, size),
-    }))
+        "file_name": format!("{name}.svg"),
+        "status": d.status,
+        "panels": d.scene.panels.len(),
+        "svg": svg::render(&d.scene, size),
+    });
+    if let (Some(subject), Some(map)) = (d.subject, answer.as_object_mut()) {
+        map.insert("subject".to_owned(), json!(subject));
+    }
+    Ok(answer)
 }
 
 pub(crate) const EXPORT_PLOT: CommandDef = CommandDef {
     id: "export.plot",
     title: "Export a plot as SVG",
-    description: "The last drawing of a plot analysis as an SVG document (text; the caller writes the file), with a suggested file name. `status` says whether the plot is fresh or stale. `width` and `height` are the size of one panel in pixels (default 420 by 300); the panels are laid out in a grid with one legend. Colours are those of the light theme.",
+    description: "The last drawing of a plot analysis, or of one subject of an NCA analysis, as an SVG document (text; the caller writes the file), with a suggested file name. It draws the scene of `plot.scene`, so the file and a screen that draws the scene show the same thing. `status` says whether the analysis is fresh or stale. `width` and `height` are the size of one panel in pixels (default 420 by 300); the panels are laid out in a grid with one legend. Colours are those of the light theme. For an NCA analysis give `subject` (it may be left out when there is one) and `log` for the semi-logarithmic axis; for a plot analysis `log` keeps only the panels of that axis.",
     mutates: false,
     params: || {
         root(
@@ -249,6 +497,20 @@ pub(crate) const EXPORT_PLOT: CommandDef = CommandDef {
                         "height",
                         json!({ "type": "integer", "minimum": 200, "maximum": 2000 }),
                     ),
+                    (
+                        "subject",
+                        described(
+                            crate::schema::subject(),
+                            "NCA analysis only: the subject to draw (omitted: the only one).",
+                        ),
+                    ),
+                    (
+                        "log",
+                        described(
+                            nullable(boolean()),
+                            "NCA analysis: a semi-logarithmic concentration axis (default linear). Plot analysis: keep only the logarithmic (true) or the linear (false) panels.",
+                        ),
+                    ),
                 ],
                 &["analysis"],
             ),
@@ -264,6 +526,7 @@ pub(crate) const EXPORT_PLOT: CommandDef = CommandDef {
                     ("status", one_of_strings(&["fresh", "stale", "no_result"])),
                     ("panels", integer()),
                     ("svg", string()),
+                    ("subject", string()),
                 ],
                 &["format", "file_name", "status", "panels", "svg"],
             ),

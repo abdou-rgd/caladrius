@@ -1,0 +1,13 @@
+# The permissions of the application: the window may call the command `engine_execute`, and the two
+# commands of the measure mode (`measure_requested`, `measure_write`).
+# Written by hand because `tauri-build` cannot generate it here (a build script is not allowed to write
+# into the source tree on the machines this was built on); `capabilities/default.json` lists it.
+[[permission]]
+identifier = "allow-engine-execute"
+description = "Allows the window to call the engine through the command engine_execute."
+commands.allow = ["engine_execute"]
+
+[[permission]]
+identifier = "allow-measure"
+description = "Allows the window to ask whether to measure and to hand the measure back (it writes only the file of CALADRIUS_MEASURE)."
+commands.allow = ["measure_requested", "measure_write"]

@@ -56,6 +56,7 @@ pub(crate) const COMMANDS: &[CommandDef] = &[
     project::SAVE,
     project::HISTORY_LIST,
     project::REPLAY,
+    plot::PLOT_SCENE,
     analysis::ANALYSIS_REMOVE,
     data::REMOVE,
     project::NEW,

@@ -1,0 +1,17 @@
+{
+  "about": "The fixed script of `cargo xtask bridge` (T-134). Each element is one request to the bridge: an object is sent as the JSON text of the object, a string is sent as it stands (so that a request that is not JSON can be in the script). In a parameter, {\"$file\": \"path\"} is replaced by the text of that file, the path being relative to the workspace root. The script runs on a new engine, in this order, through Engine::execute in Rust, through the WebAssembly module under Node and through the command handler of the Tauri shell; the three lists of answers must be the same bytes. Objects are numbered in the order they are made: the worksheet is 1, the NCA 2, the plot 3.",
+  "requests": [
+    { "command": "data.import", "params": { "name": "edge_blq", "csv": { "$file": "oracle/data/edge_blq.csv" } } },
+    { "command": "data.describe", "params": { "worksheet": 1 } },
+    { "command": "nca.run", "params": { "worksheet": 1, "subject": "3", "route": "extravascular" } },
+    { "command": "plot.xy", "params": { "worksheet": 1, "scale": "both", "layout": "per_subject" } },
+    { "command": "export.plot", "params": { "analysis": 3 } },
+    { "command": "history.list" },
+    { "command": "no.such.command", "params": {} },
+    { "command": "nca.run", "params": { "worksheet": 1, "subject": "3", "route": "sideways" } },
+    { "command": "nca.run", "params": { "worksheet": 99 } },
+    { "command": "history.list", "limit": 5 },
+    "this is not JSON",
+    { "command": "history.list", "params": { "from": 5 } }
+  ]
+}
