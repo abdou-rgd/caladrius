@@ -23,7 +23,10 @@ fn shell() -> Result<(App<tauri::test::MockRuntime>, tauri::WebviewWindow<tauri:
 
 /// One call of `engine_execute`, as the page makes it: `invoke('engine_execute', { request })`.
 fn invoke(window: &tauri::WebviewWindow<tauri::test::MockRuntime>, request: &str) -> Result<String, String> {
-    let url = "http://tauri.localhost"
+    // The local origin of the page: `http://tauri.localhost` on Windows, `tauri://localhost` elsewhere
+    // (any other origin is remote and the capability, which is local, does not apply to it).
+    let origin = if cfg!(windows) { "http://tauri.localhost" } else { "tauri://localhost" };
+    let url = origin
         .parse()
         .map_err(|e| format!("bad url: {e}"))?;
     let response = get_ipc_response(

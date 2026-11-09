@@ -12,6 +12,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "serve": "npm run wasm && npm run build && npm run preview",
     "test": "tsc --noEmit -p tsconfig.json && node --experimental-strip-types --no-warnings --test \"test/*.test.ts\"",
+    "desktop": "node scripts/desktop.mjs",
     "test:e2e": "node test/e2e.mjs"
   },
   "dependencies": {

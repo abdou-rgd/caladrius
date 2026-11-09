@@ -3,7 +3,8 @@
 # own Cargo.lock, and the workspace CI, clippy and `cargo xtask` do not compile Tauri. Build and run it
 # from here:
 #
-#   cargo run  --manifest-path apps/caladrius-tauri/Cargo.toml
+#   npm run desktop -w @caladrius/front        (from apps/: builds the page, opens the window)
+#   cargo run  --manifest-path apps/caladrius-tauri/Cargo.toml   (loads the dev server, `npm run dev`)
 #   cargo test --manifest-path apps/caladrius-tauri/Cargo.toml
 #
 # The Cargo.lock was started from the one of the workspace, so the crates the engine uses (libm, serde,
@@ -24,6 +25,12 @@ path = "src/lib.rs"
 [[bin]]
 name = "caladrius-tauri"
 path = "src/main.rs"
+
+[features]
+# Serve the page from the files embedded in the executable (`frontendDist`). Without it Tauri loads
+# `devUrl` (the Vite dev server): that is what `tauri-cli` sets for `build` and unsets for `dev`.
+# `npm run desktop -w @caladrius/front` builds the page and runs with this feature.
+custom-protocol = ["tauri/custom-protocol"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -9,9 +9,11 @@
 //!
 //! `engine_execute` takes the request of the bridge as text (`{"command": "<id>", "params": ...}`)
 //! and returns its answer as text, both documented in `caladrius-bridge`. The command is the second
-//! transport of the one call (the first is a Web Worker running the same engine as WebAssembly); the
-//! window is a placeholder page (`dist/`) that calls it once and shows the sealed answer. The
-//! capability `capabilities/default.json` allows this command and no other.
+//! transport of the one call (the first is a Web Worker running the same engine as WebAssembly). The
+//! window shows the web front (`apps/caladrius-front`, built to its `dist/`, or its dev server at the
+//! `devUrl` of `tauri.conf.json`): the page finds `__TAURI_INTERNALS__`, uses the Tauri transport and
+//! starts no worker, so a fit runs in this process with the same numbers as in the browser. The
+//! capability `capabilities/default.json` allows this command and the two measure commands, no other.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};

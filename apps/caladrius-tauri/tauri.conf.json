@@ -4,7 +4,8 @@
   "version": "0.3.2",
   "identifier": "org.caladrius.shell",
   "build": {
-    "frontendDist": "../caladrius-proto-react/dist"
+    "frontendDist": "../caladrius-front/dist",
+    "devUrl": "http://127.0.0.1:5173"
   },
   "app": {
     "withGlobalTauri": true,
@@ -12,10 +13,10 @@
       {
         "label": "main",
         "title": "Caladrius",
-        "width": 1100,
-        "height": 760,
-        "minWidth": 640,
-        "minHeight": 420
+        "width": 1440,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 600
       }
     ],
     "security": {
