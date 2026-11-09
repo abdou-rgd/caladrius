@@ -1,0 +1,11 @@
+{
+  "name": "caladrius-web-front",
+  "private": true,
+  "description": "npm workspace of the web front of Caladrius: the app, its table and plot layers, and the bridge client. One lock file, one node_modules.",
+  "license": "MIT OR Apache-2.0",
+  "workspaces": ["caladrius-bridge/ts", "caladrius-table", "caladrius-plot", "caladrius-front"],
+  "scripts": {
+    "test": "npm test --workspaces --if-present",
+    "build": "npm run build -w @caladrius/front"
+  }
+}

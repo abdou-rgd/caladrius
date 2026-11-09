@@ -1,0 +1,17 @@
+{
+  "name": "@caladrius/plot",
+  "version": "0.1.0",
+  "description": "Plots of the Caladrius interface: the engine's plot scene (plot.scene) drawn by Vega-Lite on a canvas. Axis ranges, ticks and labels come from the engine.",
+  "license": "MIT OR Apache-2.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "tsc --noEmit -p tsconfig.json && node --experimental-strip-types --no-warnings --test \"test/*.test.ts\""
+  },
+  "peerDependencies": { "react": "19.3.1", "react-dom": "19.3.1" },
+  "dependencies": {
+    "vega": "6.4.0",
+    "vega-lite": "6.5.0"
+  }
+}
