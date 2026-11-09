@@ -187,3 +187,6 @@ One line per task: id, title, role, state. Only the orchestrator writes this fil
 | T-178 | Iteration 4: the web front (React), a live-testable slice with three compartments | orchestrator | in progress | T-130, T-172 |
 | T-179 | The branch of the web front: front/int (iter3/int + iter2/base + the Tauri shell) | orchestrator | done | none |
 | T-182 | The plot layer: the engine's plot scene drawn by Vega-Lite on a canvas | interface | to review | T-179 |
+| T-180 | The app shell of the web front: apps/caladrius-front | interface | in progress | T-179, T-182, T-177 |
+| T-181 | The fit slice: data, model (1, 2 or 3 compartments), initial estimates with a live preview, fit, results | interface | in progress | T-180 |
+| T-185 | Review of the code entering front/int: plot.scene, caladrius-format, the bridge (T-133, T-134), the merge (T-179), the plot layer (T-182) | reviewer | in progress | T-179, T-182 |
