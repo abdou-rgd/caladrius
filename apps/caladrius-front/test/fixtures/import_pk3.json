@@ -1,0 +1,86 @@
+{
+ "at": null,
+ "command": "data.import",
+ "error": null,
+ "ok": true,
+ "result": {
+  "delimiter": ",",
+  "notes": [
+   "unit `h` read from the header of column `Time`",
+   "unit `mg/L` read from the header of column `Conc`",
+   "unit `mg` read from the header of column `Dose`"
+  ],
+  "worksheet": {
+   "columns": [
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "missing": 0,
+     "name": "Subject",
+     "role": "subject",
+     "type": "text",
+     "unit": null
+    },
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "max": 96,
+     "min": 0.083,
+     "missing": 0,
+     "name": "Time",
+     "role": "time",
+     "type": "number",
+     "unit": "h"
+    },
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "max": 11.96,
+     "min": 0.01429,
+     "missing": 0,
+     "name": "Conc",
+     "role": "concentration",
+     "type": "number",
+     "unit": "mg/L"
+    },
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "max": 100,
+     "min": 100,
+     "missing": 0,
+     "name": "Dose",
+     "role": "dose",
+     "type": "number",
+     "unit": "mg"
+    }
+   ],
+   "derived_units": {
+    "auc": "h*mg/L",
+    "aumc": "h^2*mg/L",
+    "cl": "L/h",
+    "half_life": "h",
+    "lambda_z": "1/h",
+    "mrt": "h",
+    "v": "L"
+   },
+   "id": 1,
+   "name": "pk3_iv_bolus",
+   "revision": 0,
+   "rows": 42,
+   "subjects": [
+    "A",
+    "B",
+    "C"
+   ],
+   "unit_warnings": []
+  }
+ },
+ "seal": {
+  "commit": "56c2479c03f8c7cbe7853c92f8bc9bf979d071aa",
+  "engine": "0.3.2",
+  "format": 1,
+  "input": "56c7a873e83f537843fb62064049a229f70b4d41b9943a38808541a6f7f847c1",
+  "sha256": "df0f551ad80bb3648a1e1a748e6a91e6e99f793109862f2f96581b27a4aca72d"
+ }
+}

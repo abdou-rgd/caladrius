@@ -1,0 +1,27 @@
+{
+ "at": null,
+ "command": "fit.evaluate",
+ "error": null,
+ "ok": true,
+ "result": {
+  "dose": 100,
+  "n_observations": 14,
+  "starting_values": {
+   "cl": 2,
+   "q2": 5,
+   "q3": 0.5,
+   "vc": 10,
+   "vp2": 20,
+   "vp3": 40
+  },
+  "subject": "A",
+  "wrss": 0.017669103583232326
+ },
+ "seal": {
+  "commit": "56c2479c03f8c7cbe7853c92f8bc9bf979d071aa",
+  "engine": "0.3.2",
+  "format": 1,
+  "input": "0bc1a517b30dc86275e3d403c059c903684580c30b897d7c04dcd4ad276783f8",
+  "sha256": "67a33d2f4783d6cca389f223f1ffc4b1ae04054a51998f7a8f8c3e5083c0366e"
+ }
+}

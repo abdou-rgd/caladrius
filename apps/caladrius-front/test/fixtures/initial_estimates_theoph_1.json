@@ -1,0 +1,23 @@
+{
+ "at": null,
+ "command": "fit.initial_estimates",
+ "error": null,
+ "ok": true,
+ "result": {
+  "dose": 319.992,
+  "initial": {
+   "k": 0.048456996965774914,
+   "ka": 0.5988223518454696,
+   "v": 32.58635171191907
+  },
+  "n_observations": 11,
+  "subject": "1"
+ },
+ "seal": {
+  "commit": "56c2479c03f8c7cbe7853c92f8bc9bf979d071aa",
+  "engine": "0.3.2",
+  "format": 1,
+  "input": "b9121cbfa09371f4263fd07ab6d6c214a15bc6dfa0b9e0361ad10ea00ffdf1c6",
+  "sha256": "6e1b2cba6f12c2a689c6ebcff433ec62bd82f7bb704394e53f222a367b204bdc"
+ }
+}

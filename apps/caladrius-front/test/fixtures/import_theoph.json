@@ -1,0 +1,98 @@
+{
+ "at": null,
+ "command": "data.import",
+ "error": null,
+ "ok": true,
+ "result": {
+  "delimiter": ",",
+  "notes": [],
+  "worksheet": {
+   "columns": [
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "max": 12,
+     "min": 1,
+     "missing": 0,
+     "name": "subject",
+     "role": "subject",
+     "type": "number",
+     "unit": null
+    },
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "max": 24.65,
+     "min": 0,
+     "missing": 0,
+     "name": "time",
+     "role": "time",
+     "type": "number",
+     "unit": null
+    },
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "max": 11.4,
+     "min": 0,
+     "missing": 0,
+     "name": "conc",
+     "role": "concentration",
+     "type": "number",
+     "unit": null
+    },
+    {
+     "blq": 0,
+     "blq_rows": [],
+     "max": 320.65,
+     "min": 267.84,
+     "missing": 0,
+     "name": "dose",
+     "role": "dose",
+     "type": "number",
+     "unit": null
+    }
+   ],
+   "derived_units": {},
+   "id": 3,
+   "name": "theoph",
+   "revision": 0,
+   "rows": 132,
+   "subjects": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12"
+   ],
+   "unit_warnings": [
+    {
+     "code": "missing_unit",
+     "message": "the time has no unit; derived units (AUC, clearance, volume) cannot be named"
+    },
+    {
+     "code": "missing_unit",
+     "message": "the concentration has no unit; derived units (AUC, clearance, volume) cannot be named"
+    },
+    {
+     "code": "missing_unit",
+     "message": "the dose has no unit; derived units (AUC, clearance, volume) cannot be named"
+    }
+   ]
+  }
+ },
+ "seal": {
+  "commit": "56c2479c03f8c7cbe7853c92f8bc9bf979d071aa",
+  "engine": "0.3.2",
+  "format": 1,
+  "input": "d14a13918f5cfe9151e41cc12be7515b2a614f9b5d085e4510c755450cc5daaa",
+  "sha256": "89d67ddedcd2dd50b60dbd941672ef1ba46b1400a2625a4acdfdadf0c2e828f6"
+ }
+}

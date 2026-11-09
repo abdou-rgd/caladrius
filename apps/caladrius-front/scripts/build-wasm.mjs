@@ -37,5 +37,5 @@ if (!(process.argv.includes('--if-missing') && existsSync(module))) {
 const data = join(app, 'public', 'data');
 mkdirSync(data, { recursive: true });
 for (const name of ['theoph.csv', 'indometh.csv']) copyFileSync(join(root, 'oracle', 'data', name), join(data, name));
-for (const name of readdirSync(join(app, 'samples'))) copyFileSync(join(app, 'samples', name), join(data, name));
+for (const name of readdirSync(join(app, 'samples')).filter((n) => n.endsWith('.csv'))) copyFileSync(join(app, 'samples', name), join(data, name));
 console.error(`caladrius-front: module ${statSync(module).size} bytes in ${pkg}`);
